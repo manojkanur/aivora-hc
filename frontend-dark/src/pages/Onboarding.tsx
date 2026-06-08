@@ -1,0 +1,628 @@
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Target, Users, FileSearch, Sparkles,
+  ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight,
+} from 'lucide-react'
+import { Button } from '../components/ui/Button'
+import { Input, Textarea } from '../components/ui/Input'
+import { cn } from '../lib/utils'
+import { useOnboardingCompletions } from '../store/onboardingCompletions'
+import {
+  useClientProfileStore,
+  defaultProfile,
+  type ClientProfile,
+  type BusinessPriority,
+  type HcPriority,
+  type TransformationAgendaItem,
+  type WorkforceChallenge,
+  type TalentChallenge,
+  type LeadershipChallenge,
+  type ExRewardChallenge,
+  type NationalizationProgram,
+  type RateBand,
+  type AvailableDocument,
+  type PreferredOutputType,
+  type ClientAudience,
+  type ConfidentialityLevel,
+  type UrgencyBand,
+} from '../store/clientProfile'
+
+// ── Option labels ──────────────────────────────────────────────────────────
+
+const BUSINESS_PRIORITY_LABELS: Record<BusinessPriority, string> = {
+  growth: 'Growth', 'cost-efficiency': 'Cost & efficiency', resilience: 'Resilience',
+  'esg-sustainability': 'ESG & sustainability', 'digital-transformation': 'Digital transformation',
+  'm-and-a': 'M&A', 'customer-experience': 'Customer experience', innovation: 'Innovation',
+  'operational-excellence': 'Operational excellence', 'risk-compliance': 'Risk & compliance',
+  'talent-capability': 'Talent & capability', 'geographic-expansion': 'Geographic expansion',
+}
+
+const HC_PRIORITY_LABELS: Record<HcPriority, string> = {
+  'workforce-planning': 'Workforce planning', 'leadership-development': 'Leadership development',
+  'succession-planning': 'Succession planning', 'employee-experience': 'Employee experience',
+  'rewards-strategy': 'Rewards strategy', 'skills-capability': 'Skills & capability',
+  'talent-acquisition': 'Talent acquisition', 'performance-management': 'Performance management',
+  'learning-development': 'Learning & development', nationalization: 'Nationalization',
+  'diversity-inclusion': 'Diversity & inclusion', 'organization-design': 'Organization design',
+  'change-management': 'Change management', 'hr-operating-model': 'HR operating model',
+}
+
+const TRANSFORMATION_LABELS: Record<TransformationAgendaItem, string> = {
+  digital: 'Digital', cultural: 'Cultural', 'operating-model': 'Operating model',
+  'm-and-a-integration': 'M&A integration', 'post-merger': 'Post-merger',
+  'cost-optimization': 'Cost optimization', 'growth-acceleration': 'Growth acceleration',
+  'esg-transformation': 'ESG transformation', 'regulatory-driven': 'Regulatory-driven', none: 'None in scope',
+}
+
+const WORKFORCE_CHALLENGE_LABELS: Record<WorkforceChallenge, string> = {
+  'high-attrition': 'High attrition', scarcity: 'Talent scarcity',
+  'contractor-heavy': 'Contractor-heavy', 'aging-workforce': 'Ageing workforce',
+  'skill-mismatch': 'Skill mismatch', 'engagement-decline': 'Engagement decline',
+  'remote-hybrid-strain': 'Remote / hybrid strain', 'diversity-gaps': 'Diversity gaps',
+  'productivity-decline': 'Productivity decline', none: 'None of the above',
+}
+
+const TALENT_CHALLENGE_LABELS: Record<TalentChallenge, string> = {
+  'hipo-gap': 'HiPo gap', 'succession-risk': 'Succession risk',
+  'niche-skills-shortage': 'Niche skills shortage', 'leadership-bench-thin': 'Leadership bench thin',
+  'external-hire-dependency': 'External hire dependency',
+  'retention-of-critical-talent': 'Retention of critical talent',
+  'graduate-pipeline': 'Graduate pipeline', none: 'None of the above',
+}
+
+const LEADERSHIP_CHALLENGE_LABELS: Record<LeadershipChallenge, string> = {
+  'succession-risk': 'Succession risk', 'limited-bench': 'Limited bench',
+  'leadership-quality': 'Leadership quality', 'transition-failures': 'Transition failures',
+  'executive-misalignment': 'Executive misalignment',
+  'leadership-development-gap': 'Leadership development gap', none: 'None of the above',
+}
+
+const EX_REWARD_LABELS: Record<ExRewardChallenge, string> = {
+  'engagement-decline': 'Engagement decline', 'pay-equity': 'Pay equity',
+  'benefits-competitiveness': 'Benefits competitiveness', 'ex-journey-friction': 'EX journey friction',
+  'culture-misalignment': 'Culture misalignment', 'wellbeing-concerns': 'Wellbeing concerns',
+  'rewards-cost-pressure': 'Rewards cost pressure', 'incentive-misalignment': 'Incentive misalignment',
+  none: 'None of the above',
+}
+
+const NATIONALIZATION_LABELS: Record<NationalizationProgram, string> = {
+  emiratisation: 'Emiratisation (UAE)', saudization: 'Saudization (KSA)',
+  qatarization: 'Qatarization (Qatar)', omanisation: 'Omanisation (Oman)',
+  bahrainisation: 'Bahrainisation (Bahrain)', kuwaitisation: 'Kuwaitisation (Kuwait)',
+  other: 'Other',
+}
+
+const RATE_BAND_LABELS: Record<RateBand, string> = {
+  '0-10': '0–10%', '10-25': '10–25%', '25-50': '25–50%',
+  '50-75': '50–75%', '75-100': '75–100%', unknown: 'Unknown',
+}
+
+const AVAILABLE_DOC_LABELS: Record<AvailableDocument, string> = {
+  'strategy-deck': 'Strategy deck', 'org-chart': 'Org chart', 'hc-policy': 'HC policy',
+  'engagement-survey': 'Engagement survey', 'exit-data': 'Exit data', 'comp-bands': 'Comp bands',
+  'competency-framework': 'Competency framework', 'succession-plan': 'Succession plan',
+  'training-catalog': 'Training catalog', 'kpi-dashboard': 'KPI dashboard',
+  'previous-assessment': 'Previous assessment', other: 'Other',
+}
+
+const OUTPUT_LABELS: Record<PreferredOutputType, string> = {
+  'exec-deck': 'Executive deck', 'board-pack': 'Board pack', playbook: 'Playbook',
+  infographic: 'Infographic', 'narrative-report': 'Narrative report',
+  'operational-toolkit': 'Operational toolkit',
+}
+
+const AUDIENCE_LABELS: Record<ClientAudience, string> = {
+  board: 'Board', 'exec-committee': 'Executive committee', 'hr-leadership': 'HR leadership',
+  'line-managers': 'Line managers', employees: 'Employees', external: 'External',
+}
+
+const CONFIDENTIALITY_LABELS: Record<ConfidentialityLevel, string> = {
+  internal: 'Internal', restricted: 'Restricted', confidential: 'Confidential',
+  'strictly-confidential': 'Strictly confidential',
+}
+
+const URGENCY_LABELS: Record<UrgencyBand, string> = {
+  exploratory: 'Exploratory', 'this-quarter': 'This quarter', 'this-month': 'This month',
+  'this-week': 'This week', immediate: 'Immediate',
+}
+
+// ── Journey recommendation engine ─────────────────────────────────────────
+
+interface JourneyRec {
+  id: string
+  title: string
+  subtitle: string
+  description: string
+  modules: string[]
+  href: string
+}
+
+function computeRecommendations(profile: ClientProfile): JourneyRec[] {
+  const hp = profile.agenda.hcPriorities
+  const tc = profile.workforceContext.talentChallenges
+  const lc = profile.workforceContext.leadershipChallenges
+  const wc = profile.workforceContext.workforceChallenges
+
+  const journeys: Array<JourneyRec & { triggers: string[] }> = [
+    {
+      id: 'hipo-pipeline', title: 'HiPo & Succession Pipeline',
+      subtitle: 'Build the next generation of leaders',
+      description: 'Identify high-potential talent, build succession depth, and create structured development plans for your critical roles.',
+      modules: ['HiPo Studio', 'Leadership Pipeline', 'Succession Planning'],
+      href: '/hipo-studio',
+      triggers: ['leadership-development', 'succession-planning', 'hipo-gap', 'succession-risk', 'limited-bench', 'leadership-bench-thin'],
+    },
+    {
+      id: 'workforce-strategy', title: 'Workforce Strategy & Planning',
+      subtitle: 'Align workforce to business strategy',
+      description: 'Develop a forward-looking workforce plan that maps capabilities, gaps, and talent supply to your strategic objectives.',
+      modules: ['HC Strategy Charter', 'Workforce Planning', 'Capability Assessment'],
+      href: '/challenge-brief',
+      triggers: ['workforce-planning', 'skills-capability', 'skill-mismatch', 'scarcity', 'talent-capability'],
+    },
+    {
+      id: 'talent-acquisition', title: 'Talent Acquisition & Onboarding',
+      subtitle: 'Build the right talent pipeline',
+      description: 'Redesign your talent acquisition strategy with targeted sourcing, structured selection, and effective onboarding programs.',
+      modules: ['Talent Acquisition Studio', 'Early Career', 'Graduate Pipeline'],
+      href: '/challenge-brief',
+      triggers: ['talent-acquisition', 'graduate-pipeline', 'external-hire-dependency', 'scarcity'],
+    },
+    {
+      id: 'employee-experience', title: 'Employee Experience & Rewards',
+      subtitle: 'Create a compelling employee value proposition',
+      description: 'Improve engagement, wellbeing, and retention through a redesigned EX journey and competitive rewards framework.',
+      modules: ['Employee Experience', 'Total Rewards', 'Engagement Studio'],
+      href: '/challenge-brief',
+      triggers: ['employee-experience', 'rewards-strategy', 'engagement-decline', 'pay-equity', 'benefits-competitiveness', 'high-attrition', 'retention-of-critical-talent'],
+    },
+    {
+      id: 'org-design', title: 'Organization Design & Effectiveness',
+      subtitle: 'Redesign for agility and performance',
+      description: 'Assess and redesign your operating model, spans of control, and governance structures to enable strategic agility.',
+      modules: ['Org Design Blueprint', 'Process Excellence', 'HR Operating Model'],
+      href: '/challenge-brief',
+      triggers: ['organization-design', 'hr-operating-model', 'change-management', 'operating-model'],
+    },
+    {
+      id: 'performance-learning', title: 'Performance & Learning Ecosystem',
+      subtitle: 'Drive capability and accountability',
+      description: 'Build a connected performance management and learning system that closes skill gaps and drives high performance culture.',
+      modules: ['Performance Management', 'Learning & Training', 'Skills Development'],
+      href: '/challenge-brief',
+      triggers: ['performance-management', 'learning-development', 'skills-capability', 'skill-mismatch', 'productivity-decline'],
+    },
+    {
+      id: 'nationalization', title: 'Nationalization Acceleration',
+      subtitle: 'Deliver on your nationalization commitments',
+      description: 'Develop a structured program to meet nationalization targets through targeted recruitment, development, and retention.',
+      modules: ['Nationalization Studio', 'Workforce Planning', 'Capability Assessment'],
+      href: '/challenge-brief',
+      triggers: ['nationalization'],
+    },
+  ]
+
+  const all = [...hp, ...tc, ...lc, ...wc] as string[]
+  const scored = journeys.map(j => ({ journey: j, score: j.triggers.filter(t => all.includes(t)).length }))
+  scored.sort((a, b) => b.score - a.score)
+
+  const filtered = scored.filter(x => x.score > 0)
+  if (filtered.length === 0) return journeys.slice(0, 3)
+  return filtered.slice(0, 5).map(x => x.journey)
+}
+
+// ── Shared UI components ───────────────────────────────────────────────────
+
+function ChipGroup<T extends string>({
+  label, description, options, labels, value, onChange,
+}: {
+  label: string
+  description?: string
+  options: T[]
+  labels: Record<T, string>
+  value: T[]
+  onChange: (next: T[]) => void
+}) {
+  const toggle = (opt: T) =>
+    onChange(value.includes(opt) ? value.filter(x => x !== opt) : [...value, opt])
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        {description && <p className="text-sm text-slate-500 mt-1">{description}</p>}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => (
+          <button key={opt} type="button" onClick={() => toggle(opt)}
+            className={cn(
+              'px-3.5 py-2 rounded-xl text-sm font-medium border transition-all',
+              value.includes(opt)
+                ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+                : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]'
+            )}>
+            {labels[opt]}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SelectField<T extends string>({
+  label, options, labels, value, onChange, placeholder,
+}: {
+  label: string
+  options: T[]
+  labels: Record<T, string>
+  value: T | ''
+  onChange: (v: T) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</label>
+      <select
+        value={value}
+        onChange={e => { if (e.target.value) onChange(e.target.value as T) }}
+        className={cn(
+          'w-full rounded-xl border border-[#1e2433] bg-[#131720] px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 hover:border-[#252d3f] transition-all',
+          value ? 'text-white' : 'text-slate-500'
+        )}
+      >
+        <option value="" className="bg-[#131720] text-slate-500">{placeholder ?? `Select ${label.toLowerCase()}...`}</option>
+        {options.map(opt => (
+          <option key={opt} value={opt} className="bg-[#131720] text-white">{labels[opt]}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+// ── Step 1: Priorities ─────────────────────────────────────────────────────
+
+function StepPriorities({ value, onChange }: {
+  value: ClientProfile['agenda']
+  onChange: (v: ClientProfile['agenda']) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const addPainPoint = () => {
+    const t = draft.trim()
+    if (!t || value.keyPainPoints.includes(t) || value.keyPainPoints.length >= 12) return
+    onChange({ ...value, keyPainPoints: [...value.keyPainPoints, t] })
+    setDraft('')
+  }
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">What's on the agenda?</h2>
+        <p className="text-sm text-slate-400 mt-1">Pick the business and human-capital priorities that matter most this cycle.</p>
+      </div>
+      <ChipGroup label="Business priorities" description="Top-of-mind objectives at the enterprise level." options={Object.keys(BUSINESS_PRIORITY_LABELS) as BusinessPriority[]} labels={BUSINESS_PRIORITY_LABELS} value={value.businessPriorities} onChange={next => onChange({ ...value, businessPriorities: next })} />
+      <ChipGroup label="Human-capital priorities" description="What does the people agenda need to deliver?" options={Object.keys(HC_PRIORITY_LABELS) as HcPriority[]} labels={HC_PRIORITY_LABELS} value={value.hcPriorities} onChange={next => onChange({ ...value, hcPriorities: next })} />
+      <ChipGroup label="Transformation agenda" description="Active or upcoming transformation themes." options={Object.keys(TRANSFORMATION_LABELS) as TransformationAgendaItem[]} labels={TRANSFORMATION_LABELS} value={value.transformationAgenda} onChange={next => onChange({ ...value, transformationAgenda: next })} />
+      <div className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Key pain points</p>
+        <p className="text-xs text-slate-500">Short statements work best (e.g. "Frontline attrition above 18%"). Up to 12 entries.</p>
+        <div className="flex gap-2">
+          <Input placeholder="Describe a pain point and press Enter" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPainPoint() } }} />
+          <Button variant="secondary" onClick={addPainPoint} disabled={!draft.trim() || value.keyPainPoints.length >= 12} leftIcon={<Plus className="w-3.5 h-3.5" />}>Add</Button>
+        </div>
+        {value.keyPainPoints.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {value.keyPainPoints.map((p, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131720] border border-[#1e2433] text-xs text-slate-300">
+                {p}
+                <button type="button" onClick={() => onChange({ ...value, keyPainPoints: value.keyPainPoints.filter((_, j) => j !== i) })} className="text-slate-500 hover:text-white ml-1">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-slate-600">{value.keyPainPoints.length} / 12</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Step 3: Workforce ──────────────────────────────────────────────────────
+
+function StepWorkforce({ value, onChange }: {
+  value: ClientProfile['workforceContext']
+  onChange: (v: ClientProfile['workforceContext']) => void
+}) {
+  const patch = <K extends keyof ClientProfile['workforceContext']>(k: K, v: ClientProfile['workforceContext'][K]) =>
+    onChange({ ...value, [k]: v })
+  const patchNat = <K extends keyof ClientProfile['workforceContext']['nationalizationContext']>(k: K, v: ClientProfile['workforceContext']['nationalizationContext'][K]) =>
+    onChange({ ...value, nationalizationContext: { ...value.nationalizationContext, [k]: v } })
+  const isNatApplicable = value.nationalizationContext.applicable
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Workforce challenges & nationalization</h2>
+        <p className="text-sm text-slate-400 mt-1">Tell us where the friction is to weight recommendations that move the needle fastest.</p>
+      </div>
+      <ChipGroup label="Workforce challenges" options={Object.keys(WORKFORCE_CHALLENGE_LABELS) as WorkforceChallenge[]} labels={WORKFORCE_CHALLENGE_LABELS} value={value.workforceChallenges} onChange={next => patch('workforceChallenges', next)} />
+      <ChipGroup label="Talent challenges" options={Object.keys(TALENT_CHALLENGE_LABELS) as TalentChallenge[]} labels={TALENT_CHALLENGE_LABELS} value={value.talentChallenges} onChange={next => patch('talentChallenges', next)} />
+      <ChipGroup label="Leadership challenges" options={Object.keys(LEADERSHIP_CHALLENGE_LABELS) as LeadershipChallenge[]} labels={LEADERSHIP_CHALLENGE_LABELS} value={value.leadershipChallenges} onChange={next => patch('leadershipChallenges', next)} />
+      <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} />
+      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-white">Nationalization program in scope?</p>
+            <p className="text-xs text-slate-500 mt-0.5">Emiratisation, Saudization, Qatarization, Omanisation, Bahrainisation or Kuwaitisation.</p>
+          </div>
+          <button type="button" onClick={() => patchNat('applicable', !isNatApplicable)}
+            className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0', isNatApplicable ? 'bg-blue-600' : 'bg-[#1e2433]')}>
+            <span className={cn('inline-block h-4 w-4 rounded-full bg-white shadow transition-transform', isNatApplicable ? 'translate-x-6' : 'translate-x-1')} />
+          </button>
+        </div>
+        {isNatApplicable && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-[#1e2433]">
+            <SelectField label="Program" options={Object.keys(NATIONALIZATION_LABELS) as NationalizationProgram[]} labels={NATIONALIZATION_LABELS} value={(value.nationalizationContext.programName ?? 'emiratisation') as NationalizationProgram} onChange={v => patchNat('programName', v)} />
+            <SelectField label="Current rate band" options={Object.keys(RATE_BAND_LABELS) as RateBand[]} labels={RATE_BAND_LABELS} value={(value.nationalizationContext.currentRateBand ?? 'unknown') as RateBand} onChange={v => patchNat('currentRateBand', v)} />
+            <SelectField label="Target rate band" options={Object.keys(RATE_BAND_LABELS) as RateBand[]} labels={RATE_BAND_LABELS} value={(value.nationalizationContext.targetRateBand ?? 'unknown') as RateBand} onChange={v => patchNat('targetRateBand', v)} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Step 4: Evidence & Outputs ─────────────────────────────────────────────
+
+function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputPrefs }: {
+  evidence: ClientProfile['evidence']
+  outputPrefs: ClientProfile['outputPreferences']
+  onChangeEvidence: (v: ClientProfile['evidence']) => void
+  onChangeOutputPrefs: (v: ClientProfile['outputPreferences']) => void
+}) {
+  const patchOut = <K extends keyof ClientProfile['outputPreferences']>(k: K, v: ClientProfile['outputPreferences'][K]) =>
+    onChangeOutputPrefs({ ...outputPrefs, [k]: v })
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Evidence & desired outputs</h2>
+        <p className="text-sm text-slate-400 mt-1">Tag artefacts you can share, then set the outputs and audience the journey should produce.</p>
+      </div>
+      <ChipGroup label="Available evidence" description="Pick what you have access to — helps us recommend journeys that fit your data." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
+      <Textarea label="Notes about evidence (optional)" rows={3} placeholder="e.g. Engagement survey is 11 months old; comp bands cover GCC only." value={evidence.notes ?? ''} onChange={e => onChangeEvidence({ ...evidence, notes: e.target.value || undefined })} />
+      <ChipGroup label="Preferred output formats" description="Pick one or more deliverable formats." options={Object.keys(OUTPUT_LABELS) as PreferredOutputType[]} labels={OUTPUT_LABELS} value={outputPrefs.preferredOutputType} onChange={next => patchOut('preferredOutputType', next)} />
+      <ChipGroup label="Primary audience" description="Who will read or use the outputs?" options={Object.keys(AUDIENCE_LABELS) as ClientAudience[]} labels={AUDIENCE_LABELS} value={outputPrefs.audience} onChange={next => patchOut('audience', next)} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SelectField label="Confidentiality" options={Object.keys(CONFIDENTIALITY_LABELS) as ConfidentialityLevel[]} labels={CONFIDENTIALITY_LABELS} value={outputPrefs.confidentiality} onChange={v => patchOut('confidentiality', v)} />
+        <SelectField label="Urgency" options={Object.keys(URGENCY_LABELS) as UrgencyBand[]} labels={URGENCY_LABELS} value={outputPrefs.urgency} onChange={v => patchOut('urgency', v)} />
+      </div>
+    </div>
+  )
+}
+
+// ── Step 5: Recommendations ────────────────────────────────────────────────
+
+function StepRecommendations({ profile, onFinish }: { profile: ClientProfile; onFinish: () => void }) {
+  const navigate = useNavigate()
+  const recs = computeRecommendations(profile)
+
+  const completionPct = Math.min(100, [
+    profile.organization.industry !== 'other' ? 15 : 0,
+    profile.organization.region !== 'other' ? 10 : 0,
+    profile.agenda.businessPriorities.length > 0 ? 20 : 0,
+    profile.agenda.hcPriorities.length > 0 ? 20 : 0,
+    profile.workforceContext.workforceChallenges.filter(x => x !== 'none').length > 0 ? 10 : 0,
+    profile.outputPreferences.preferredOutputType.length > 0 ? 15 : 0,
+    profile.evidence.availableDocuments.length > 0 ? 10 : 0,
+  ].reduce((a, b) => a + b, 0))
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Recommended journeys</h2>
+        <p className="text-sm text-slate-400 mt-1">Based on what you've shared, here's where we think you'll get the most value first.</p>
+      </div>
+      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-300">Profile readiness</span>
+          <span className="text-xs font-bold text-blue-400">{completionPct}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-[#1e2433] overflow-hidden">
+          <div className="h-full rounded-full bg-blue-600 transition-all duration-700" style={{ width: `${completionPct}%` }} />
+        </div>
+        <p className="text-[11px] text-slate-500 mt-2">
+          {completionPct < 50 ? 'Add more priorities and challenges to improve recommendations.' : completionPct < 80 ? 'Good coverage. Add evidence and output preferences to sharpen results.' : 'Strong profile. Recommendations below are well-targeted.'}
+        </p>
+      </div>
+      {recs.length > 0 ? (
+        <div className="space-y-3">
+          {recs.map((rec, i) => (
+            <div key={rec.id} className={cn('rounded-xl border p-4 space-y-2', i === 0 ? 'border-blue-500/40 bg-blue-500/5' : 'border-[#1e2433] bg-[#0a0c12]')}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  {i === 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600/20 border border-blue-500/30 text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1.5">
+                      <Sparkles className="w-2.5 h-2.5" /> Primary recommendation
+                    </span>
+                  )}
+                  <p className={cn('font-semibold', i === 0 ? 'text-white' : 'text-slate-200')}>{rec.title}</p>
+                  <p className="text-xs text-slate-400">{rec.subtitle}</p>
+                </div>
+                <button type="button" onClick={() => { onFinish(); navigate(rec.href) }}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-colors">
+                  Launch <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">{rec.description}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.modules.map(m => (
+                  <span key={m} className="px-2 py-0.5 rounded-md bg-[#131720] border border-[#1e2433] text-[11px] text-slate-400">{m}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-[#1e2433] p-8 text-center">
+          <Sparkles className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-slate-300">No recommendations yet</p>
+          <p className="text-xs text-slate-500 mt-1">Go back and add priorities or workforce challenges to surface recommendations.</p>
+        </div>
+      )}
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-amber-400/80">
+        <strong>Advisory disclaimer:</strong> Recommendations are based on the inputs provided and are indicative only. They do not constitute professional HC or legal advice.
+      </div>
+    </div>
+  )
+}
+
+// ── Step metadata ──────────────────────────────────────────────────────────
+
+const STEPS = [
+  { id: 'priorities', shortLabel: 'Priorities', icon: Target },
+  { id: 'workforce', shortLabel: 'Workforce', icon: Users },
+  { id: 'evidence', shortLabel: 'Evidence', icon: FileSearch },
+  { id: 'journeys', shortLabel: 'Journeys', icon: Sparkles },
+]
+
+// ── Page ───────────────────────────────────────────────────────────────────
+
+export default function Onboarding() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const workspaceId = searchParams.get('workspaceId') ?? ''
+
+  const { profile: storedProfile, save, markCompleted } = useClientProfileStore()
+  const { markCompleted: markWsCompleted } = useOnboardingCompletions()
+
+  // Seed draft from stored profile so org data from workspace creation is preserved
+  const [draft, setDraft] = useState<ClientProfile>(() => ({ ...defaultProfile(), ...storedProfile, organization: { ...defaultProfile().organization, ...storedProfile.organization } }))
+  const [stepIndex, setStepIndex] = useState(0)
+
+  const isFirst = stepIndex === 0
+  const isLast = stepIndex === STEPS.length - 1
+
+  const advance = () => { save(draft); setStepIndex(s => Math.min(STEPS.length - 1, s + 1)) }
+  const back = () => setStepIndex(s => Math.max(0, s - 1))
+  const finish = () => {
+    save(draft)
+    markCompleted()
+    if (workspaceId) markWsCompleted(workspaceId)
+    const dest = workspaceId
+      ? `/challenge-brief?workspaceId=${workspaceId}`
+      : '/challenge-brief'
+    navigate(dest)
+  }
+
+  const variants = {
+    enter: { opacity: 0, x: 24, filter: 'blur(4px)' },
+    center: { opacity: 1, x: 0, filter: 'blur(0px)' },
+    exit: { opacity: 0, x: -24, filter: 'blur(4px)' },
+  }
+
+  const exitAndSave = () => {
+    save(draft)
+    navigate(workspaceId ? `/workspaces/${workspaceId}` : '/workspaces')
+  }
+
+  return (
+    <div className="min-h-full bg-[#0c0e14]">
+      <div className="flex flex-col items-center px-4 sm:px-6 py-8 sm:py-12">
+        <div className="w-full max-w-2xl space-y-6">
+
+          {/* Back to workspace */}
+          {workspaceId && (
+            <div className="flex items-center justify-between">
+              <button type="button" onClick={exitAndSave}
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-white transition-colors font-medium">
+                <ArrowLeft className="w-4 h-4" />
+                Back to workspace
+              </button>
+              <button type="button" onClick={exitAndSave}
+                className="text-sm text-slate-600 hover:text-blue-400 transition-colors">
+                Save &amp; exit
+              </button>
+            </div>
+          )}
+
+          {/* Page header */}
+          <div className="text-center pb-2">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
+              <Target className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-semibold text-blue-400">Client Onboarding</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Build your client profile</h1>
+            <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+              Your answers unlock smarter recommendations across all 27 HC studios.
+            </p>
+          </div>
+
+          {/* Stepper */}
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {STEPS.map((s, i) => {
+              const isActive = i === stepIndex
+              const isDone = i < stepIndex
+              const Icon = s.icon
+              return (
+                <div key={s.id} className="flex items-center gap-2">
+                  <button type="button" onClick={() => isDone && setStepIndex(i)}
+                    className={cn(
+                      'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-all',
+                      isActive ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_16px_rgba(59,130,246,0.35)]' :
+                      isDone ? 'bg-blue-600/12 border-blue-500/30 text-blue-400 cursor-pointer hover:bg-blue-600/20' :
+                      'bg-[#131720] border-[#1e2433] text-slate-500 cursor-default'
+                    )}>
+                    {isDone ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">{s.shortLabel}</span>
+                    <span className="sm:hidden">{i + 1}</span>
+                  </button>
+                  {i < STEPS.length - 1 && <ChevronRight className="w-4 h-4 text-slate-700 flex-shrink-0" />}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
+              animate={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            />
+          </div>
+
+          {/* Step body */}
+          <div className="rounded-2xl border border-[#1a1e2e] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
+            <AnimatePresence mode="wait">
+              <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
+                {stepIndex === 0 && <StepPriorities value={draft.agenda} onChange={v => setDraft({ ...draft, agenda: v })} />}
+                {stepIndex === 1 && <StepWorkforce value={draft.workforceContext} onChange={v => setDraft({ ...draft, workforceContext: v })} />}
+                {stepIndex === 2 && <StepEvidence evidence={draft.evidence} outputPrefs={draft.outputPreferences} onChangeEvidence={v => setDraft({ ...draft, evidence: v })} onChangeOutputPrefs={v => setDraft({ ...draft, outputPreferences: v })} />}
+                {stepIndex === 3 && <StepRecommendations profile={draft} onFinish={finish} />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Footer nav */}
+          <div className="flex items-center justify-between pt-2">
+            <Button variant="ghost" size="lg" onClick={back} disabled={isFirst} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Back
+            </Button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-600 font-medium">Step {stepIndex + 1} of {STEPS.length}</span>
+              {isLast ? (
+                <Button size="lg" onClick={finish} leftIcon={<Check className="w-4 h-4" />}>
+                  Save & go to brief
+                </Button>
+              ) : (
+                <Button size="lg" onClick={advance} rightIcon={<ArrowRight className="w-4 h-4" />}>
+                  Save & continue
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

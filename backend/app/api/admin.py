@@ -1,0 +1,194 @@
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import func, select
+
+from app.api.deps import AdminUser, CurrentUser, DBDep
+from app.models.ai import AiAuditLog, AiJob
+from app.models.billing import CreditLedger
+from app.models.skill import SkillRegistry
+from app.models.tenant import Tenant
+from app.models.user import User
+from app.schemas.skill import SkillResponse, SkillUpdate
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/stats")
+async def get_platform_stats(admin_user: AdminUser, db: DBDep) -> dict[str, Any]:
+    """High-level platform statistics for admins."""
+    from app.models.export import Export
+    from datetime import timezone
+
+    tenant_count_result = await db.execute(select(func.count()).select_from(Tenant))
+    tenant_count = tenant_count_result.scalar_one() or 0
+
+    # Active users today
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    active_today_result = await db.execute(
+        select(func.count(func.distinct(AiJob.user_id))).where(AiJob.created_at >= today_start)
+    )
+    active_users_today = active_today_result.scalar_one() or 0
+
+    # AI jobs today
+    ai_jobs_today_result = await db.execute(
+        select(func.count()).where(AiJob.created_at >= today_start)
+    )
+    ai_jobs_today = ai_jobs_today_result.scalar_one() or 0
+
+    # Total exports
+    exports_result = await db.execute(select(func.count()).select_from(Export))
+    total_exports = exports_result.scalar_one() or 0
+
+    # Credits issued today (positive deltas)
+    credits_today_result = await db.execute(
+        select(func.coalesce(func.sum(CreditLedger.credits_delta), 0)).where(
+            CreditLedger.credits_delta > 0,
+            CreditLedger.created_at >= today_start,
+        )
+    )
+    credits_issued_today = int(credits_today_result.scalar_one() or 0)
+
+    return {
+        "total_tenants": tenant_count,
+        "active_users_today": active_users_today,
+        "ai_jobs_today": ai_jobs_today,
+        "total_exports": total_exports,
+        "credits_issued_today": credits_issued_today,
+    }
+
+
+@router.get("/audit-log")
+async def get_audit_log(
+    admin_user: AdminUser,
+    db: DBDep,
+    action: str | None = None,
+    tenant_id: uuid.UUID | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    query = select(AiAuditLog).order_by(AiAuditLog.created_at.desc())
+    if action:
+        query = query.where(AiAuditLog.action == action)
+    if tenant_id:
+        query = query.where(AiAuditLog.tenant_id == tenant_id)
+    if date_from:
+        query = query.where(AiAuditLog.created_at >= date_from)
+    if date_to:
+        query = query.where(AiAuditLog.created_at <= date_to)
+    query = query.limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    entries = result.scalars().all()
+
+    return [
+        {
+            "id": str(e.id),
+            "tenant_id": str(e.tenant_id) if e.tenant_id else None,
+            "user_id": str(e.user_id) if e.user_id else None,
+            "skill_id": e.skill_id,
+            "action": e.action,
+            "payload": e.payload,
+            "ip_address": e.ip_address,
+            "user_agent": e.user_agent,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in entries
+    ]
+
+
+@router.get("/skills")
+async def admin_list_skills(admin_user: AdminUser, db: DBDep) -> list[dict[str, Any]]:
+    """List all skills with usage stats (job_count per skill)."""
+    result = await db.execute(select(SkillRegistry).order_by(SkillRegistry.sort_order))
+    skills = result.scalars().all()
+
+    output = []
+    for skill in skills:
+        job_count_result = await db.execute(
+            select(func.count()).where(AiJob.skill_id == skill.id)
+        )
+        job_count = job_count_result.scalar_one() or 0
+        s_dict = {
+            "id": str(skill.id),
+            "slug": skill.slug,
+            "name": skill.name,
+            "category": skill.category,
+            "description": skill.description,
+            "icon": skill.icon,
+            "tier": skill.tier,
+            "credit_cost": skill.credit_cost,
+            "status": skill.status,
+            "sort_order": skill.sort_order,
+            "created_at": skill.created_at.isoformat() if skill.created_at else None,
+            "job_count": job_count,
+        }
+        output.append(s_dict)
+    return output
+
+
+@router.patch("/skills/{skill_id}", response_model=SkillResponse)
+async def admin_update_skill(
+    skill_id: uuid.UUID,
+    payload: SkillUpdate,
+    admin_user: AdminUser,
+    db: DBDep,
+) -> SkillResponse:
+    result = await db.execute(select(SkillRegistry).where(SkillRegistry.id == skill_id))
+    skill = result.scalar_one_or_none()
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+
+    if payload.name is not None:
+        skill.name = payload.name
+    if payload.description is not None:
+        skill.description = payload.description
+    if payload.tier is not None:
+        skill.tier = payload.tier
+    if payload.credit_cost is not None:
+        skill.credit_cost = payload.credit_cost
+    if payload.status is not None:
+        skill.status = payload.status
+    if payload.sort_order is not None:
+        skill.sort_order = payload.sort_order
+
+    await db.flush()
+    return SkillResponse.model_validate(skill)
+
+
+@router.get("/users")
+async def admin_list_users(
+    admin_user: AdminUser,
+    db: DBDep,
+    tenant_id: uuid.UUID | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    query = select(User).order_by(User.created_at.desc()).limit(limit).offset(offset)
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
+
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    return [
+        {
+            "id": str(u.id),
+            "tenant_id": str(u.tenant_id),
+            "google_id": u.google_id,
+            "email": u.email,
+            "name": u.name,
+            "role": u.role,
+            "xp_points": u.xp_points,
+            "level": u.level,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in users
+    ]
