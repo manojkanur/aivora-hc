@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Send, Sparkles, CheckCircle, Clock,
   RefreshCw, ChevronDown, ChevronUp, Zap, Trash2,
+  BookOpen, Paperclip, Link2, X, Plus, FileText, Loader2, Layout,
 } from 'lucide-react'
 import { useWorkspaceStore } from '../store/workspace'
 import { Button } from '../components/ui/Button'
@@ -14,6 +15,8 @@ import { aiAPI, draftsAPI, skillsAPI } from '../lib/api'
 import { toast } from '../components/ui/Toast'
 import { cn } from '../lib/utils'
 import { formatRelativeTime } from '../lib/utils'
+
+const CanvasEditor = lazy(() => import('../components/canvas/CanvasEditor'))
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -201,6 +204,16 @@ export default function SkillStudio() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Canvas editor
+  const [canvasMode, setCanvasMode] = useState(false)
+
+  // Knowledge base
+  const [kbOpen, setKbOpen] = useState(false)
+  const [kbFiles, setKbFiles] = useState<{ name: string; content: string }[]>([])
+  const [kbUrls, setKbUrls] = useState<{ url: string; status: 'idle' | 'loading' | 'done' | 'error'; text?: string }[]>([])
+  const [urlInput, setUrlInput] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // Init chat — runs when skill loads (may be delayed if skills weren't in store yet)
   useEffect(() => {
     if (skill) {
@@ -284,7 +297,8 @@ export default function SkillStudio() {
 
   const handleGenerate = async (contextOverride?: Record<string, string>) => {
     if (!workspaceId || !skillId) return
-    const ctx = contextOverride ?? collectedContext
+    const kbText = buildKbContext()
+    const ctx = { ...(contextOverride ?? collectedContext), ...(kbText ? { knowledge_base: kbText } : {}) }
     const creditCost = skill?.credit_cost ?? 0
     console.log('[Generate] workspaceId:', workspaceId, 'skillId:', skillId, 'ctx:', ctx)
     setPhase('generating')
@@ -343,6 +357,42 @@ export default function SkillStudio() {
       if (selectedDraft?.id === draftId) setSelectedDraft(d => d ? { ...d, approval_status: 'approved' } : d)
       toast.success('Draft approved — ready to export!')
     } catch { toast.error('Failed to approve') }
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const content = ev.target?.result as string
+        setKbFiles(prev => [...prev, { name: file.name, content }])
+      }
+      reader.readAsText(file)
+    })
+    e.target.value = ''
+  }
+
+  const handleAddUrl = async () => {
+    const url = urlInput.trim()
+    if (!url) return
+    setUrlInput('')
+    const idx = kbUrls.length
+    setKbUrls(prev => [...prev, { url, status: 'loading' }])
+    try {
+      const res = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`)
+      if (!res.ok) throw new Error('fetch failed')
+      const text = await res.text()
+      setKbUrls(prev => prev.map((u, i) => i === idx ? { ...u, status: 'done', text: text.slice(0, 8000) } : u))
+    } catch {
+      setKbUrls(prev => prev.map((u, i) => i === idx ? { ...u, status: 'error' } : u))
+    }
+  }
+
+  const buildKbContext = () => {
+    const parts: string[] = []
+    kbFiles.forEach(f => parts.push(`[File: ${f.name}]\n${f.content.slice(0, 6000)}`))
+    kbUrls.filter(u => u.status === 'done' && u.text).forEach(u => parts.push(`[URL: ${u.url}]\n${u.text}`))
+    return parts.length ? parts.join('\n\n---\n\n') : ''
   }
 
   const handleRestart = () => {
@@ -446,7 +496,19 @@ export default function SkillStudio() {
 
           {phase === 'output' && selectedDraft && (
             <>
-              {selectedDraft.approval_status !== 'approved' && (
+              <button
+                onClick={() => setCanvasMode(c => !c)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors',
+                  canvasMode
+                    ? 'border-[#3b82f6] text-[#3b82f6] bg-[#3b82f6]/10'
+                    : 'border-[#1e2433] text-slate-400 hover:text-white hover:border-[#252d3f]',
+                )}
+              >
+                <Layout className="w-3.5 h-3.5" />
+                {canvasMode ? 'Text View' : 'Canvas'}
+              </button>
+              {selectedDraft.approval_status !== 'approved' && !canvasMode && (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -456,7 +518,7 @@ export default function SkillStudio() {
                   Approve Draft
                 </Button>
               )}
-              {selectedDraft.approval_status === 'approved' && (
+              {selectedDraft.approval_status === 'approved' && !canvasMode && (
                 <ExportToolbar draftId={selectedDraft.id} />
               )}
               <Button
@@ -499,6 +561,93 @@ export default function SkillStudio() {
         {/* Left: Chat intake */}
         {mode === 'ai' && (
         <div className="w-96 flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]">
+
+          {/* Knowledge Base panel */}
+          <div className="border-b border-[#1e2433]">
+            <button
+              onClick={() => setKbOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#1a1e2e] transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5 text-[#3b82f6]" />
+                <span className="text-xs font-semibold text-white">Knowledge Base</span>
+                {(kbFiles.length + kbUrls.filter(u => u.status === 'done').length) > 0 && (
+                  <span className="text-xs bg-[#3b82f6]/20 text-[#60a5fa] px-1.5 py-0.5 rounded-full font-medium">
+                    {kbFiles.length + kbUrls.filter(u => u.status === 'done').length}
+                  </span>
+                )}
+              </div>
+              {kbOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+            </button>
+
+            {kbOpen && (
+              <div className="px-4 pb-3 space-y-3">
+                {/* File upload */}
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Files</p>
+                  <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.pdf,.docx,.csv" className="hidden" onChange={handleFileUpload} />
+                  {kbFiles.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {kbFiles.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0E0E0E] rounded-lg border border-[#1e2433]">
+                          <FileText className="w-3 h-3 text-[#3b82f6] flex-shrink-0" />
+                          <span className="text-xs text-slate-300 flex-1 truncate">{f.name}</span>
+                          <button onClick={() => setKbFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white transition-colors border border-dashed border-[#1e2433] hover:border-[#3b82f6] rounded-lg px-3 py-1.5 w-full justify-center"
+                  >
+                    <Paperclip className="w-3 h-3" /> Upload files
+                  </button>
+                </div>
+
+                {/* URL scrape */}
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">URLs</p>
+                  {kbUrls.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {kbUrls.map((u, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0E0E0E] rounded-lg border border-[#1e2433]">
+                          {u.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
+                          {u.status === 'done' && <Link2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
+                          {u.status === 'error' && <Link2 className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                          {u.status === 'idle' && <Link2 className="w-3 h-3 text-slate-500 flex-shrink-0" />}
+                          <span className="text-xs text-slate-300 flex-1 truncate">{u.url}</span>
+                          {u.status === 'error' && <span className="text-[10px] text-red-400">Failed</span>}
+                          <button onClick={() => setKbUrls(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-1.5">
+                    <input
+                      value={urlInput}
+                      onChange={e => setUrlInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl() } }}
+                      placeholder="https://..."
+                      className="flex-1 px-3 py-1.5 text-xs border border-[#1e2433] rounded-lg bg-[#0E0E0E] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+                    />
+                    <button
+                      onClick={handleAddUrl}
+                      disabled={!urlInput.trim()}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#3b82f6] text-white disabled:opacity-40 hover:bg-[#60a5fa] transition-colors flex-shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Progress pills */}
           <div className="px-4 py-3 border-b border-[#1e2433] flex gap-1.5 flex-wrap">
             {activeIntake.questions.map((q, i) => (
@@ -623,8 +772,20 @@ export default function SkillStudio() {
         </div>
         )} {/* end mode === 'ai' */}
 
+        {/* Right: Canvas Editor */}
+        {canvasMode && selectedDraft && (
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#3b82f6]" /></div>}>
+              <CanvasEditor
+                content={selectedDraft.content ?? {}}
+                title={skill?.name ?? 'Deliverable'}
+              />
+            </Suspense>
+          </div>
+        )}
+
         {/* Right: Output */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={cn('flex-1 flex flex-col min-w-0', canvasMode ? 'hidden' : '')}>
           {phase === 'generating' && (
             <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8">
               <div className="w-12 h-12 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
