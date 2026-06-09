@@ -11,7 +11,7 @@ import { ExportToolbar } from '../components/exports/ExportToolbar'
 import { SkillCreditBadge } from '../components/skills/SkillCreditBadge'
 import { ManualWizard } from '../components/skills/ManualWizard'
 import { useCreditsStore } from '../store/credits'
-import { aiAPI, draftsAPI, skillsAPI } from '../lib/api'
+import { aiAPI, draftsAPI, skillsAPI, kbAPI } from '../lib/api'
 import { toast } from '../components/ui/Toast'
 import { cn } from '../lib/utils'
 import { formatRelativeTime } from '../lib/utils'
@@ -205,7 +205,7 @@ export default function SkillStudio() {
 
   // Knowledge base
   const [kbOpen, setKbOpen] = useState(false)
-  const [kbFiles, setKbFiles] = useState<{ name: string; content: string }[]>([])
+  const [kbFiles, setKbFiles] = useState<{ name: string; content: string; status: 'loading' | 'done' | 'error' }[]>([])
   const [kbUrls, setKbUrls] = useState<{ url: string; status: 'idle' | 'loading' | 'done' | 'error'; text?: string }[]>([])
   const [urlInput, setUrlInput] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -244,7 +244,7 @@ export default function SkillStudio() {
         }
       })
       setDrafts(d)
-      if (selectLatest && d.length > 0) setSelectedDraft(d[0])
+      if (selectLatest && d.length > 0) { setSelectedDraft(d[0]); setPhase('output') }
     } catch { /* ignore */ }
   }
 
@@ -354,17 +354,29 @@ export default function SkillStudio() {
     } catch { toast.error('Failed to approve') }
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = ev => {
-        const content = ev.target?.result as string
-        setKbFiles(prev => [...prev, { name: file.name, content }])
-      }
-      reader.readAsText(file)
-    })
     e.target.value = ''
+    for (const file of files) {
+      // Optimistically add as loading
+      setKbFiles(prev => [...prev, { name: file.name, content: '', status: 'loading' as const }])
+      try {
+        const res = await kbAPI.upload(file)
+        const text: string = res.data.text
+        setKbFiles(prev => prev.map(f =>
+          f.name === file.name && f.status === 'loading'
+            ? { ...f, content: text, status: 'done' as const }
+            : f
+        ))
+      } catch {
+        setKbFiles(prev => prev.map(f =>
+          f.name === file.name && f.status === 'loading'
+            ? { ...f, status: 'error' as const }
+            : f
+        ))
+        toast.error(`Failed to extract text from ${file.name}`)
+      }
+    }
   }
 
   const handleAddUrl = async () => {
@@ -374,18 +386,18 @@ export default function SkillStudio() {
     const idx = kbUrls.length
     setKbUrls(prev => [...prev, { url, status: 'loading' }])
     try {
-      const res = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`)
-      if (!res.ok) throw new Error('fetch failed')
-      const text = await res.text()
-      setKbUrls(prev => prev.map((u, i) => i === idx ? { ...u, status: 'done', text: text.slice(0, 8000) } : u))
+      const res = await kbAPI.scrape(url)
+      const text: string = res.data.text
+      setKbUrls(prev => prev.map((u, i) => i === idx ? { ...u, status: 'done', text } : u))
     } catch {
       setKbUrls(prev => prev.map((u, i) => i === idx ? { ...u, status: 'error' } : u))
+      toast.error('Failed to scrape URL')
     }
   }
 
   const buildKbContext = () => {
     const parts: string[] = []
-    kbFiles.forEach(f => parts.push(`[File: ${f.name}]\n${f.content.slice(0, 6000)}`))
+    kbFiles.filter(f => f.status === 'done').forEach(f => parts.push(`[File: ${f.name}]\n${f.content.slice(0, 8000)}`))
     kbUrls.filter(u => u.status === 'done' && u.text).forEach(u => parts.push(`[URL: ${u.url}]\n${u.text}`))
     return parts.length ? parts.join('\n\n---\n\n') : ''
   }
@@ -489,7 +501,7 @@ export default function SkillStudio() {
           )}
           {skill && <SkillCreditBadge credits={skill.credit_cost} />}
 
-          {phase === 'output' && selectedDraft && (
+          {selectedDraft && phase !== 'generating' && (
             <>
               <button
                 onClick={() => navigate(`/canvas/${selectedDraft.id}?title=${encodeURIComponent(skill?.name ?? 'Deliverable')}`)}
@@ -561,9 +573,9 @@ export default function SkillStudio() {
               <div className="flex items-center gap-2">
                 <BookOpen className="w-3.5 h-3.5 text-[#3b82f6]" />
                 <span className="text-xs font-semibold text-white">Knowledge Base</span>
-                {(kbFiles.length + kbUrls.filter(u => u.status === 'done').length) > 0 && (
+                {(kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length) > 0 && (
                   <span className="text-xs bg-[#3b82f6]/20 text-[#60a5fa] px-1.5 py-0.5 rounded-full font-medium">
-                    {kbFiles.length + kbUrls.filter(u => u.status === 'done').length}
+                    {kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length}
                   </span>
                 )}
               </div>
@@ -580,8 +592,12 @@ export default function SkillStudio() {
                     <div className="space-y-1 mb-2">
                       {kbFiles.map((f, i) => (
                         <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0E0E0E] rounded-lg border border-[#1e2433]">
-                          <FileText className="w-3 h-3 text-[#3b82f6] flex-shrink-0" />
+                          {f.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
+                          {f.status === 'done' && <FileText className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
+                          {f.status === 'error' && <FileText className="w-3 h-3 text-red-400 flex-shrink-0" />}
                           <span className="text-xs text-slate-300 flex-1 truncate">{f.name}</span>
+                          {f.status === 'error' && <span className="text-[10px] text-red-400">Failed</span>}
+                          {f.status === 'loading' && <span className="text-[10px] text-slate-500">Extracting...</span>}
                           <button onClick={() => setKbFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
                             <X className="w-3 h-3" />
                           </button>

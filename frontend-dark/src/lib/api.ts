@@ -188,6 +188,16 @@ export const adminAPI = {
   updateLlmConfig: (data: object) => api.patch('/admin/llm-config', data),
 }
 
+// Knowledge Base
+export const kbAPI = {
+  scrape: (url: string) => api.post('/kb/scrape', { url }),
+  upload: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/kb/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+}
+
 // AI jobs
 export const aiAPI = {
   startJob: (workspaceId: string, skillId: string, context: Record<string, unknown>) =>

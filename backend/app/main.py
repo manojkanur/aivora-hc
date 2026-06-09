@@ -330,6 +330,7 @@ def create_app() -> FastAPI:
     from app.api.connectors import router as connectors_router
     from app.api.exports import router as exports_router
     from app.api.gamification import router as gamification_router
+    from app.api.kb import router as kb_router
     from app.api.me import router as me_router
     from app.api.publish import router as publish_router
     from app.api.skills import router as skills_router
@@ -350,6 +351,7 @@ def create_app() -> FastAPI:
     app.include_router(challenge_router, prefix=prefix)
     app.include_router(admin_router, prefix=prefix)
     app.include_router(me_router, prefix=prefix)
+    app.include_router(kb_router, prefix=prefix)
 
     # Health check (no auth required)
     @app.get("/health", tags=["health"])

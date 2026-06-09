@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, CheckSquare, Download, Inbox, Trash2, CheckCircle, Clock } from 'lucide-react'
+import { Search, CheckSquare, Download, Inbox, Trash2, CheckCircle, Clock, Layout } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
@@ -53,6 +54,7 @@ function getPreview(draft: Draft | null): string {
 }
 
 export default function DraftInbox() {
+  const navigate = useNavigate()
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -239,7 +241,7 @@ export default function DraftInbox() {
             <span className="text-xs font-semibold text-slate-600 flex-1">Studio / Content</span>
             <span className="text-xs font-semibold text-slate-600 w-24 hidden sm:block">Date</span>
             <span className="text-xs font-semibold text-slate-600 w-24">Status</span>
-            <span className="text-xs font-semibold text-slate-600 w-36 text-right">Actions</span>
+            <span className="text-xs font-semibold text-slate-600 w-48 text-right">Actions</span>
           </div>
 
           {filtered.map((draft, i) => (
@@ -271,7 +273,14 @@ export default function DraftInbox() {
                 <Badge variant={statusVariants[draft.approval_status]}>{draft.approval_status}</Badge>
               </div>
 
-              <div className="w-36 flex items-center justify-end gap-1.5 flex-shrink-0">
+              <div className="w-48 flex items-center justify-end gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => navigate(`/canvas/${draft.id}?title=${encodeURIComponent(getDraftTitle(draft))}`)}
+                  title="Open in Canvas"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#3b82f6] text-[#3b82f6] hover:bg-[#3b82f6]/10 text-xs font-semibold transition-colors"
+                >
+                  <Layout className="w-3.5 h-3.5" /> Canvas
+                </button>
                 {draft.approval_status !== 'approved' && (
                   <button
                     onClick={() => handleApprove(draft.id)}
