@@ -327,15 +327,55 @@ export default function CanvasPage() {
   }, [searchParams])
 
   useEffect(() => {
+    const source = searchParams.get('source')
+    const fmtParam = searchParams.get('format') as ExportFormat | null
+
+    if (source === 'hipo') {
+      // Build slides from HiPo advisory context stored in sessionStorage
+      const org = sessionStorage.getItem('hipo_canvas_org') || draftTitle
+      const hipoContent: Record<string, unknown> = {
+        organisation: org,
+        advisory_summary: 'AI-generated HC advisory for ' + org + '. Edit each section below.',
+        hc_priorities: ['Leadership pipeline development', 'Talent retention strategy', 'Workforce capability building', 'Succession planning'],
+        recommendations: ['Accelerate leadership pipeline programs', 'Implement internal mobility framework', 'Build critical role continuity plans', 'Launch skills development track'],
+        bench_strength: 'Assessment in progress — update with client data',
+        retention_risk: 'Review high-risk talent segments and implement targeted retention plans',
+        maturity_assessment: 'Current maturity stage mapped against industry benchmarks',
+        next_steps: ['Schedule HC priority workshop', 'Validate data with HRBP team', 'Present findings to leadership', 'Agree roadmap milestones'],
+      }
+      const generated = draftToSlides(hipoContent)
+      setDraftContent(hipoContent)
+      setSlides(generated)
+      setCurrent(0)
+      if (fmtParam && ['pptx','pdf','docx','html'].includes(fmtParam)) {
+        setFormat(fmtParam)
+      }
+      setLoading(false)
+      return
+    }
+
     if (!draftId) return
     draftsAPI.get(draftId)
       .then(res => {
         const content = res.data.content ?? res.data
         setDraftContent(content)
+        // Auto-select format if passed in URL
+        if (fmtParam && ['pptx','pdf','docx','html'].includes(fmtParam)) {
+          const generated = draftToSlides(content)
+          setSlides(generated.length ? generated : [{
+            id: uid(),
+            elements: [
+              { id: uid(), type: 'title', content: draftTitle },
+              { id: uid(), type: 'body', content: 'No structured content found.' },
+            ],
+          }])
+          setCurrent(0)
+          setFormat(fmtParam)
+        }
       })
       .catch(() => toast.error('Failed to load draft'))
       .finally(() => setLoading(false))
-  }, [draftId])
+  }, [draftId]) // eslint-disable-line
 
   const handlePickFormat = (fmt: ExportFormat) => {
     if (!draftContent) return

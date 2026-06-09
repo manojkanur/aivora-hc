@@ -16,6 +16,7 @@ import {
   RefreshCw, Building2, FileText, ChevronDown, CheckCircle2,
   Rocket, ChevronRight, BarChart3, Plus, X, Lightbulb, Brain,
   Edit2, FileDown, Presentation, Check, Pencil,
+  FileImage, FileSpreadsheet, Code2, Layout,
 } from 'lucide-react'
 import { aiAPI, skillsAPI } from '../lib/api'
 import { toast } from '../components/ui/Toast'
@@ -1079,6 +1080,58 @@ function LearningJourneyPanel({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── HiPo Canvas Section ─────────────────────────────────────────────────────
+function HiPoCanvasSection({ orgName }: { orgName: string }) {
+  const navigate = useNavigate()
+
+  const formats = [
+    { key: 'pptx', label: 'PowerPoint', sub: 'Editable slides', icon: FileImage, color: 'border-orange-500/30 hover:border-orange-500/60 from-orange-500/10 to-transparent' },
+    { key: 'pdf',  label: 'PDF',        sub: 'Print-ready doc', icon: FileText,  color: 'border-red-500/30 hover:border-red-500/60 from-red-500/10 to-transparent' },
+    { key: 'docx', label: 'Word',       sub: 'Editable report', icon: FileSpreadsheet, color: 'border-blue-500/30 hover:border-blue-500/60 from-blue-500/10 to-transparent' },
+    { key: 'html', label: 'HTML Page',  sub: 'Web presentation',icon: Code2,     color: 'border-emerald-500/30 hover:border-emerald-500/60 from-emerald-500/10 to-transparent' },
+  ]
+
+  // Build a synthetic draft content from the HiPo advisory context
+  const handleOpen = (fmt: string) => {
+    // Store the chosen format in sessionStorage so CanvasPage can pre-select it
+    sessionStorage.setItem('hipo_canvas_format', fmt)
+    sessionStorage.setItem('hipo_canvas_org', orgName)
+    navigate(`/canvas/hipo-${Date.now()}?title=${encodeURIComponent(`HiPo Advisory — ${orgName || 'Organisation'}`)}&format=${fmt}&source=hipo`)
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Layout className="w-4 h-4 text-blue-400" />
+          <span className="text-sm font-semibold text-white">Canvas Editor</span>
+          <span className="text-[9px] px-2 py-0.5 bg-blue-500/15 border border-blue-500/25 text-blue-400 rounded-full font-bold">Export Ready</span>
+        </div>
+        <span className="text-[10px] text-slate-500">Click a format to open the editor</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {formats.map(f => (
+          <motion.button
+            key={f.key}
+            type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => handleOpen(f.key)}
+            className={`bg-gradient-to-br ${f.color} border rounded-xl p-4 text-left transition-all group`}
+          >
+            <f.icon className="w-6 h-6 text-slate-300 group-hover:text-white mb-2 transition-colors" />
+            <p className="text-sm font-bold text-white">{f.label}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{f.sub}</p>
+            <div className="mt-2 flex items-center gap-1 text-[10px] text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Edit2 className="w-3 h-3" /> Edit &amp; Export →
+            </div>
+          </motion.button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -2508,6 +2561,9 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           ))}
         </div>
       </div>
+
+      {/* ── Canvas Editor ─────────────────────────────────────────────────────── */}
+      <HiPoCanvasSection orgName={data.org_name} />
 
       {/* ── Floating chat button + drawer (floatingChat mode only) ────────────── */}
       {floatingChat && (
