@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, lazy, Suspense } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Send, Sparkles, CheckCircle, Clock,
@@ -15,8 +15,6 @@ import { aiAPI, draftsAPI, skillsAPI } from '../lib/api'
 import { toast } from '../components/ui/Toast'
 import { cn } from '../lib/utils'
 import { formatRelativeTime } from '../lib/utils'
-
-const CanvasEditor = lazy(() => import('../components/canvas/CanvasEditor'))
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -204,9 +202,6 @@ export default function SkillStudio() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // Canvas editor
-  const [canvasMode, setCanvasMode] = useState(false)
 
   // Knowledge base
   const [kbOpen, setKbOpen] = useState(false)
@@ -497,18 +492,13 @@ export default function SkillStudio() {
           {phase === 'output' && selectedDraft && (
             <>
               <button
-                onClick={() => setCanvasMode(c => !c)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors',
-                  canvasMode
-                    ? 'border-[#3b82f6] text-[#3b82f6] bg-[#3b82f6]/10'
-                    : 'border-[#1e2433] text-slate-400 hover:text-white hover:border-[#252d3f]',
-                )}
+                onClick={() => navigate(`/canvas/${selectedDraft.id}?title=${encodeURIComponent(skill?.name ?? 'Deliverable')}`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#3b82f6] text-[#3b82f6] bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-xs font-semibold transition-colors"
               >
                 <Layout className="w-3.5 h-3.5" />
-                {canvasMode ? 'Text View' : 'Canvas'}
+                Open in Canvas
               </button>
-              {selectedDraft.approval_status !== 'approved' && !canvasMode && (
+              {selectedDraft.approval_status !== 'approved' && (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -518,7 +508,7 @@ export default function SkillStudio() {
                   Approve Draft
                 </Button>
               )}
-              {selectedDraft.approval_status === 'approved' && !canvasMode && (
+              {selectedDraft.approval_status === 'approved' && (
                 <ExportToolbar draftId={selectedDraft.id} />
               )}
               <Button
@@ -772,20 +762,8 @@ export default function SkillStudio() {
         </div>
         )} {/* end mode === 'ai' */}
 
-        {/* Right: Canvas Editor */}
-        {canvasMode && selectedDraft && (
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-            <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#3b82f6]" /></div>}>
-              <CanvasEditor
-                content={selectedDraft.content ?? {}}
-                title={skill?.name ?? 'Deliverable'}
-              />
-            </Suspense>
-          </div>
-        )}
-
         {/* Right: Output */}
-        <div className={cn('flex-1 flex flex-col min-w-0', canvasMode ? 'hidden' : '')}>
+        <div className="flex-1 flex flex-col min-w-0">
           {phase === 'generating' && (
             <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8">
               <div className="w-12 h-12 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />

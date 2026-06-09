@@ -101,6 +101,7 @@ const AuthCallback      = lazyPage(() => import('./pages/AuthCallback'))
 const NotFound          = lazyPage(() => import('./pages/NotFound'))
 const HipoStudio        = lazyPage(() => import('./pages/HipoStudio'))
 const HipoStudioV2      = lazyPage(() => import('./pages/HipoStudio').then(m => ({ default: m.HipoStudioV2 })))
+const CanvasPage        = lazyPage(() => import('./pages/CanvasPage'))
 
 function AppRoutes() {
   const loadFromStorage = useAuthStore(s => s.loadFromStorage)
@@ -129,6 +130,7 @@ function AppRoutes() {
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
           <Route path="/workspaces/:workspaceId/skills/:skillId" element={<SkillStudio />} />
+          <Route path="/canvas/:draftId" element={<CanvasPage />} />
           <Route path="/workspaces/:id/hipo" element={<HipoStudio />} />
           <Route path="/hipo-studio" element={<HipoStudio />} />
           <Route path="/hipo-studio-v2" element={<HipoStudioV2 />} />
