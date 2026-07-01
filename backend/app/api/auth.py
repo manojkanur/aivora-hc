@@ -131,13 +131,14 @@ async def signup(request: Request, payload: SignupRequest, db: DBDep) -> dict[st
     if len(payload.password) < 8:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Password must be at least 8 characters")
 
+    # Every signup gets a fresh, isolated tenant. Sharing a tenant across
+    # signups by email domain is unsafe for consumer domains (gmail, yahoo,
+    # outlook, ...) where different people share the same domain. Teams are
+    # built via invites, not by domain match.
     domain = payload.email.split("@")[-1]
-    tenant_result = await db.execute(select(Tenant).where(Tenant.domain == domain))
-    tenant = tenant_result.scalar_one_or_none()
-    if tenant is None:
-        tenant = Tenant(name=payload.name, domain=domain, plan="starter", settings={}, brand_kit={})
-        db.add(tenant)
-        await db.flush()
+    tenant = Tenant(name=payload.name, domain=domain, plan="starter", settings={}, brand_kit={})
+    db.add(tenant)
+    await db.flush()
 
     user = User(
         tenant_id=tenant.id,
@@ -240,14 +241,13 @@ async def google_callback(code: str, db: DBDep) -> dict[str, Any]:
         user = result.scalar_one_or_none()
 
     if user is None:
-        # New user — provision tenant
+        # New user — every signup gets a fresh isolated tenant. See signup
+        # handler above for the rationale (consumer domains cannot be trusted
+        # as a tenant boundary).
         domain = email.split("@")[-1]
-        tenant_result = await db.execute(select(Tenant).where(Tenant.domain == domain))
-        tenant = tenant_result.scalar_one_or_none()
-        if tenant is None:
-            tenant = Tenant(name=name, domain=domain, plan="starter", settings={}, brand_kit={})
-            db.add(tenant)
-            await db.flush()
+        tenant = Tenant(name=name, domain=domain, plan="starter", settings={}, brand_kit={})
+        db.add(tenant)
+        await db.flush()
 
         user = User(
             tenant_id=tenant.id,

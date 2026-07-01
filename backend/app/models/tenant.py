@@ -21,7 +21,7 @@ class Tenant(UUIDBase):
     __tablename__ = "tenants"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    domain: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     plan: Mapped[str] = mapped_column(String(50), nullable=False, default="starter")
     settings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     brand_kit: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)

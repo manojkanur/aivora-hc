@@ -7,6 +7,7 @@ import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { useAuthStore } from '../store/auth'
 import { settingsAPI } from '../lib/api'
+import { isAdminUser } from '../lib/adminAccess'
 import { toast } from '../components/ui/Toast'
 import { fadeUp } from '../lib/animations'
 import { cn } from '../lib/utils'
@@ -25,6 +26,8 @@ const tabs: { id: SettingsTab; label: string; icon: typeof User }[] = [
 
 export default function Settings() {
   const { user, updateUser } = useAuthStore()
+  const isAdmin = isAdminUser(user)
+  const visibleTabs = tabs.filter(t => t.id !== 'integrations' || isAdmin)
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [isSaving, setIsSaving] = useState(false)
   const [profileForm, setProfileForm] = useState({
@@ -82,7 +85,7 @@ export default function Settings() {
         {/* Sidebar nav */}
         <div className="w-48 flex-shrink-0">
           <nav className="space-y-1">
-            {tabs.map(tab => (
+            {visibleTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -208,11 +211,11 @@ export default function Settings() {
             </div>
           )}
 
-          {activeTab === 'integrations' && (
+          {activeTab === 'integrations' && isAdmin && (
             <div className="space-y-4">
               <h2 className="font-semibold text-white">Integrations</h2>
               <div className="bg-[#131720] rounded-xl border border-[#1e2433] p-6 text-sm text-slate-400">
-                LinkedIn publishing has moved to the Admin area. Admins can compose posts, carousels, and PDF carousels from <span className="text-slate-200 font-medium">Admin → Publish</span>.
+                LinkedIn publishing lives in <span className="text-slate-200 font-medium">Publish</span> (Tools sidebar).
               </div>
             </div>
           )}
