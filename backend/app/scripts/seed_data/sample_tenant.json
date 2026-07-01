@@ -1,0 +1,143 @@
+{
+  "tenant": {
+    "name": "Replit Sample Co.",
+    "domain": "replit-sample.example",
+    "plan": "professional",
+    "industry": "technology",
+    "region": "north_america",
+    "company_size": "medium",
+    "challenge_brief": {
+      "context": "Mid-stage SaaS company scaling from 200 to 400 engineers over the next 18 months.",
+      "ambition": "Build a repeatable internal-mobility engine and lift manager capability so the org can absorb growth without diluting culture.",
+      "primary_pain_points": [
+        "Manager bench is thin - fewer than 3 of the top 20 critical roles have a ready-now successor.",
+        "Engineering attrition spiked to 18% LTM, concentrated in IC2 - IC3 levels.",
+        "No shared skills taxonomy - capability data lives in disconnected systems."
+      ],
+      "key_stakeholders": ["CEO", "CPO", "Head of Engineering", "Head of Talent"],
+      "horizon_months": 18
+    },
+    "strategic_priorities": [
+      "Scale engineering responsibly to 400 FTE",
+      "Improve IC2 - IC3 retention to <12%",
+      "Build a leadership pipeline of 25 ready-next leaders"
+    ],
+    "success_measures": {
+      "primary": [
+        {"metric": "Engineering attrition", "target": "<12%", "horizon": "12m"},
+        {"metric": "Internal fill rate (manager roles)", "target": ">60%", "horizon": "18m"},
+        {"metric": "Ready-now coverage (top 20 roles)", "target": ">80%", "horizon": "18m"}
+      ]
+    },
+    "primary_hc_priorities": {
+      "selected": ["talent_mobility", "leadership_development", "retention", "skills_taxonomy"]
+    }
+  },
+  "tenant_modules": [
+    "hc_framework_review",
+    "employee_experience",
+    "total_rewards",
+    "strategy_studio",
+    "maturity_assessment",
+    "benchmarking",
+    "mobility",
+    "scenario_simulator"
+  ],
+  "user": {
+    "email": "demo@replit-sample.example",
+    "name": "Replit Sample Owner",
+    "role": "owner",
+    "password": "ChangeMe123!"
+  },
+  "project": {
+    "name": "Q1 HC Diagnostic",
+    "description": "Initial HC review across the org with a focus on talent and capability.",
+    "industry": "technology"
+  },
+  "capability_framework": {
+    "name": "Replit Sample Capability Library",
+    "framework_type": "behavioral",
+    "items": [
+      {"code": "STRAT", "name": "Strategic Thinking", "category": "leadership", "level": 3},
+      {"code": "EXEC", "name": "Execution & Delivery", "category": "leadership", "level": 3},
+      {"code": "COACH", "name": "Coaching & Feedback", "category": "leadership", "level": 3},
+      {"code": "TECH_DEPTH", "name": "Technical Depth", "category": "technical", "level": 4},
+      {"code": "SYS_DESIGN", "name": "System Design", "category": "technical", "level": 3},
+      {"code": "DATA_LIT", "name": "Data Literacy", "category": "technical", "level": 3},
+      {"code": "AI_LIT", "name": "AI Literacy", "category": "technical", "level": 2},
+      {"code": "COMMS", "name": "Communication", "category": "core", "level": 3},
+      {"code": "COLLAB", "name": "Collaboration", "category": "core", "level": 3},
+      {"code": "PRODUCT_SENSE", "name": "Product Sense", "category": "domain", "level": 3},
+      {"code": "CUSTOMER_FOCUS", "name": "Customer Focus", "category": "domain", "level": 3},
+      {"code": "ORG_INFLUENCE", "name": "Organisational Influence", "category": "leadership", "level": 4},
+      {"code": "CHANGE_LEAD", "name": "Change Leadership", "category": "leadership", "level": 4}
+    ]
+  },
+  "role_profiles": [
+    {"role_code": "ENG_IC2", "role_name": "Software Engineer", "career_level": "IC2", "function": "engineering", "criticality": "standard"},
+    {"role_code": "ENG_IC3", "role_name": "Senior Software Engineer", "career_level": "IC3", "function": "engineering", "criticality": "high"},
+    {"role_code": "ENG_M1", "role_name": "Engineering Manager", "career_level": "M1", "function": "engineering", "criticality": "critical"},
+    {"role_code": "PM_IC3", "role_name": "Product Manager", "career_level": "IC3", "function": "product", "criticality": "high"}
+  ],
+  "employees": [
+    {"employee_ref": "E001", "current_role_code": "ENG_IC2", "performance_tier": "exceeds", "readiness": "ready_12_months", "tenure_months": 24},
+    {"employee_ref": "E002", "current_role_code": "ENG_IC3", "performance_tier": "exceeds", "readiness": "ready_now", "tenure_months": 38},
+    {"employee_ref": "E003", "current_role_code": "ENG_IC3", "performance_tier": "meets", "readiness": "ready_12_months", "tenure_months": 18},
+    {"employee_ref": "E004", "current_role_code": "PM_IC3", "performance_tier": "exceeds", "readiness": "ready_24_months", "tenure_months": 12},
+    {"employee_ref": "E005", "current_role_code": "ENG_IC2", "performance_tier": "meets", "readiness": "ready_24_months", "tenure_months": 9}
+  ],
+  "opportunities": [
+    {"name": "Engineering Manager - Platform", "type": "promotion", "target_role_code": "ENG_M1", "location": "Remote (NA)"},
+    {"name": "Senior Engineer - Growth team", "type": "permanent_move", "target_role_code": "ENG_IC3", "location": "Remote (NA)"},
+    {"name": "PM Rotation - Payments", "type": "rotation", "target_role_code": "PM_IC3", "location": "New York"}
+  ],
+  "hc_review": {
+    "company_name": "Replit Sample Co.",
+    "review_type": "full_hc_review",
+    "intake_data": {
+      "company_profile": {
+        "industry": "technology",
+        "region": "north_america",
+        "company_size": "medium",
+        "headcount": 250,
+        "stage": "growth"
+      },
+      "review_objective": {
+        "primary": "Diagnose readiness for 18-month scale-up",
+        "scope": "Engineering and Product orgs"
+      },
+      "pain_points": [
+        "Thin manager bench",
+        "Spiking IC attrition",
+        "Disconnected skills data"
+      ],
+      "desired_deliverables": [
+        "Maturity baseline",
+        "Benchmark positioning",
+        "Prioritised 12-month roadmap",
+        "Scenario simulations"
+      ]
+    },
+    "diagnostic_results": {
+      "dimensions": {
+        "strategy": 3.2,
+        "processes": 2.8,
+        "people": 3.5,
+        "data_technology": 2.4,
+        "governance": 2.6,
+        "culture": 3.8,
+        "capability": 3.0
+      }
+    }
+  },
+  "scenario": {
+    "scenario_type": "business_growth",
+    "name": "20% YoY scale-up",
+    "assumptions": [
+      {"key": "growth_rate", "label": "Annual growth rate", "value": 0.2, "unit": "rate"},
+      {"key": "current_headcount", "label": "Current headcount", "value": 250, "unit": "count"},
+      {"key": "revenue_per_employee", "label": "Revenue per employee", "value": 280000, "unit": "USD"},
+      {"key": "attrition_rate", "label": "Annual attrition", "value": 0.18, "unit": "rate"}
+    ]
+  }
+}

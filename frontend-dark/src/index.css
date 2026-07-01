@@ -5,16 +5,45 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Dark mode (default) ── */
+  html, html.dark {
+    --bg-base:    #0c0e14;
+    --bg-card:    #131720;
+    --bg-card2:   #1a1e2e;
+    --border:     #1e2433;
+    --border2:    #1a1e2e;
+    --text-pri:   #ffffff;
+    --text-sec:   #cbd5e1;
+    --text-muted: #64748b;
+    --scrollbar-track: #0c0e14;
+    --scrollbar-thumb: #1e2433;
+  }
+
+  /* ── Light mode ── */
+  html.light {
+    --bg-base:    #f1f5f9;
+    --bg-card:    #ffffff;
+    --bg-card2:   #f8fafc;
+    --border:     #e2e8f0;
+    --border2:    #cbd5e1;
+    --text-pri:   #0f172a;
+    --text-sec:   #334155;
+    --text-muted: #94a3b8;
+    --scrollbar-track: #f1f5f9;
+    --scrollbar-thumb: #cbd5e1;
+  }
+
   html {
     scroll-behavior: smooth;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
   body {
-    background-color: #0c0e14;
-    color: #FFFFFF;
+    background-color: var(--bg-base);
+    color: var(--text-pri);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   ::selection {
@@ -28,11 +57,11 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0c0e14;
+    background: var(--scrollbar-track);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #1e2433;
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
   }
 
@@ -42,8 +71,165 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #1e2433 #0c0e14;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
+
+  /* ── Light mode overrides ── */
+  /* Page-level + deepest dark backgrounds → soft slate page surface */
+  html.light [class*="bg-[#0c0e14]"],
+  html.light [class*="bg-[#0e1420]"],
+  html.light [class*="bg-[#101525]"],
+  html.light [class*="bg-[#0a0d15]"],
+  html.light [class*="bg-[#0a0c12]"],
+  html.light [class*="bg-[#080a0f]"],
+  html.light [class*="bg-[#0E0E0E]"],
+  html.light [class*="bg-[#0e1018]"],
+  html.light [class*="bg-[#0f1117]"] { background-color: #f1f5f9 !important; }
+
+  /* Card-level dark backgrounds → white surface */
+  html.light [class*="bg-[#131720]"],
+  html.light [class*="bg-[#131220]"],
+  html.light [class*="bg-[#13182a]"],
+  html.light [class*="bg-[#111420]"],
+  html.light [class*="bg-[#111520]"],
+  html.light [class*="bg-[#161b28]"] { background-color: #ffffff !important; }
+
+  /* Subtle surface tints → slate-50 */
+  html.light [class*="bg-[#1a1e2e]"],
+  html.light [class*="bg-[#1a1f2e]"],
+  html.light [class*="bg-[#1a2035]"],
+  html.light [class*="bg-[#1e2433]"] { background-color: #f8fafc !important; }
+
+  /* Slightly stronger surface (hover/elevated) → slate-200 */
+  html.light [class*="bg-[#252d3f]"],
+  html.light [class*="bg-[#252b3b]"],
+  html.light [class*="bg-[#2A2A2A]"] { background-color: #e2e8f0 !important; }
+
+  /* Plain Tailwind dark backgrounds occasionally used */
+  html.light .bg-black { background-color: #ffffff !important; }
+  html.light .bg-slate-900 { background-color: #ffffff !important; }
+  html.light .bg-slate-950 { background-color: #f1f5f9 !important; }
+  html.light .bg-zinc-900 { background-color: #ffffff !important; }
+  html.light .bg-neutral-900 { background-color: #ffffff !important; }
+
+  /* Hero gradient & decorative blurs — neutralize dark gradients */
+  html.light [class*="bg-gradient-to-br"][class*="from-[#101525]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#0e1420]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#131720]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#131220]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#0c0e14]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#0a0c12]"] {
+    background-image: linear-gradient(to bottom right, #ffffff, #f8fafc) !important;
+  }
+
+  /* Borders */
+  html.light [class*="border-[#1e2433]"],
+  html.light [class*="border-[#1a1e2e]"],
+  html.light [class*="border-[#1a1f2e]"],
+  html.light [class*="border-[#1a2035]"],
+  html.light [class*="border-[#252d3f]"],
+  html.light [class*="border-[#252b3b]"],
+  html.light [class*="border-[#0E0E0E]"] { border-color: #e2e8f0 !important; }
+
+  /* Text — make sure all dark-mode text becomes readable on light backgrounds.
+     EXCEPT: keep text white on any element with a colored background (blue/violet/emerald/etc buttons & badges) */
+  html.light .text-white { color: #0f172a !important; }
+
+  /* Keep white text on solid colored buttons/badges only (same element).
+     We do NOT match descendant .text-white inside coloured containers, because
+     a "from-[#101525] via-[#0e1420] to-[#0c0e14]" hero gradient now renders as
+     a light background — its inner h1 should switch to dark slate. */
+  html.light [class*="bg-blue-5"][class*="text-white"],
+  html.light [class*="bg-blue-6"][class*="text-white"],
+  html.light [class*="bg-blue-7"][class*="text-white"],
+  html.light [class*="bg-violet-5"][class*="text-white"],
+  html.light [class*="bg-violet-6"][class*="text-white"],
+  html.light [class*="bg-indigo-5"][class*="text-white"],
+  html.light [class*="bg-indigo-6"][class*="text-white"],
+  html.light [class*="bg-emerald-5"][class*="text-white"],
+  html.light [class*="bg-emerald-6"][class*="text-white"],
+  html.light [class*="bg-amber-5"][class*="text-white"],
+  html.light [class*="bg-rose-5"][class*="text-white"],
+  html.light [class*="bg-red-5"][class*="text-white"],
+  html.light [class*="bg-cyan-5"][class*="text-white"],
+  html.light [class*="bg-orange-5"][class*="text-white"],
+  html.light [class*="from-blue-"][class*="text-white"],
+  html.light [class*="from-violet-"][class*="text-white"],
+  html.light [class*="from-indigo-"][class*="text-white"],
+  html.light [class*="from-emerald-"][class*="text-white"] { color: #ffffff !important; }
+
+  html.light .text-slate-50  { color: #0f172a !important; }
+  html.light .text-slate-100 { color: #0f172a !important; }
+  html.light .text-slate-200 { color: #1e293b !important; }
+  html.light .text-slate-300 { color: #334155 !important; }
+  html.light .text-slate-400 { color: #475569 !important; }
+  html.light .text-slate-500 { color: #475569 !important; }
+  html.light .text-slate-600 { color: #64748b !important; }
+  html.light .text-slate-700 { color: #94a3b8 !important; }
+
+  /* Inputs and textareas need explicit colors so user text is readable */
+  html.light input,
+  html.light textarea,
+  html.light select { color: #0f172a !important; }
+  html.light input::placeholder,
+  html.light textarea::placeholder { color: #94a3b8 !important; }
+
+  /* Code/mono blocks */
+  html.light pre, html.light code { color: #0f172a !important; }
+
+  /* text-white/XX opacity variants → dark slate with matching opacity
+     These bypass the .text-white override because Tailwind sets the color via
+     rgba(255,255,255,alpha) on the element style, not the .text-white class. */
+  html.light .text-white\/20  { color: rgba(15, 23, 42, 0.4) !important; }
+  html.light .text-white\/25  { color: rgba(15, 23, 42, 0.45) !important; }
+  html.light .text-white\/30  { color: rgba(15, 23, 42, 0.5) !important; }
+  html.light .text-white\/40  { color: rgba(15, 23, 42, 0.55) !important; }
+  html.light .text-white\/50  { color: rgba(15, 23, 42, 0.6) !important; }
+  html.light .text-white\/60  { color: rgba(15, 23, 42, 0.7) !important; }
+  html.light .text-white\/70  { color: rgba(15, 23, 42, 0.8) !important; }
+  html.light .text-white\/80  { color: rgba(15, 23, 42, 0.85) !important; }
+  html.light .text-white\/90  { color: rgba(15, 23, 42, 0.9) !important; }
+
+  /* border-white/XX → dark slate with matching opacity */
+  html.light .border-white\/5   { border-color: rgba(15, 23, 42, 0.08) !important; }
+  html.light .border-white\/10  { border-color: rgba(15, 23, 42, 0.12) !important; }
+  html.light .border-white\/15  { border-color: rgba(15, 23, 42, 0.15) !important; }
+  html.light .border-white\/20  { border-color: rgba(15, 23, 42, 0.18) !important; }
+  html.light .border-white\/30  { border-color: rgba(15, 23, 42, 0.25) !important; }
+  html.light .border-white\/40  { border-color: rgba(15, 23, 42, 0.35) !important; }
+  html.light .border-white\/60  { border-color: rgba(15, 23, 42, 0.5) !important; }
+
+  /* bg-white/XX → soft dark surface so we don't get white-on-white */
+  html.light .bg-white\/5   { background-color: rgba(15, 23, 42, 0.04) !important; }
+  html.light .bg-white\/10  { background-color: rgba(15, 23, 42, 0.06) !important; }
+  html.light .bg-black\/20  { background-color: rgba(15, 23, 42, 0.05) !important; }
+  html.light .bg-black\/40  { background-color: rgba(15, 23, 42, 0.08) !important; }
+  html.light .bg-black\/60  { background-color: rgba(15, 23, 42, 0.12) !important; }
+
+  /* Blue accents stay visible (already light-on-anything) */
+  html.light .text-blue-400 { color: #2563eb !important; }
+  html.light .text-blue-500 { color: #2563eb !important; }
+
+  /* Min-h-screen pages */
+  html.light .min-h-screen { background-color: #f1f5f9; }
+
+  /* Hover backgrounds */
+  html.light [class*="hover:bg-white/5"]:hover { background-color: rgba(15, 23, 42, 0.05) !important; }
+  html.light [class*="hover:bg-white/10"]:hover { background-color: rgba(15, 23, 42, 0.08) !important; }
+
+  /* Decorative blurs — fade in light mode (they look weird on white) */
+  html.light [class*="bg-blue-600/12"],
+  html.light [class*="bg-blue-600/10"],
+  html.light [class*="bg-indigo-600/8"] { opacity: 0.4; }
+
+  /* Shimmer */
+  html.light .shimmer {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+  }
+
+  /* Sidebar dark background → light surface */
+  html.light .bg-\[\#0c0e14\] { background-color: #f8fafc !important; }
 }
 
 @layer components {

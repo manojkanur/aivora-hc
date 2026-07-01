@@ -16,7 +16,7 @@ interface ExportRecord {
   workspace_name: string
   draft_id: string
   skill_name: string
-  format: 'pptx' | 'pdf' | 'docx'
+  format: 'pptx' | 'pdf' | 'docx' | 'html'
   brand_kit_id?: string
   brand_kit_name?: string
   status: string

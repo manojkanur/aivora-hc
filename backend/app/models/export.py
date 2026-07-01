@@ -20,6 +20,7 @@ class ExportFormat(str, enum.Enum):
     pptx = "pptx"
     pdf = "pdf"
     docx = "docx"
+    html = "html"
 
 
 class ExportStatus(str, enum.Enum):

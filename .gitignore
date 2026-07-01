@@ -17,3 +17,5 @@ nginx/ssl/
 backups/
 .DS_Store
 *.log
+frontend-dark/e2e-results/
+frontend-dark/playwright-report/

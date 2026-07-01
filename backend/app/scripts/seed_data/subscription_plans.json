@@ -1,0 +1,5 @@
+[
+  {"key": "starter", "name": "Starter", "description": "Solo consultants and small teams running their first HC diagnostics.", "monthly_price_cents": 0, "is_default": true, "is_active": true, "sort_order": 10, "metadata": {"seat_limit": 3, "highlights": ["Strategy Studio", "Maturity Assessment", "Brand Workspace"]}},
+  {"key": "professional", "name": "Professional", "description": "Boutique advisory firms running full HC framework reviews with branded deliverables.", "monthly_price_cents": 29900, "is_default": false, "is_active": true, "sort_order": 20, "metadata": {"seat_limit": 15, "highlights": ["Framework Review", "Benchmarking", "Executive Deck Generator", "Document Workspace"]}},
+  {"key": "enterprise", "name": "Enterprise", "description": "In-house HR leaders and consultancies running the full talent + mobility + scenario suite.", "monthly_price_cents": 99900, "is_default": false, "is_active": true, "sort_order": 30, "metadata": {"seat_limit": null, "highlights": ["Mobility", "Scenarios", "Succession", "Premium Report", "AI Advisory"]}}
+]

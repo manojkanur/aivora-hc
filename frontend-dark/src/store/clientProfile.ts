@@ -151,41 +151,139 @@ export function defaultProfile(): ClientProfile {
 }
 
 // ── Store ──────────────────────────────────────────────────────────────────
+//
+// Client onboarding state is scoped PER WORKSPACE. Each workspace gets its own
+// {profile, isCompleted} record so opening a fresh workspace never shows the
+// previous engagement's answers.
+//
+// The public API (profile, isCompleted, setProfile, save, reset, markCompleted)
+// is preserved so existing callsites keep working — they read/write against
+// the *current* workspace's record. Callers should call setActiveWorkspace(id)
+// when they navigate into a workspace; if no active id is set we fall back to
+// a special "_unscoped" record so unscoped flows (no workspaceId in URL) keep
+// working too.
 
-interface ClientProfileState {
+interface PerWorkspaceRecord {
   profile: ClientProfile
   isCompleted: boolean
+}
+
+const UNSCOPED_KEY = '_unscoped'
+
+interface ClientProfileState {
+  // Per-workspace records, keyed by workspace id (or UNSCOPED_KEY).
+  records: Record<string, PerWorkspaceRecord>
+  currentWorkspaceId: string
+
+  // Derived getters — read from the current workspace's record.
+  profile: ClientProfile
+  isCompleted: boolean
+
+  // Navigation
+  setActiveWorkspace: (workspaceId: string | undefined | null) => void
+
+  // Public API (acts on the active workspace's record)
   setProfile: (p: ClientProfile) => void
   save: (p?: ClientProfile) => void
   reset: () => void
   markCompleted: () => void
+
+  // Workspace-scoped utilities (so callers can read across workspaces)
+  getProfileFor: (workspaceId: string) => ClientProfile
+  isCompletedFor: (workspaceId: string) => boolean
+  resetWorkspace: (workspaceId: string) => void
+}
+
+function ensureRecord(records: Record<string, PerWorkspaceRecord>, id: string): Record<string, PerWorkspaceRecord> {
+  if (records[id]) return records
+  return { ...records, [id]: { profile: defaultProfile(), isCompleted: false } }
 }
 
 export const useClientProfileStore = create<ClientProfileState>()(
   persist(
     (set, get) => ({
+      records: { [UNSCOPED_KEY]: { profile: defaultProfile(), isCompleted: false } },
+      currentWorkspaceId: UNSCOPED_KEY,
+
+      // Derived — kept on state so existing destructuring `{ profile, isCompleted }`
+      // keeps working without forcing every call site to use a selector.
       profile: defaultProfile(),
       isCompleted: false,
 
-      setProfile: (profile) => set({ profile }),
-
-      save: (p) => {
-        const profile = p ?? get().profile
-        set({ profile: { ...profile, lastUpdatedAt: new Date().toISOString() } })
+      setActiveWorkspace: (workspaceId) => {
+        const id = workspaceId && workspaceId.length > 0 ? workspaceId : UNSCOPED_KEY
+        const records = ensureRecord(get().records, id)
+        const rec = records[id]
+        set({
+          records,
+          currentWorkspaceId: id,
+          profile: rec.profile,
+          isCompleted: rec.isCompleted,
+        })
       },
 
-      reset: () => set({ profile: defaultProfile(), isCompleted: false }),
+      setProfile: (profile) => {
+        const id = get().currentWorkspaceId
+        const records = { ...get().records, [id]: { ...get().records[id], profile } }
+        set({ records, profile })
+      },
+
+      save: (p) => {
+        const id = get().currentWorkspaceId
+        const profile = { ...(p ?? get().profile), lastUpdatedAt: new Date().toISOString() }
+        const records = { ...get().records, [id]: { ...get().records[id], profile } }
+        set({ records, profile })
+      },
+
+      reset: () => {
+        const id = get().currentWorkspaceId
+        const fresh: PerWorkspaceRecord = { profile: defaultProfile(), isCompleted: false }
+        const records = { ...get().records, [id]: fresh }
+        set({ records, profile: fresh.profile, isCompleted: fresh.isCompleted })
+      },
 
       markCompleted: () => {
-        const profile = get().profile
+        const id = get().currentWorkspaceId
+        const current = get().records[id] ?? { profile: defaultProfile(), isCompleted: false }
+        const profile = { ...current.profile, completedAt: new Date().toISOString() }
+        const records = { ...get().records, [id]: { profile, isCompleted: true } }
+        set({ records, profile, isCompleted: true })
+      },
+
+      getProfileFor: (workspaceId) => {
+        const rec = get().records[workspaceId]
+        return rec?.profile ?? defaultProfile()
+      },
+
+      isCompletedFor: (workspaceId) => Boolean(get().records[workspaceId]?.isCompleted),
+
+      resetWorkspace: (workspaceId) => {
+        const records = { ...get().records, [workspaceId]: { profile: defaultProfile(), isCompleted: false } }
+        const isCurrent = get().currentWorkspaceId === workspaceId
         set({
-          profile: { ...profile, completedAt: new Date().toISOString() },
-          isCompleted: true,
+          records,
+          ...(isCurrent ? { profile: defaultProfile(), isCompleted: false } : {}),
         })
       },
     }),
     {
-      name: 'aivora-client-profile',
+      name: 'aivora-client-profile-v2',
+      // Migrate v1: if a single global profile existed, seed it as the unscoped record.
+      version: 2,
+      migrate: (persisted: unknown, fromVersion: number) => {
+        if (fromVersion < 2 && persisted && typeof persisted === 'object') {
+          const old = persisted as { profile?: ClientProfile; isCompleted?: boolean }
+          if (old.profile) {
+            return {
+              records: { [UNSCOPED_KEY]: { profile: old.profile, isCompleted: !!old.isCompleted } },
+              currentWorkspaceId: UNSCOPED_KEY,
+              profile: old.profile,
+              isCompleted: !!old.isCompleted,
+            } as Partial<ClientProfileState>
+          }
+        }
+        return persisted as Partial<ClientProfileState>
+      },
     }
   )
 )

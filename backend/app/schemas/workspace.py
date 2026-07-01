@@ -31,5 +31,9 @@ class WorkspaceResponse(BaseModel):
     status: WorkspaceStatus
     created_at: datetime
     updated_at: datetime
+    # Optional surface fields — computed in the list endpoint so the workspaces
+    # card can show useful numbers without an extra round-trip per row.
+    skill_count: int = 0
+    last_activity: datetime | None = None
 
     model_config = {"from_attributes": True}

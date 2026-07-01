@@ -88,14 +88,38 @@ async def get_audit_log(
     result = await db.execute(query)
     entries = result.scalars().all()
 
+    # Resolve user_id -> friendly name/email in one batched query so the table
+    # shows "you@example.com" instead of raw UUIDs.
+    from app.models.user import User as _User
+    user_ids = {e.user_id for e in entries if e.user_id is not None}
+    users_by_id: dict[Any, _User] = {}
+    if user_ids:
+        users_result = await db.execute(select(_User).where(_User.id.in_(list(user_ids))))
+        for u in users_result.scalars().all():
+            users_by_id[u.id] = u
+
+    def user_label(uid: Any) -> str:
+        if uid is None:
+            return "system"
+        u = users_by_id.get(uid)
+        if not u:
+            return f"user {str(uid)[:6]}"
+        return u.name or u.email or f"user {str(uid)[:6]}"
+
     return [
         {
             "id": str(e.id),
             "tenant_id": str(e.tenant_id) if e.tenant_id else None,
             "user_id": str(e.user_id) if e.user_id else None,
-            "skill_id": e.skill_id,
+            # Friendly aliases the admin dashboard expects.
+            "timestamp": e.created_at.isoformat() if e.created_at else None,
+            "user": user_label(e.user_id),
             "action": e.action,
+            "resource": e.skill_id or "",
+            "ip": e.ip_address or "-",
             "payload": e.payload,
+            # Originals (left for back-compat with other callers).
+            "skill_id": e.skill_id,
             "ip_address": e.ip_address,
             "user_agent": e.user_agent,
             "created_at": e.created_at.isoformat() if e.created_at else None,

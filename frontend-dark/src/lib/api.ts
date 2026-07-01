@@ -8,9 +8,22 @@ const api: AxiosInstance = axios.create({
   timeout: 30000,
 })
 
+function readAuthToken(): string | null {
+  const legacy = localStorage.getItem('auth_token_dark')
+  if (legacy) return legacy
+  try {
+    const raw = localStorage.getItem('aivora-auth-dark')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed?.state?.token ?? null
+  } catch {
+    return null
+  }
+}
+
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token_dark')
+    const token = readAuthToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -25,7 +38,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token_dark')
       localStorage.removeItem('auth_user')
-      window.location.href = '/login'
+      localStorage.removeItem('aivora-auth-dark')
+      if (!/\/(login|signup|auth\/callback)$/.test(window.location.pathname)) {
+        window.location.href = '/login'
+      }
     }
     if (error.response?.status === 402) {
       window.dispatchEvent(new CustomEvent('insufficient-credits'))
@@ -73,18 +89,40 @@ export const draftsAPI = {
   list: (params?: { workspace_id?: string; status?: string; skill_id?: string }) =>
     api.get('/ai/drafts', { params }),
   get: (id: string) => api.get(`/ai/drafts/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/ai/drafts', data),
   approve: (id: string) => api.patch(`/ai/drafts/${id}/approval`, { status: 'approved' }),
   submit: (id: string) => api.patch(`/ai/drafts/${id}/approval`, { status: 'submitted' }),
   delete: (id: string) => api.delete(`/ai/drafts/${id}`),
   bulkApprove: (ids: string[]) => Promise.all(ids.map(id => api.patch(`/ai/drafts/${id}/approval`, { status: 'approved' }))),
   bulkDelete: (ids: string[]) => Promise.all(ids.map(id => api.delete(`/ai/drafts/${id}`))),
+  updateContent: (id: string, content: Record<string, unknown>) =>
+    api.patch(`/ai/drafts/${id}/content`, { content }),
+  patchContent: (id: string, patch: Record<string, unknown>) =>
+    api.patch(`/ai/drafts/${id}/content`, { patch }),
+  chat: (id: string, prompt: string, history: Array<{ role: 'user' | 'assistant'; text: string }>) =>
+    api.post(`/ai/drafts/${id}/chat`, { prompt, history }),
+}
+
+// Canvas AI edits — prompt-driven rewrite of slide content
+export const canvasAiAPI = {
+  edit: (prompt: string, slides: unknown[]) =>
+    api.post('/ai/canvas/edit', { prompt, slides }),
+}
+
+// Onboarding (resumable)
+// Per-workspace onboarding — pass workspaceId to keep each engagement scoped.
+export const onboardingAPI = {
+  get: (workspaceId?: string) =>
+    api.get('/me/onboarding', { params: workspaceId ? { workspace_id: workspaceId } : undefined }),
+  save: (state: Record<string, unknown>, workspaceId?: string) =>
+    api.put('/me/onboarding', { state }, { params: workspaceId ? { workspace_id: workspaceId } : undefined }),
 }
 
 // Exports
 export const exportsAPI = {
   list: (params?: { format?: string; workspace_id?: string }) =>
     api.get('/exports', { params }),
-  create: (draftId: string, format: 'pptx' | 'pdf' | 'docx', brandKitId?: string) =>
+  create: (draftId: string, format: 'pptx' | 'pdf' | 'docx' | 'html', brandKitId?: string) =>
     api.post('/exports', { draft_id: draftId, format, brand_kit_id: brandKitId }, { responseType: 'blob' }),
   download: (id: string) => api.get(`/exports/${id}/download`, { responseType: 'blob' }),
 }
@@ -94,7 +132,16 @@ export const challengeBriefsAPI = {
   list: () => api.get('/challenge-briefs'),
   get: (id: string) => api.get(`/challenge-briefs/${id}`),
   create: (data: Record<string, unknown>) => api.post('/challenge-briefs', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/challenge-briefs/${id}`, data),
   run: (id: string) => api.post(`/challenge-briefs/${id}/run`),
+}
+
+// Workspace skills — intake state autosave
+export const workspaceSkillsAPI = {
+  getState: (workspaceId: string, slug: string) =>
+    api.get(`/workspaces/${workspaceId}/skills/${slug}/state`),
+  saveState: (workspaceId: string, slug: string, state: Record<string, unknown>) =>
+    api.put(`/workspaces/${workspaceId}/skills/${slug}/state`, { state }),
 }
 
 // Billing
@@ -155,6 +202,32 @@ export const settingsAPI = {
   removeMember: (memberId: string) => api.delete(`/team/members/${memberId}`),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/me/change-password', { current_password: currentPassword, new_password: newPassword }),
+}
+
+// LinkedIn integration
+export interface LinkedInStatus {
+  connected: boolean
+  linkedin_user_id?: string
+  expires_at?: string
+}
+
+export interface LinkedInShareRequest {
+  caption: string
+  image_base64: string
+  visibility: 'PUBLIC' | 'CONNECTIONS'
+}
+
+export interface LinkedInShareResponse {
+  share_url: string
+  post_id?: string
+}
+
+export const linkedinAPI = {
+  getStatus: () => api.get<LinkedInStatus>('/auth/linkedin/status'),
+  getConnectUrl: () => api.get<{ url: string }>('/auth/linkedin/connect'),
+  disconnect: () => api.post<{ status: string }>('/auth/linkedin/disconnect'),
+  share: (body: LinkedInShareRequest) =>
+    api.post<LinkedInShareResponse>('/hc-platform/linkedin/share', body),
 }
 
 // Admin

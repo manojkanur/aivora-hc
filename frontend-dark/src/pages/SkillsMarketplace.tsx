@@ -93,14 +93,19 @@ export default function SkillsMarketplace() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5 sm:space-y-6">
+    <div className="p-5 sm:p-8 max-w-7xl mx-auto space-y-7">
 
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
-        <h1 className="text-2xl font-bold text-white">HC Studios</h1>
-        <p className="text-slate-400 text-sm">
-          {counts.live} advisory studios powered by AI — from strategy to deliverables, every engagement covered.
-        </p>
+      {/* Header — matches Dashboard hero proportions */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-5 h-5 text-blue-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">HC Studios</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            {counts.live} advisory studios powered by AI, from strategy to deliverables. Every engagement covered.
+          </p>
+        </div>
       </motion.div>
 
       {/* Stats strip */}
@@ -174,7 +179,7 @@ export default function SkillsMarketplace() {
               <motion.button
                 key={studio.id}
                 variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
-                onClick={() => !isLocked && navigate('/workspaces')}
+                onClick={() => !isLocked && navigate(`/studio/${studio.id}`)}
                 className={cn(
                   'group relative text-left p-4 rounded-xl border bg-[#0f1117] transition-all duration-200',
                   isLocked

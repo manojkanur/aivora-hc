@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import CurrentUser, DBDep
 from app.models.ai import AiAuditLog, AiDraft, AiJob
@@ -16,6 +17,76 @@ from app.models.publish import PublishQueue
 from app.models.workspace import Workspace
 
 router = APIRouter(prefix="/me", tags=["me"])
+
+
+def _onboarding_root(user: Any) -> dict[str, Any]:
+    """
+    Return the user's onboarding root in the new shape:
+        {"default": {...}, "workspaces": {workspace_id: {...}}}.
+
+    Migrates the old flat shape (a single dict of answers) by treating it as
+    the user's "default" slot so legacy data is preserved.
+    """
+    raw = user.onboarding_state or {}
+    if not isinstance(raw, dict):
+        return {"default": {}, "workspaces": {}}
+    # New shape
+    if "workspaces" in raw or "default" in raw:
+        wks = raw.get("workspaces")
+        return {
+            "default": raw.get("default") or {},
+            "workspaces": wks if isinstance(wks, dict) else {},
+        }
+    # Legacy flat shape: treat as default
+    return {"default": raw, "workspaces": {}}
+
+
+@router.get("/onboarding")
+async def get_onboarding(
+    current_user: CurrentUser,
+    db: DBDep,
+    workspace_id: str | None = None,
+) -> dict[str, Any]:
+    """
+    Return the user's resumable onboarding state.
+
+    When `workspace_id` is provided, returns the state scoped to that workspace
+    so each engagement keeps its own onboarding answers. Without `workspace_id`,
+    returns the user's default (pre-workspace) onboarding state.
+    """
+    root = _onboarding_root(current_user)
+    if workspace_id:
+        return {"state": (root["workspaces"].get(workspace_id) or {})}
+    return {"state": root["default"] or {}}
+
+
+@router.put("/onboarding")
+async def put_onboarding(
+    current_user: CurrentUser,
+    db: DBDep,
+    payload: dict[str, Any] = Body(...),
+    workspace_id: str | None = None,
+) -> dict[str, Any]:
+    """
+    Save the user's onboarding state, optionally scoped to a workspace.
+
+    Body: {"state": {...}}. When `workspace_id` is supplied, only that
+    workspace's slot is updated; other workspaces are untouched.
+    """
+    state = payload.get("state") if isinstance(payload, dict) else None
+    if not isinstance(state, dict):
+        raise HTTPException(status_code=400, detail="state must be an object")
+
+    root = _onboarding_root(current_user)
+    if workspace_id:
+        root["workspaces"][workspace_id] = state
+    else:
+        root["default"] = state
+
+    current_user.onboarding_state = root
+    flag_modified(current_user, "onboarding_state")
+    await db.commit()
+    return {"state": state}
 
 
 @router.get("/export")

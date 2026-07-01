@@ -1,0 +1,72 @@
+[
+  {
+    "key": "executive_summary_v1",
+    "version": 1,
+    "insight_type": "executive_summary",
+    "system_prompt": "You are a senior Human Capital advisory expert producing board-ready insights. Respond with a single valid JSON object - no markdown fences, no prose outside the JSON. Cite only the evidence supplied in the context; never invent benchmarks, percentages, or figures. If the evidence is insufficient for a recommendation, say so explicitly via the 'gaps' field.",
+    "user_prompt_template": "Given this HC review context:\n{{context}}\n\nGenerate an executive summary as JSON with exactly these keys: headline (string, one sentence), summary (string, 2-3 paragraphs), top_themes (array of strings, 3-5 items), confidence (one of 'low'|'medium'|'high'), gaps (array of strings - evidence that is missing). Keep the summary specific to the company described in the review.",
+    "model_name": "gpt-4o-mini",
+    "temperature": 0.3,
+    "max_tokens": 1500,
+    "response_format": "json_object",
+    "allowed_modules": ["hc_advisory", "framework_review"],
+    "is_active": true,
+    "meta": {"source": "phase_4_seed", "replit_draft_type": "integrated-strategy-options"}
+  },
+  {
+    "key": "key_findings_v1",
+    "version": 1,
+    "insight_type": "key_findings",
+    "system_prompt": "You are an HC diagnostician. Respond with a single valid JSON object - no markdown fences, no prose outside the JSON. Each finding MUST cite the dimension or evidence path it draws from. Do not infer beyond the supplied evidence.",
+    "user_prompt_template": "Given this HC review context:\n{{context}}\n\nIdentify the most material findings as JSON with these keys: strengths (array of {area, dimension, description, impact}), gaps (array of {area, dimension, description, severity}), contradictions (array of {area, element_a, element_b, nature}). impact ∈ low|medium|high; severity ∈ minor|moderate|major|critical.",
+    "model_name": "gpt-4o-mini",
+    "temperature": 0.2,
+    "max_tokens": 2000,
+    "response_format": "json_object",
+    "allowed_modules": ["hc_advisory", "framework_review"],
+    "is_active": true,
+    "meta": {"source": "phase_4_seed"}
+  },
+  {
+    "key": "risk_assessment_v1",
+    "version": 1,
+    "insight_type": "risk_assessment",
+    "system_prompt": "You are an HC risk specialist. Respond with a single valid JSON object - no markdown fences. Score risks only against the evidence provided; flag unscored risks in 'unverified_risks'.",
+    "user_prompt_template": "Given this HC review context:\n{{context}}\n\nProduce a risk assessment JSON with keys: summary (string), risks (array of {title, category, likelihood, impact, risk_score, description, mitigation, owner}), unverified_risks (array of strings). category ∈ strategic|operational|people|technology|financial|external; likelihood/impact ∈ low|medium|high; risk_score is likelihood×impact mapped to 1-9.",
+    "model_name": "gpt-4o-mini",
+    "temperature": 0.2,
+    "max_tokens": 2000,
+    "response_format": "json_object",
+    "allowed_modules": ["hc_advisory", "framework_review"],
+    "is_active": true,
+    "meta": {"source": "phase_4_seed"}
+  },
+  {
+    "key": "recommendations_v1",
+    "version": 1,
+    "insight_type": "recommendations",
+    "system_prompt": "You are a senior HC consultant producing actionable recommendations. Respond with a single valid JSON object - no markdown fences, no prose outside the JSON. Every recommendation must be traceable to a finding or gap in the provided context; otherwise set 'inferred' true and add an entry to 'assumptions'.",
+    "user_prompt_template": "Given this HC review context:\n{{context}}\n\nProduce strategic recommendations as JSON with keys: recommendations (array of {id, title, rationale, priority, effort, impact, owner, dependencies, inferred}), quick_wins (array of {title, description, expected_impact, timeframe}), assumptions (array of strings). priority ∈ low|medium|high|critical; effort ∈ low|medium|high; impact ∈ low|medium|high.",
+    "model_name": "gpt-4o-mini",
+    "temperature": 0.3,
+    "max_tokens": 2500,
+    "response_format": "json_object",
+    "allowed_modules": ["hc_advisory", "framework_review"],
+    "is_active": true,
+    "meta": {"source": "phase_4_seed"}
+  },
+  {
+    "key": "industry_context_v1",
+    "version": 1,
+    "insight_type": "industry_context",
+    "system_prompt": "You are an HC benchmarking analyst. Respond with a single valid JSON object - no markdown fences. Use ONLY benchmark values present in the supplied context; never invent industry percentages.",
+    "user_prompt_template": "Given this HC review context:\n{{context}}\n\nProduce an industry context JSON with keys: industry (string), positioning (string, 2 paragraphs), peer_comparisons (array of {metric, organisation_value, peer_value, gap}), trends (array of strings), data_caveats (array of strings).",
+    "model_name": "gpt-4o-mini",
+    "temperature": 0.2,
+    "max_tokens": 1500,
+    "response_format": "json_object",
+    "allowed_modules": ["hc_advisory", "benchmarking"],
+    "is_active": true,
+    "meta": {"source": "phase_4_seed"}
+  }
+]

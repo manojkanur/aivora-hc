@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, FileImage, FileSpreadsheet, ChevronDown } from 'lucide-react'
+import { FileText, FileImage, FileSpreadsheet, ChevronDown, Code2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { exportsAPI } from '../../lib/api'
 import { toast } from '../ui/Toast'
@@ -16,12 +16,13 @@ interface ExportToolbarProps {
   onExported?: (exportId: string) => void
 }
 
-type ExportFormat = 'pptx' | 'pdf' | 'docx'
+type ExportFormat = 'pptx' | 'pdf' | 'docx' | 'html'
 
 const formatConfig: Record<ExportFormat, { label: string; icon: typeof FileText; credits: number }> = {
   pptx: { label: 'PPTX', icon: FileImage, credits: 3 },
-  pdf: { label: 'PDF', icon: FileText, credits: 2 },
+  pdf:  { label: 'PDF',  icon: FileText, credits: 2 },
   docx: { label: 'DOCX', icon: FileSpreadsheet, credits: 2 },
+  html: { label: 'HTML', icon: Code2, credits: 1 },
 }
 
 export function ExportToolbar({ draftId, brandKits = [], onExported }: ExportToolbarProps) {

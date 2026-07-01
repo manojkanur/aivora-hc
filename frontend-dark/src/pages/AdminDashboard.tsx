@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Building2, Zap, Download, ShieldCheck, Search,
@@ -6,9 +6,11 @@ import {
   CreditCard, BookOpen, ChevronDown, ChevronUp, Plus, Trash2,
   Tag, Bot, Brain, TrendingUp, Activity, AlertTriangle, Layers,
   Cpu, Globe, BarChart2, RefreshCw, FolderPlus, Sparkles,
-  ArrowUpRight, Eye, Settings2,
+  ArrowUpRight, Eye, Settings2, Database, Upload, Link2, FileText,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
+import { useSkillKb } from '../store/skillKnowledgeBase'
+import { useCategorySkills } from '../store/categorySkills'
 import { Input, Textarea } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
 import { Skeleton } from '../components/ui/SkeletonLoader'
@@ -66,6 +68,16 @@ interface AuditEntry {
   action: string
   resource: string
   ip: string
+  payload?: {
+    phase?: string
+    ai_job_id?: string
+    workspace_id?: string
+    skill?: { id?: string; slug?: string; name?: string }
+    user_input?: Record<string, unknown>
+    memory_snapshot?: Record<string, unknown>
+    agent?: { model?: string; provider?: string }
+    output_summary?: string
+  }
 }
 
 interface SkillInsight {
@@ -230,9 +242,9 @@ Tone & style:
 - Always contextualise advice to the client's industry, size, and maturity stage
 
 Output format:
-- Lead with a 2–3 sentence executive summary
+- Lead with a 2-3 sentence executive summary
 - Follow with structured findings or recommendations
-- Close with 2–3 prioritised next steps
+- Close with 2-3 prioritised next steps
 
 Constraints:
 - Do not fabricate benchmarks; caveat any estimates
@@ -241,8 +253,8 @@ Constraints:
 
 const DEFAULT_INSTRUCTIONS: Record<string, string> = {
   'hc framework': `You are an expert HC Strategy advisor. When generating an HC Framework output:\n\n1. Open with the strategic context (industry, size, maturity stage)\n2. Map the HC framework across four pillars: Talent Acquisition, Development, Performance, and Retention\n3. For each pillar, identify: current state, gap, and recommended intervention\n4. Prioritise interventions by impact (High / Medium / Low) and effort (Quick Win / Strategic / Long-term)\n5. Close with a one-page executive summary table\n\nTone: Board-ready, structured, evidence-based.`,
-  'succession planning': `You are a Succession Planning specialist. Structure all outputs as follows:\n\n1. Critical Role Identification\n2. Pipeline Assessment — Ready Now / 1–2yr / 3–5yr\n3. Development Actions — per successor, 3 targeted priorities\n4. Risk Heatmap — visualise coverage gaps\n5. Board Narrative — one paragraph suitable for a Talent Committee report`,
-  'workforce planning': `You are a Strategic Workforce Planning advisor. All outputs must include:\n\n1. Demand forecast (1–3yr horizon)\n2. Supply analysis (attrition risk, retirement exposure)\n3. Gap analysis (headcount and capability)\n4. Scenario planning (base / optimistic / stress)\n5. Action roadmap with quarterly milestones`,
+  'succession planning': `You are a Succession Planning specialist. Structure all outputs as follows:\n\n1. Critical Role Identification\n2. Pipeline Assessment: Ready Now / 1-2yr / 3-5yr\n3. Development Actions: per successor, 3 targeted priorities\n4. Risk Heatmap: visualise coverage gaps\n5. Board Narrative: one paragraph suitable for a Talent Committee report`,
+  'workforce planning': `You are a Strategic Workforce Planning advisor. All outputs must include:\n\n1. Demand forecast (1-3yr horizon)\n2. Supply analysis (attrition risk, retirement exposure)\n3. Gap analysis (headcount and capability)\n4. Scenario planning (base / optimistic / stress)\n5. Action roadmap with quarterly milestones`,
   'talent assessment': `You are a Talent Assessment expert. Structure outputs as:\n\n1. Assessment framework overview\n2. Individual or cohort summary\n3. Talent segmentation (HiPo / Solid / Underperformer)\n4. Calibration guidance\n5. Development recommendations per segment`,
   'learning': `You are an L&D strategist. All recommendations must:\n\n1. Align learning objectives to business priorities\n2. Map to 70-20-10 blend\n3. Recommend specific modalities\n4. Include success metrics\n5. Estimate time-to-capability`,
   'engagement': `You are an Employee Engagement advisor. Structure all outputs as:\n\n1. Engagement diagnostic summary\n2. Benchmark context\n3. Prioritised intervention areas (top 3)\n4. Action plan with owner, timeline, success metric\n5. Communication strategy`,
@@ -703,6 +715,134 @@ function SkillInsightsPanel({ skill, onClose }: { skill: Skill; onClose: () => v
   )
 }
 
+// ─── Knowledge Base per Skill ──────────────────────────────────────────────
+
+function SkillKnowledgeBase({ skillId, skillName }: { skillId: string; skillName: string }) {
+  const { getKb, addDocument, removeDocument, addUrl, removeUrl } = useSkillKb()
+  const kb = getKb(skillId)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [newUrl, setNewUrl] = useState('')
+  const [newLabel, setNewLabel] = useState('')
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files) return
+    Array.from(files).forEach(file => {
+      addDocument(skillId, { name: file.name, size: file.size, type: file.type || 'application/octet-stream' })
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleAddUrl = () => {
+    const trimmed = newUrl.trim()
+    if (!trimmed) return
+    try {
+      // basic URL validation — accept anything that parses
+      new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`)
+    } catch { return }
+    addUrl(skillId, trimmed.includes('://') ? trimmed : `https://${trimmed}`, newLabel.trim() || undefined)
+    setNewUrl('')
+    setNewLabel('')
+  }
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  return (
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-blue-400" />
+          <span className="text-xs font-bold uppercase tracking-widest text-blue-400">Knowledge Base</span>
+          <span className="text-[10px] text-slate-500">· {skillName}</span>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-slate-500">
+          <span>{kb.documents.length} {kb.documents.length === 1 ? 'file' : 'files'}</span>
+          <span>·</span>
+          <span>{kb.urls.length} {kb.urls.length === 1 ? 'URL' : 'URLs'}</span>
+        </div>
+      </div>
+
+      {/* Documents */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1.5">
+            <FileText className="w-3 h-3" /> Documents (PDF, DOCX)
+          </span>
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+            <Upload className="w-3 h-3" /> Upload
+          </button>
+          <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.md" multiple className="hidden"
+            onChange={e => handleFiles(e.target.files)} />
+        </div>
+        {kb.documents.length === 0 ? (
+          <p className="text-[11px] text-slate-600 italic">No documents uploaded yet.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {kb.documents.map(d => (
+              <div key={d.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                  <span className="text-xs text-slate-300 truncate">{d.name}</span>
+                  <span className="text-[10px] text-slate-600 flex-shrink-0">{formatSize(d.size)}</span>
+                </div>
+                <button type="button" onClick={() => removeDocument(skillId, d.id)}
+                  className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* URLs */}
+      <div className="space-y-2">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1.5">
+          <Link2 className="w-3 h-3" /> Site URLs
+        </span>
+        <div className="flex gap-2">
+          <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAddUrl() }}
+            placeholder="https://example.com/resource"
+            className="flex-1 px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433] text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50" />
+          <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAddUrl() }}
+            placeholder="Label (optional)"
+            className="w-32 px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433] text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50" />
+          <button type="button" onClick={handleAddUrl}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors flex items-center gap-1">
+            <Plus className="w-3 h-3" /> Add
+          </button>
+        </div>
+        {kb.urls.length === 0 ? (
+          <p className="text-[11px] text-slate-600 italic">No URLs added yet.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {kb.urls.map(u => (
+              <div key={u.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Link2 className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                  {u.label && <span className="text-xs text-slate-300 font-semibold">{u.label}:</span>}
+                  <a href={u.url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:text-blue-300 truncate">{u.url}</a>
+                </div>
+                <button type="button" onClick={() => removeUrl(skillId, u.id)}
+                  className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Skills Tab ───────────────────────────────────────────────────────────────
 
 function SkillsTab({ categories }: { categories: SkillCategory[] }) {
@@ -917,27 +1057,30 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.2 }}>
-                              <div className="bg-[#0c0e14] border border-[#1e2433] rounded-xl p-4 space-y-3">
-                                {skill.description && (
-                                  <p className="text-sm text-slate-400">{skill.description}</p>
-                                )}
-                                {skill.llm_model && (
-                                  <div className="flex items-center gap-2">
-                                    <Cpu className="w-3.5 h-3.5 text-slate-500" />
-                                    <span className="text-xs text-slate-500">LLM override:</span>
-                                    <span className="text-xs font-semibold text-slate-300">{getLlmLabel(skill.llm_model)?.label}</span>
+                              <div className="space-y-3">
+                                <div className="bg-[#0c0e14] border border-[#1e2433] rounded-xl p-4 space-y-3">
+                                  {skill.description && (
+                                    <p className="text-sm text-slate-400">{skill.description}</p>
+                                  )}
+                                  {skill.llm_model && (
+                                    <div className="flex items-center gap-2">
+                                      <Cpu className="w-3.5 h-3.5 text-slate-500" />
+                                      <span className="text-xs text-slate-500">LLM override:</span>
+                                      <span className="text-xs font-semibold text-slate-300">{getLlmLabel(skill.llm_model)?.label}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold uppercase tracking-widest text-violet-400">Instructions</span>
+                                    <button type="button" onClick={() => setEditingSkill(skill)}
+                                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                                      Edit →
+                                    </button>
                                   </div>
-                                )}
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold uppercase tracking-widest text-violet-400">Instructions</span>
-                                  <button type="button" onClick={() => setEditingSkill(skill)}
-                                    className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors">
-                                    Edit →
-                                  </button>
+                                  {skill.instructions
+                                    ? <p className="text-xs text-slate-400 font-mono leading-relaxed whitespace-pre-wrap line-clamp-6">{skill.instructions}</p>
+                                    : <p className="text-xs text-slate-600 italic">No custom instructions. Using Aivora default.</p>}
                                 </div>
-                                {skill.instructions
-                                  ? <p className="text-xs text-slate-400 font-mono leading-relaxed whitespace-pre-wrap line-clamp-6">{skill.instructions}</p>
-                                  : <p className="text-xs text-slate-600 italic">No custom instructions — using Aivora default.</p>}
+                                <SkillKnowledgeBase skillId={skill.id} skillName={skill.name} />
                               </div>
                             </motion.div>
                           </td>
@@ -969,11 +1112,203 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
 
 // ─── Category Manager Tab ─────────────────────────────────────────────────────
 
+const MARKETPLACE_CATEGORY_KEYS = ['strategy', 'talent', 'learning', 'advisory', 'commercial'] as const
+type MarketplaceKey = typeof MARKETPLACE_CATEGORY_KEYS[number]
+const MARKETPLACE_DEFAULTS: Record<MarketplaceKey, string> = {
+  strategy: 'Strategy & Transformation',
+  talent: 'Talent & People',
+  learning: 'Learning',
+  advisory: 'Advisory',
+  commercial: 'Commercial',
+}
+
+function loadMarketplaceLabels(): Record<MarketplaceKey, string> {
+  try {
+    const stored = localStorage.getItem('aivora_category_labels')
+    if (stored) return { ...MARKETPLACE_DEFAULTS, ...JSON.parse(stored) }
+  } catch { /* ignore */ }
+  return { ...MARKETPLACE_DEFAULTS }
+}
+
+const PILL_COLORS: Record<MarketplaceKey, string> = {
+  strategy:   '#6366f1',
+  talent:     '#3b82f6',
+  learning:   '#22c55e',
+  advisory:   '#f59e0b',
+  commercial: '#ec4899',
+}
+
+function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSave, skills }: {
+  pillLabels: Record<MarketplaceKey, string>
+  setPillLabels: React.Dispatch<React.SetStateAction<Record<MarketplaceKey, string>>>
+  pillSaved: boolean
+  onSave: () => void
+  skills: Skill[]
+}) {
+  const [active, setActive] = useState<MarketplaceKey | 'all'>('all')
+  const { assignments, assign, unassign } = useCategorySkills()
+  const assignedToActive = active !== 'all' ? (assignments[active] ?? []) : []
+
+  return (
+    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+            <Tag className="w-4 h-4 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Marketplace Category Labels</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Click a pill to rename it. Updates the Studios filter bar.</p>
+          </div>
+        </div>
+        <button onClick={onSave}
+          className={cn('flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all',
+            pillSaved
+              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+              : 'bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-[0_0_16px_rgba(59,130,246,0.3)]')}>
+          {pillSaved ? <><Check className="w-3.5 h-3.5" /> Saved!</> : <><Save className="w-3.5 h-3.5" /> Save Labels</>}
+        </button>
+      </div>
+
+      <div className="p-5 space-y-5">
+        {/* Interactive pill preview */}
+        <div>
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Live Preview: click a pill to edit</p>
+          <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[#1e2433] bg-[#0c0e14]">
+            <button onClick={() => setActive('all')}
+              className={cn('px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200',
+                active === 'all'
+                  ? 'bg-[#3b82f6] text-white shadow-[0_0_12px_rgba(59,130,246,0.4)] scale-105'
+                  : 'bg-[#1a1e2e] text-slate-400 hover:text-white hover:bg-[#252b3b]')}>
+              All
+            </button>
+            {MARKETPLACE_CATEGORY_KEYS.map(k => (
+              <button key={k} onClick={() => setActive(k)}
+                className={cn('px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200',
+                  active === k
+                    ? 'text-white scale-105 shadow-lg'
+                    : 'bg-[#1a1e2e] text-slate-400 hover:text-white hover:bg-[#252b3b]')}
+                style={active === k ? { background: PILL_COLORS[k], boxShadow: `0 0 16px ${PILL_COLORS[k]}60` } : {}}>
+                {pillLabels[k]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Active pill editor */}
+        {active !== 'all' && (
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl border border-[#2a3048] bg-[#0c0e14] p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ background: PILL_COLORS[active] }} />
+              <p className="text-xs font-bold text-white uppercase tracking-wider">{active}</p>
+            </div>
+            <div className="flex gap-3 items-center">
+              <input
+                value={pillLabels[active]}
+                onChange={e => setPillLabels(prev => ({ ...prev, [active]: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') onSave() }}
+                placeholder={`Label for "${active}"…`}
+                className="flex-1 px-4 py-2.5 text-sm border border-[#2a3048] rounded-xl bg-[#131720] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                style={{ '--tw-ring-color': PILL_COLORS[active] } as React.CSSProperties}
+                autoFocus
+              />
+              <button onClick={onSave}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-colors"
+                style={{ background: PILL_COLORS[active] }}>
+                Save
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-600">Press Enter or click Save to apply. Changes affect all users immediately.</p>
+          </motion.div>
+        )}
+
+        {/* Skills assignment for active category */}
+        {active !== 'all' && (
+          <motion.div
+            key={`${active}-skills`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl border border-[#2a3048] bg-[#0c0e14] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5" style={{ color: PILL_COLORS[active] }} />
+                <p className="text-xs font-bold text-white uppercase tracking-wider">Studios in this category</p>
+              </div>
+              <span className="text-[11px] text-slate-500">{assignedToActive.length} of {skills.length} assigned</span>
+            </div>
+            {skills.length === 0 ? (
+              <p className="text-[11px] text-slate-600 italic">No studios loaded yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
+                {skills.map(s => {
+                  const checked = assignedToActive.includes(s.name)
+                  return (
+                    <label key={s.id}
+                      className={cn('flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all',
+                        checked
+                          ? 'bg-[#131720] border-[#2a3048]'
+                          : 'bg-[#0a0d15] border-[#1e2433] hover:border-[#2a3048]')}
+                      style={checked ? { borderColor: PILL_COLORS[active] + '60', boxShadow: `0 0 0 1px ${PILL_COLORS[active]}30` } : {}}>
+                      <input type="checkbox" className="hidden"
+                        checked={checked}
+                        onChange={() => checked ? unassign(active, s.name) : assign(active, s.name)} />
+                      <div className={cn('w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all',
+                        checked ? 'border-transparent' : 'border-[#2a3048]')}
+                        style={checked ? { background: PILL_COLORS[active] } : {}}>
+                        {checked && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                      <span className={cn('text-xs truncate flex-1', checked ? 'text-white font-semibold' : 'text-slate-400')}>
+                        {s.name}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-600">Studios assigned here will appear under "{pillLabels[active]}" in the Studios Marketplace filter.</p>
+          </motion.div>
+        )}
+
+        {active === 'all' && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {MARKETPLACE_CATEGORY_KEYS.map(k => (
+              <button key={k} onClick={() => setActive(k)}
+                className="flex flex-col items-start gap-2 p-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-[#2a3048] hover:bg-[#131720] transition-colors text-left group">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: PILL_COLORS[k] + '20', border: `1px solid ${PILL_COLORS[k]}40` }}>
+                  <div className="w-2 h-2 rounded-full" style={{ background: PILL_COLORS[k] }} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{k}</p>
+                  <p className="text-xs font-semibold text-white mt-0.5 group-hover:text-blue-300 transition-colors">{pillLabels[k]}</p>
+                </div>
+                <Pencil className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors mt-auto" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function CategoriesTab({ skills }: { skills: Skill[] }) {
   const [categories, setCategories] = useState<SkillCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<SkillCategory | null>(null)
+  const [pillLabels, setPillLabels] = useState<Record<MarketplaceKey, string>>(loadMarketplaceLabels)
+  const [pillSaved, setPillSaved] = useState(false)
+
+  const savePillLabels = () => {
+    localStorage.setItem('aivora_category_labels', JSON.stringify(pillLabels))
+    setPillSaved(true)
+    setTimeout(() => setPillSaved(false), 2000)
+  }
 
   useEffect(() => {
     adminAPI.categories()
@@ -1017,10 +1352,14 @@ function CategoriesTab({ skills }: { skills: Skill[] }) {
   )
 
   return (
-    <AnimatedSection variants={fadeUp} className="space-y-5">
+    <AnimatedSection variants={fadeUp} className="space-y-6">
+
+      {/* ── Marketplace pill labels ── */}
+      <MarketplaceCategoryEditor pillLabels={pillLabels} setPillLabels={setPillLabels} pillSaved={pillSaved} onSave={savePillLabels} skills={skills} />
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-400">
-          Organise studios into named groups. Users see categories in the Studios Marketplace.
+          Backend skill category groups, used to organise studios in the admin panel.
         </p>
         <Button onClick={() => setShowCreate(true)} leftIcon={<FolderPlus className="w-4 h-4" />}>
           New Category
@@ -1349,7 +1688,7 @@ function LlmTab({ skills }: { skills: Skill[] }) {
                     className="rounded-lg border border-[#1e2433] bg-[#0c0e14] text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 min-w-[180px]">
                     <option value="">Use global ({globalLlm?.label ?? config.global_model})</option>
                     {LLM_OPTIONS.map(m => (
-                      <option key={m.id} value={m.id}>{m.label} — {m.provider}</option>
+                      <option key={m.id} value={m.id}>{m.label} ({m.provider})</option>
                     ))}
                   </select>
                 </div>
@@ -1508,9 +1847,116 @@ function UsersTab() {
 // ─── Audit Log Tab ────────────────────────────────────────────────────────────
 
 const ACTION_OPTIONS = [
-  'login', 'logout', 'skill_run', 'export_created',
-  'draft_approved', 'user_invited', 'settings_updated', 'plan_changed',
+  'ai_job.dispatched', 'ai_job.completed', 'ai_draft.chat', 'ai_canvas.edit',
+  'request.POST.auth.login', 'request.POST.auth.logout', 'request.POST.auth.signup',
+  'request.POST.workspaces', 'request.PATCH.workspaces',
+  'request.POST.challenge-briefs', 'request.PATCH.challenge-briefs', 'request.POST.challenge-briefs.run',
+  'request.POST.ai.jobs', 'request.PATCH.ai.drafts.approval', 'request.PATCH.ai.drafts.content',
+  'request.POST.exports', 'request.POST.publish',
+  'request.PUT.me.onboarding', 'request.POST.settings',
 ]
+
+/**
+ * Single audit log row. AI-engine rows expand to show the four-phase trace:
+ * user input + skill + memory -> agent brain -> output.
+ */
+function AuditRow({ entry, isLast }: { entry: AuditEntry; isLast: boolean }) {
+  const [open, setOpen] = useState(false)
+  const p = entry.payload
+  const hasTrace = entry.action.startsWith('ai_job') && !!p
+  return (
+    <>
+      <tr
+        className={cn('transition-colors hover:bg-[#1a1f2e]', hasTrace && 'cursor-pointer')}
+        onClick={hasTrace ? () => setOpen(o => !o) : undefined}
+        style={{ borderBottom: isLast && !open ? undefined : '1px solid #1e2433' }}
+      >
+        <td className="px-4 py-3 whitespace-nowrap">
+          <span className="text-xs font-mono text-slate-500">{formatDate(entry.timestamp)}</span>
+        </td>
+        <td className="px-4 py-3"><span className="text-sm font-medium text-slate-200">{entry.user}</span></td>
+        <td className="px-4 py-3">
+          <span className={cn(
+            'text-xs font-medium px-2 py-0.5 rounded-full border',
+            hasTrace ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-[#1e2433] text-slate-300 border-[#2a3045]',
+          )}>
+            {entry.action}
+          </span>
+        </td>
+        <td className="px-4 py-3"><span className="text-sm text-slate-400">{entry.resource}</span></td>
+        <td className="px-4 py-3"><span className="text-xs font-mono text-slate-500">{entry.ip}</span></td>
+      </tr>
+      {open && hasTrace && (
+        <tr style={{ borderBottom: isLast ? undefined : '1px solid #1e2433' }}>
+          <td colSpan={5} className="px-4 py-4 bg-[#0c0e14]">
+            <div className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-3">
+              Agent run trace
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <TracePhase
+                no="1"
+                title="User Input"
+                subtitle="Form context"
+                tone="blue"
+                content={p?.user_input}
+              />
+              <TracePhase
+                no="2"
+                title="Skill"
+                subtitle={p?.skill?.name ?? p?.skill?.slug ?? entry.action}
+                tone="violet"
+                content={p?.skill}
+              />
+              <TracePhase
+                no="3"
+                title="Memory"
+                subtitle="Onboarding snapshot"
+                tone="emerald"
+                content={p?.memory_snapshot}
+              />
+              <TracePhase
+                no="4"
+                title="Agent Brain"
+                subtitle={p?.agent?.model ?? 'LLM'}
+                tone="amber"
+                content={p?.output_summary ? { output: p.output_summary } : p?.agent}
+              />
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function TracePhase({ no, title, subtitle, tone, content }: {
+  no: string
+  title: string
+  subtitle: string
+  tone: 'blue' | 'violet' | 'emerald' | 'amber'
+  content?: unknown
+}) {
+  const toneCls: Record<typeof tone, { ring: string; chip: string }> = {
+    blue:    { ring: 'border-blue-500/30',    chip: 'bg-blue-500/10 text-blue-300 border-blue-500/30' },
+    violet:  { ring: 'border-violet-500/30',  chip: 'bg-violet-500/10 text-violet-300 border-violet-500/30' },
+    emerald: { ring: 'border-emerald-500/30', chip: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' },
+    amber:   { ring: 'border-amber-500/30',   chip: 'bg-amber-500/10 text-amber-300 border-amber-500/30' },
+  }
+  const t = toneCls[tone]
+  const json = content ? JSON.stringify(content, null, 2) : ' - '
+  return (
+    <div className={cn('rounded-xl border p-3 bg-[#131720]', t.ring)}>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className={cn('text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', t.chip)}>{no}</span>
+        <span className="text-xs font-semibold text-white">{title}</span>
+      </div>
+      <div className="text-[11px] text-slate-400 mb-2 truncate">{subtitle}</div>
+      <pre className="text-[10px] leading-relaxed text-slate-400 bg-[#0c0e14] border border-[#1e2433] rounded-lg p-2 max-h-32 overflow-auto whitespace-pre-wrap">
+        {json.length > 800 ? json.slice(0, 800) + '\n...' : json}
+      </pre>
+    </div>
+  )
+}
 
 function AuditLogTab() {
   const [entries, setEntries] = useState<AuditEntry[]>([])
@@ -1604,20 +2050,7 @@ function AuditLogTab() {
               </thead>
               <tbody>
                 {entries.map((entry, i) => (
-                  <tr key={entry.id} className="transition-colors hover:bg-[#1a1f2e]"
-                    style={{ borderBottom: i < entries.length - 1 ? '1px solid #1e2433' : undefined }}>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-xs font-mono text-slate-500">{formatDate(entry.timestamp)}</span>
-                    </td>
-                    <td className="px-4 py-3"><span className="text-sm font-medium text-slate-200">{entry.user}</span></td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#1e2433] text-slate-300 border border-[#2a3045]">
-                        {entry.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><span className="text-sm text-slate-400">{entry.resource}</span></td>
-                    <td className="px-4 py-3"><span className="text-xs font-mono text-slate-500">{entry.ip}</span></td>
-                  </tr>
+                  <AuditRow key={entry.id} entry={entry} isLast={i === entries.length - 1} />
                 ))}
               </tbody>
             </table>
@@ -1660,10 +2093,10 @@ export default function AdminDashboard() {
   }, [])
 
   const statCards = [
-    { label: 'Total Tenants',      value: stats?.total_tenants ?? '—',      icon: Building2 },
-    { label: 'Active Users Today', value: stats?.active_users_today ?? '—', icon: Users },
-    { label: 'AI Jobs Today',      value: stats?.ai_jobs_today ?? '—',      icon: Zap },
-    { label: 'Total Exports',      value: stats?.total_exports ?? '—',      icon: Download },
+    { label: 'Total Tenants',      value: stats?.total_tenants ?? ' - ',      icon: Building2 },
+    { label: 'Active Users Today', value: stats?.active_users_today ?? ' - ', icon: Users },
+    { label: 'AI Jobs Today',      value: stats?.ai_jobs_today ?? ' - ',      icon: Zap },
+    { label: 'Total Exports',      value: stats?.total_exports ?? ' - ',      icon: Download },
   ]
 
   return (

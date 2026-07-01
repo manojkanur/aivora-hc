@@ -13,12 +13,13 @@ import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/SkeletonLoader'
 import { formatRelativeTime } from '../lib/utils'
 import { cn } from '../lib/utils'
+import { AdvisorySearch } from '../components/dashboard/AdvisorySearch'
 
 const quickActions = [
   { label: 'New Workspace',  desc: 'Start a client project', icon: Briefcase, href: '/workspaces',  color: 'text-blue-400',    bg: 'bg-blue-500/10 border-blue-500/20',    hover: 'group-hover:bg-blue-500/20 group-hover:border-blue-400/40'   },
   { label: 'Browse Studios', desc: '27 HC advisory modules', icon: Sparkles,  href: '/skills',      color: 'text-cyan-400',    bg: 'bg-cyan-500/10 border-cyan-500/20',    hover: 'group-hover:bg-cyan-500/20 group-hover:border-cyan-400/40'   },
   { label: 'Draft Inbox',    desc: 'Review AI-generated drafts', icon: Inbox, href: '/inbox',       color: 'text-violet-400',  bg: 'bg-violet-500/10 border-violet-500/20', hover: 'group-hover:bg-violet-500/20 group-hover:border-violet-400/40'},
-  { label: 'HiPo Studio',   desc: 'Live talent advisory',  icon: Rocket,    href: '/hipo-studio', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', hover: 'group-hover:bg-emerald-500/20 group-hover:border-emerald-400/40' },
+  { label: 'AI Advisor',     desc: 'Run conversational diagnostic', icon: Sparkles, href: '/advisor', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', hover: 'group-hover:bg-emerald-500/20 group-hover:border-emerald-400/40' },
 ]
 
 function greeting() {
@@ -57,7 +58,7 @@ export default function Dashboard() {
           <div>
             <p className="text-sm text-slate-500 font-medium tracking-wide">{greeting()},</p>
             <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1">
-              {user?.name?.split(' ')[0] || 'there'} 👋
+              {user?.name?.split(' ')[0] || 'there'}
             </h1>
             <p className="text-sm text-slate-400 mt-2 max-w-md leading-relaxed">
               Your HC advisory platform is ready. Start a new brief or pick up where you left off.
@@ -77,6 +78,9 @@ export default function Dashboard() {
           </div>
         </div>
       </motion.div>
+
+      {/* ── Advisory search (find anything fast) ───────────────────────── */}
+      <AdvisorySearch />
 
       {/* ── Stats ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-4">

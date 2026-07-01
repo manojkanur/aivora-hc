@@ -7,6 +7,7 @@ import { SkeletonPage } from './components/ui/SkeletonLoader'
 import { ToastContainer } from './components/ui/Toast'
 import { useXpEvents } from './hooks/useXpEvents'
 import { useAuthStore } from './store/auth'
+import { useThemeStore } from './store/theme'
 
 // Chunk error boundary
 interface EBState { hasError: boolean; isChunkError: boolean }
@@ -88,6 +89,9 @@ const Workspaces        = lazyPage(() => import('./pages/Workspaces'))
 const WorkspaceDetail   = lazyPage(() => import('./pages/WorkspaceDetail'))
 const SkillStudio       = lazyPage(() => import('./pages/SkillStudio'))
 const ChallengeBrief    = lazyPage(() => import('./pages/ChallengeBrief'))
+const BriefResults      = lazyPage(() => import('./pages/BriefResults'))
+const Engage            = lazyPage(() => import('./pages/Engage'))
+const HipoStudioV2      = lazyPage(() => import('./pages/HipoStudio').then(m => ({ default: m.HipoStudioV2 })))
 const DraftInbox        = lazyPage(() => import('./pages/DraftInbox'))
 const ExportsPage       = lazyPage(() => import('./pages/ExportsPage'))
 const PublishPage       = lazyPage(() => import('./pages/PublishPage'))
@@ -95,18 +99,25 @@ const SkillsMarketplace = lazyPage(() => import('./pages/SkillsMarketplace'))
 const Gamification      = lazyPage(() => import('./pages/Gamification'))
 const Billing           = lazyPage(() => import('./pages/Billing'))
 const Settings          = lazyPage(() => import('./pages/Settings'))
-const Engage            = lazyPage(() => import('./pages/Engage'))
 const AdminDashboard    = lazyPage(() => import('./pages/AdminDashboard'))
 const AuthCallback      = lazyPage(() => import('./pages/AuthCallback'))
 const NotFound          = lazyPage(() => import('./pages/NotFound'))
-const HipoStudio        = lazyPage(() => import('./pages/HipoStudio'))
-const HipoStudioV2      = lazyPage(() => import('./pages/HipoStudio').then(m => ({ default: m.HipoStudioV2 })))
 const CanvasPage        = lazyPage(() => import('./pages/CanvasPage'))
+const AdvisorChat       = lazyPage(() => import('./pages/AdvisorChat'))
+const KnowledgeBase     = lazyPage(() => import('./pages/KnowledgeBase'))
+const StudioRunner      = lazyPage(() => import('./pages/StudioRunner'))
 
 function AppRoutes() {
   const loadFromStorage = useAuthStore(s => s.loadFromStorage)
+  const themeMode = useThemeStore(s => s.mode)
   useEffect(() => { loadFromStorage() }, [loadFromStorage])
   useXpEvents()
+
+  useEffect(() => {
+    const html = document.documentElement
+    html.classList.toggle('dark', themeMode === 'dark')
+    html.classList.toggle('light', themeMode === 'light')
+  }, [themeMode])
 
   return (
     <Suspense fallback={<SkeletonPage />}>
@@ -130,11 +141,13 @@ function AppRoutes() {
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
           <Route path="/workspaces/:workspaceId/skills/:skillId" element={<SkillStudio />} />
+          <Route path="/canvas" element={<CanvasPage />} />
           <Route path="/canvas/:draftId" element={<CanvasPage />} />
-          <Route path="/workspaces/:id/hipo" element={<HipoStudio />} />
-          <Route path="/hipo-studio" element={<HipoStudio />} />
+          <Route path="/workspaces/:id/hipo" element={<HipoStudioV2 />} />
+          <Route path="/hipo-studio" element={<HipoStudioV2 />} />
           <Route path="/hipo-studio-v2" element={<HipoStudioV2 />} />
           <Route path="/challenge-brief" element={<ChallengeBrief />} />
+          <Route path="/brief-results/:reviewId" element={<BriefResults />} />
           <Route path="/inbox" element={<DraftInbox />} />
           <Route path="/exports" element={<ExportsPage />} />
           <Route path="/publish" element={<PublishPage />} />
@@ -142,6 +155,9 @@ function AppRoutes() {
           <Route path="/gamification" element={<Gamification />} />
           <Route path="/billing" element={<Billing />} />
           <Route path="/engage" element={<Engage />} />
+          <Route path="/advisor" element={<AdvisorChat />} />
+          <Route path="/knowledge" element={<AdminRoute><KnowledgeBase /></AdminRoute>} />
+          <Route path="/studio/:studioId" element={<StudioRunner />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 

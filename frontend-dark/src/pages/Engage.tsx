@@ -131,7 +131,7 @@ function HowItWorks({ onStart }: { onStart: () => void }) {
       <div className="flex items-center justify-between p-5 bg-[#0c0e14] rounded-2xl">
         <div>
           <p className="font-semibold text-white text-sm">Ready to start?</p>
-          <p className="text-xs text-slate-500 mt-0.5">Typical run takes 10–15 minutes end to end</p>
+          <p className="text-xs text-slate-500 mt-0.5">Typical run takes 10-15 minutes end to end</p>
         </div>
         <Button
           onClick={onStart}
@@ -183,7 +183,7 @@ function StepBrief({ onNext }: { onNext: (f: BriefForm) => void }) {
     <div className="space-y-6">
       <Input
         label="Brief Title"
-        placeholder="e.g. Q3 HC Advisory — Acme Corporation"
+        placeholder="e.g. Q3 HC Advisory: Acme Corporation"
         value={form.title}
         onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
         error={errors.title}
@@ -317,7 +317,7 @@ function StepSkill({
         <div className="flex items-center gap-3 py-3 px-4 bg-[#131720] border border-[#1e2433] rounded-lg text-sm">
           <CheckCircle2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
           <span className="text-slate-300">
-            <strong className="text-white">{chosen.name}</strong> selected — {chosen.credits} credits will be used
+            <strong className="text-white">{chosen.name}</strong> selected. {chosen.credits} credits will be used.
           </span>
         </div>
       )}
@@ -391,17 +391,17 @@ function StepGenerate({
     `This deliverable provides a structured advisory framework to address the identified HC priorities. ` +
     `It is designed to be implemented over ${brief.timeline || '90 days'} with clear ownership, phased milestones, and measurable outcomes.\n\n` +
     `### Strategic Recommendations\n\n` +
-    `1. **Governance & Ownership** — Establish a dedicated HC steering group with senior sponsorship and clear terms of reference\n` +
-    `2. **Diagnostic Phase** — Conduct a rapid 2-week diagnostic to baseline current-state capability gaps across the identified challenge areas\n` +
-    `3. **Prioritisation Framework** — Apply a 2x2 impact vs. effort matrix to sequence initiatives and secure early wins within 30 days\n` +
-    `4. **Stakeholder Alignment** — Run structured working sessions with business unit heads to align on outcomes and resourcing\n` +
-    `5. **KPI Framework** — Define 5–7 leading and lagging indicators tied directly to business outcomes\n\n` +
+    `1. **Governance & Ownership**: Establish a dedicated HC steering group with senior sponsorship and clear terms of reference\n` +
+    `2. **Diagnostic Phase**: Conduct a rapid 2-week diagnostic to baseline current-state capability gaps across the identified challenge areas\n` +
+    `3. **Prioritisation Framework**: Apply a 2x2 impact vs. effort matrix to sequence initiatives and secure early wins within 30 days\n` +
+    `4. **Stakeholder Alignment**: Run structured working sessions with business unit heads to align on outcomes and resourcing\n` +
+    `5. **KPI Framework**: Define 5-7 leading and lagging indicators tied directly to business outcomes\n\n` +
     `### Implementation Roadmap\n\n` +
-    `**Phase 1 — Weeks 1–4: Foundation**\n` +
+    `**Phase 1, Weeks 1-4: Foundation**\n` +
     `Stakeholder mapping, current-state assessment, governance setup, baseline KPI collection\n\n` +
-    `**Phase 2 — Weeks 5–8: Design & Pilot**\n` +
+    `**Phase 2, Weeks 5-8: Design & Pilot**\n` +
     `Framework design, pilot cohort selection, change communication, initial rollout\n\n` +
-    `**Phase 3 — Weeks 9–12: Scale & Embed**\n` +
+    `**Phase 3, Weeks 9-12: Scale & Embed**\n` +
     `Full deployment, adoption tracking, 90-day impact review, lessons learned\n\n` +
     `### Risk & Mitigation\n\n` +
     `| Risk | Likelihood | Mitigation |\n` +
@@ -775,7 +775,7 @@ export default function Engage() {
 
         <div className="mt-4 flex items-center gap-1.5 text-xs text-slate-500 justify-center">
           <Clock className="w-3 h-3" />
-          Typical run: 10–15 minutes end to end
+          Typical run: 10-15 minutes end to end
         </div>
       </div>
     </div>

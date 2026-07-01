@@ -78,6 +78,7 @@ async def create_brief(
     )
     db.add(brief)
     await db.flush()
+    await db.refresh(brief)
     return ChallengeBriefResponse.model_validate(brief)
 
 
@@ -141,6 +142,7 @@ async def update_brief(
         brief.status = payload.status
 
     await db.flush()
+    await db.refresh(brief)
     return ChallengeBriefResponse.model_validate(brief)
 
 

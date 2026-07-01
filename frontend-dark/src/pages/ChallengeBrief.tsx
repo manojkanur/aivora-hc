@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -11,6 +11,12 @@ import { Input, Textarea } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../lib/utils'
 import { useBriefStore } from '../store/briefStore'
+import { useClientProfileStore } from '../store/clientProfile'
+import { useOnboardingCompletions } from '../store/onboardingCompletions'
+import { api, challengeBriefsAPI } from '../lib/api'
+import { useAutosave } from '../hooks/useAutosave'
+import { SaveIndicator } from '../components/ui/SaveIndicator'
+import { recommendStudios, signalsFromBriefContent } from '../lib/briefRecommender'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -114,7 +120,7 @@ const ORG_REGION_LABELS: Record<OrgRegion, string> = {
 const ORG_SIZE_LABELS: Record<OrgSize, string> = { small: 'Small', mid: 'Mid', large: 'Large', enterprise: 'Enterprise' }
 const MATURITY_LABELS: Record<OrgMaturityStage, string> = { startup: 'Startup', growth: 'Growth', scaling: 'Scaling', mature: 'Mature', transformation: 'Transformation', turnaround: 'Turnaround' }
 const OPERATING_MODEL_LABELS: Record<OrgOperatingModel, string> = { 'single-entity': 'Single entity', 'multi-entity': 'Multi-entity', 'holding-group': 'Holding group', matrix: 'Matrix', federated: 'Federated', 'joint-venture': 'Joint venture' }
-const EMP_COUNT_LABELS: Record<EmployeeCountBand, string> = { 'under-100': '< 100', '100-500': '100–500', '500-1000': '500–1,000', '1000-5000': '1,000–5,000', '5000-20000': '5,000–20,000', '20000-plus': '20,000+', unknown: 'Unknown' }
+const EMP_COUNT_LABELS: Record<EmployeeCountBand, string> = { 'under-100': '< 100', '100-500': '100-500', '500-1000': '500-1,000', '1000-5000': '1,000-5,000', '5000-20000': '5,000-20,000', '20000-plus': '20,000+', unknown: 'Unknown' }
 const GEO_SCOPE_LABELS: Record<GeographicScope, string> = { 'single-country': 'Single country', 'multi-country': 'Multi-country', regional: 'Regional', global: 'Global', unknown: 'Unknown' }
 const STRATEGIC_DRIVER_LABELS: Record<StrategicDriver, string> = {
   growth: 'Growth', 'cost-optimization': 'Cost optimization', transformation: 'Transformation',
@@ -124,7 +130,7 @@ const STRATEGIC_DRIVER_LABELS: Record<StrategicDriver, string> = {
   restructuring: 'Restructuring', 'ipo-preparation': 'IPO preparation',
   'sustainability-esg': 'ESG / sustainability', nationalization: 'Nationalization', other: 'Other',
 }
-const TIME_HORIZON_LABELS: Record<TimeHorizon, string> = { immediate: 'Immediate (< 4 weeks)', 'short-term': 'Short-term (1–3 months)', 'medium-term': 'Medium-term (3–6 months)', 'long-term': 'Long-term (6+ months)', unspecified: 'Unspecified' }
+const TIME_HORIZON_LABELS: Record<TimeHorizon, string> = { immediate: 'Immediate (< 4 weeks)', 'short-term': 'Short-term (1-3 months)', 'medium-term': 'Medium-term (3-6 months)', 'long-term': 'Long-term (6+ months)', unspecified: 'Unspecified' }
 const BUDGET_LABELS: Record<BudgetEnvelope, string> = { 'not-defined': 'Not defined', 'very-limited': 'Very limited', moderate: 'Moderate', substantial: 'Substantial', open: 'Open / TBD' }
 const SPONSOR_LABELS: Record<ExecutiveSponsor, string> = { none: 'None', ceo: 'CEO', chro: 'CHRO', coo: 'COO', cfo: 'CFO', board: 'Board', other: 'Other' }
 const HC_AREA_LABELS: Record<HcChallengeArea, string> = {
@@ -215,11 +221,16 @@ function genId() { return `cb-${Date.now().toString(36)}-${Math.random().toStrin
 
 // ── Step 1: Organization context ───────────────────────────────────────────
 
-function StepOrg({ value, onChange }: { value: OrganizationContext; onChange: (v: OrganizationContext) => void }) {
+function StepOrg({ value, onChange, prefilled }: { value: OrganizationContext; onChange: (v: OrganizationContext) => void; prefilled?: boolean }) {
   const p = <K extends keyof OrganizationContext>(k: K, v: OrganizationContext[K]) => onChange({ ...value, [k]: v })
   return (
     <div className="space-y-6">
       <div><h2 className="text-2xl font-bold text-white">Organization context</h2><p className="text-sm text-slate-400 mt-1">Basic information about the client organization anchors all recommendations.</p></div>
+      {prefilled && (
+        <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm text-blue-300">
+          ✓ Pre-filled from your company profile · edit if needed
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <Input label="Organization name" placeholder="e.g. ACME Corporation" value={value.organizationName} onChange={e => p('organizationName', e.target.value)} />
@@ -312,7 +323,7 @@ function StepHcChallenges({ value, onChange }: { value: HcChallenges; onChange: 
 
       {value.selectedAreas.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Selected areas — set severity</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Selected areas: set severity</p>
           {value.selectedAreas.map(sel => (
             <div key={sel.area} className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-3 space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -474,33 +485,33 @@ function StepDesiredOutputs({ value, onChange }: { value: DesiredOutputs; onChan
 // ── Step 6: Review ─────────────────────────────────────────────────────────
 
 const ALL_STUDIOS = [
-  { name: 'HC Strategy Charter', area: 'strategy-business-alignment', href: '/skills', icon: '🏛️', description: 'Align HC strategy with business agenda' },
-  { name: 'Org Design Blueprint', area: 'organization-design', href: '/skills', icon: '🏗️', description: 'Redesign structures and reporting lines' },
-  { name: 'Workforce Planning', area: 'workforce-planning', href: '/skills', icon: '📊', description: 'Model headcount and capability gaps' },
-  { name: 'HiPo Studio', area: 'leadership', href: '/hipo-studio', icon: '⭐', description: 'Identify and develop high-potential talent' },
-  { name: 'Succession Planning', area: 'succession', href: '/skills', icon: '🔗', description: 'Build leadership pipeline readiness' },
-  { name: 'Performance Management', area: 'performance', href: '/skills', icon: '🎯', description: 'Design performance frameworks' },
-  { name: 'Employee Experience', area: 'employee-experience', href: '/skills', icon: '💡', description: 'Map and improve EX touchpoints' },
-  { name: 'Total Rewards', area: 'rewards', href: '/skills', icon: '💎', description: 'Benchmark and design compensation' },
-  { name: 'Talent Acquisition', area: 'talent-acquisition', href: '/skills', icon: '🎣', description: 'Attract and hire top talent' },
-  { name: 'Learning & Training', area: 'learning-training', href: '/skills', icon: '📚', description: 'Build learning journeys and curricula' },
-  { name: 'Skills Development', area: 'capability-skills', href: '/skills', icon: '🔧', description: 'Close critical skill gaps' },
-  { name: 'Leadership Development', area: 'leadership', href: '/skills', icon: '🚀', description: 'Develop leadership at all levels' },
-  { name: 'Capability Assessment', area: 'capability-skills', href: '/skills', icon: '📋', description: 'Assess and map organizational capabilities' },
-  { name: 'Process Excellence', area: 'process-excellence', href: '/skills', icon: '⚙️', description: 'Streamline and optimize HC processes' },
-  { name: 'Analytics & Productivity', area: 'analytics-productivity', href: '/skills', icon: '📈', description: 'Build people analytics dashboards' },
-  { name: 'Mobility Studio', area: 'mobility', href: '/skills', icon: '✈️', description: 'Design internal mobility programs' },
-  { name: 'Culture & Change', area: 'culture-change-readiness', href: '/skills', icon: '🌱', description: 'Assess and shift organizational culture' },
-  { name: 'AI & Digital Transform', area: 'ai-digital-transformation', href: '/skills', icon: '🤖', description: 'Lead AI-enabled HC transformation' },
-  { name: 'Framework Review', area: 'governance-operating-model', href: '/skills', icon: '🗂️', description: 'Review governance and operating models' },
-  { name: 'Benchmarking Studio', area: 'analytics-productivity', href: '/skills', icon: '🏆', description: 'Benchmark against industry peers' },
-  { name: 'Deck Generator', area: 'strategy-business-alignment', href: '/skills', icon: '🎨', description: 'Generate executive-ready presentations' },
-  { name: 'Playbook Studio', area: 'culture-change-readiness', href: '/skills', icon: '📖', description: 'Create implementation playbooks' },
-  { name: 'Infographic Studio', area: 'analytics-productivity', href: '/skills', icon: '🖼️', description: 'Visualize data and insights' },
-  { name: 'Brand Workspace', area: 'strategy-business-alignment', href: '/skills', icon: '✨', description: 'Build employer brand strategy' },
-  { name: 'Coaching & Mentoring', area: 'leadership', href: '/skills', icon: '🤝', description: 'Design coaching programs' },
-  { name: 'Early Career', area: 'talent-acquisition', href: '/skills', icon: '🌟', description: 'Build graduate and early career pipelines' },
-  { name: 'Business Plan Studio', area: 'strategy-business-alignment', href: '/skills', icon: '📝', description: 'Craft HC business cases and plans' },
+  { name: 'HC Strategy Charter', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Align HC strategy with business agenda' },
+  { name: 'Org Design Blueprint', area: 'organization-design', href: '/skills', icon: '', description: 'Redesign structures and reporting lines' },
+  { name: 'Workforce Planning', area: 'workforce-planning', href: '/skills', icon: '', description: 'Model headcount and capability gaps' },
+  { name: 'HiPo Studio', area: 'leadership', href: '/hipo-studio', icon: '', description: 'Identify and develop high-potential talent' },
+  { name: 'Succession Planning', area: 'succession', href: '/skills', icon: '', description: 'Build leadership pipeline readiness' },
+  { name: 'Performance Management', area: 'performance', href: '/skills', icon: '', description: 'Design performance frameworks' },
+  { name: 'Employee Experience', area: 'employee-experience', href: '/skills', icon: '', description: 'Map and improve EX touchpoints' },
+  { name: 'Total Rewards', area: 'rewards', href: '/skills', icon: '', description: 'Benchmark and design compensation' },
+  { name: 'Talent Acquisition', area: 'talent-acquisition', href: '/skills', icon: '', description: 'Attract and hire top talent' },
+  { name: 'Learning & Training', area: 'learning-training', href: '/skills', icon: '', description: 'Build learning journeys and curricula' },
+  { name: 'Skills Development', area: 'capability-skills', href: '/skills', icon: '', description: 'Close critical skill gaps' },
+  { name: 'Leadership Development', area: 'leadership', href: '/skills', icon: '', description: 'Develop leadership at all levels' },
+  { name: 'Capability Assessment', area: 'capability-skills', href: '/skills', icon: '', description: 'Assess and map organizational capabilities' },
+  { name: 'Process Excellence', area: 'process-excellence', href: '/skills', icon: '', description: 'Streamline and optimize HC processes' },
+  { name: 'Analytics & Productivity', area: 'analytics-productivity', href: '/skills', icon: '', description: 'Build people analytics dashboards' },
+  { name: 'Mobility Studio', area: 'mobility', href: '/skills', icon: '', description: 'Design internal mobility programs' },
+  { name: 'Culture & Change', area: 'culture-change-readiness', href: '/skills', icon: '', description: 'Assess and shift organizational culture' },
+  { name: 'AI & Digital Transform', area: 'ai-digital-transformation', href: '/skills', icon: '', description: 'Lead AI-enabled HC transformation' },
+  { name: 'Framework Review', area: 'governance-operating-model', href: '/skills', icon: '', description: 'Review governance and operating models' },
+  { name: 'Benchmarking Studio', area: 'analytics-productivity', href: '/skills', icon: '', description: 'Benchmark against industry peers' },
+  { name: 'Deck Generator', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Generate executive-ready presentations' },
+  { name: 'Playbook Studio', area: 'culture-change-readiness', href: '/skills', icon: '', description: 'Create implementation playbooks' },
+  { name: 'Infographic Studio', area: 'analytics-productivity', href: '/skills', icon: '', description: 'Visualize data and insights' },
+  { name: 'Brand Workspace', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Build employer brand strategy' },
+  { name: 'Coaching & Mentoring', area: 'leadership', href: '/skills', icon: '', description: 'Design coaching programs' },
+  { name: 'Early Career', area: 'talent-acquisition', href: '/skills', icon: '', description: 'Build graduate and early career pipelines' },
+  { name: 'Business Plan Studio', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Craft HC business cases and plans' },
 ]
 
 function CircleProgress({ pct, size = 80, stroke = 7 }: { pct: number; size?: number; stroke?: number }) {
@@ -519,13 +530,23 @@ function CircleProgress({ pct, size = 80, stroke = 7 }: { pct: number; size?: nu
   )
 }
 
-function StepReview({ brief, onLaunch }: { brief: ChallengeBriefData; onLaunch: () => void }) {
+function StepReview({ brief, onLaunch, launching, launchError }: { brief: ChallengeBriefData; onLaunch: () => void; launching?: boolean; launchError?: string | null }) {
   const navigate = useNavigate()
   const [deselected, setDeselected] = useState<Set<string>>(new Set())
   const [hoveredStudio, setHoveredStudio] = useState<string | null>(null)
 
   const selectedAreaIds = brief.hcChallenges.selectedAreas.map(a => a.area)
-  const recommended = ALL_STUDIOS.filter(s => selectedAreaIds.includes(s.area as HcChallengeArea))
+  // Brief-driven recommendations: score studios from signals, fall back to naive area-match
+  const briefDriven = recommendStudios(signalsFromBriefContent(brief), 8)
+  const briefDrivenNames = new Set(briefDriven.map(r => r.name))
+  const legacyMatch = ALL_STUDIOS.filter(s => selectedAreaIds.includes(s.area as HcChallengeArea))
+  const recommended = [
+    ...briefDriven.map(r => {
+      const legacy = ALL_STUDIOS.find(s => s.name === r.name)
+      return legacy ?? { name: r.name, icon: '', area: 'none' as HcChallengeArea, description: r.description, why: r.reasons[0] ?? '' }
+    }),
+    ...legacyMatch.filter(s => !briefDrivenNames.has(s.name)),
+  ]
   const displayStudios = recommended.length > 0 ? recommended : ALL_STUDIOS.slice(0, 12)
   const activeStudios = displayStudios.filter(s => !deselected.has(s.name))
 
@@ -539,7 +560,7 @@ function StepReview({ brief, onLaunch }: { brief: ChallengeBriefData; onLaunch: 
   }
 
   const sections = [
-    { label: 'Organization', done: brief.organization.organizationName.length > 0, value: brief.organization.organizationName || '—', weight: 15 },
+    { label: 'Organization', done: brief.organization.organizationName.length > 0, value: brief.organization.organizationName || ' - ', weight: 15 },
     { label: 'Situation summary', done: brief.businessSituation.situationSummary.length > 10, value: brief.businessSituation.situationSummary.length > 10 ? `${brief.businessSituation.situationSummary.substring(0, 60)}…` : 'Not filled', weight: 20 },
     { label: 'Strategic drivers', done: brief.businessSituation.strategicDrivers.length > 0, value: brief.businessSituation.strategicDrivers.length > 0 ? `${brief.businessSituation.strategicDrivers.length} driver${brief.businessSituation.strategicDrivers.length > 1 ? 's' : ''}` : 'None selected', weight: 10 },
     { label: 'HC challenges', done: brief.hcChallenges.selectedAreas.length > 0, value: brief.hcChallenges.selectedAreas.length > 0 ? `${brief.hcChallenges.selectedAreas.length} area${brief.hcChallenges.selectedAreas.length > 1 ? 's' : ''}` : 'None selected', weight: 25 },
@@ -632,7 +653,7 @@ function StepReview({ brief, onLaunch }: { brief: ChallengeBriefData; onLaunch: 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {recommended.length > 0 ? `Matched studios — ${activeStudios.length} selected` : `Available studios — ${activeStudios.length} selected`}
+            {recommended.length > 0 ? `Matched studios: ${activeStudios.length} selected` : `Available studios: ${activeStudios.length} selected`}
           </p>
           {deselected.size > 0 && (
             <button type="button" onClick={() => setDeselected(new Set())}
@@ -704,11 +725,16 @@ function StepReview({ brief, onLaunch }: { brief: ChallengeBriefData; onLaunch: 
           <Button variant="secondary" size="sm" onClick={() => navigate('/skills')}>
             Browse all
           </Button>
-          <Button size="sm" onClick={onLaunch} rightIcon={<ArrowRight className="w-4 h-4" />}>
-            Launch studios
+          <Button size="sm" onClick={onLaunch} disabled={launching} rightIcon={<ArrowRight className="w-4 h-4" />}>
+            {launching ? 'Generating…' : 'Generate diagnosis'}
           </Button>
         </div>
       </div>
+      {launchError && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
+          {launchError}
+        </div>
+      )}
     </div>
   )
 }
@@ -735,6 +761,56 @@ export default function ChallengeBrief() {
   const workspaceId = searchParams.get('workspaceId') ?? ''
 
   const { getBrief, saveBrief: saveToStore } = useBriefStore()
+  const { isCompleted: isWsOnboardingDone } = useOnboardingCompletions()
+  const setActiveWorkspace = useClientProfileStore(s => s.setActiveWorkspace)
+  const getProfileFor = useClientProfileStore(s => s.getProfileFor)
+  const [orgPrefilled, setOrgPrefilled] = useState(false)
+
+  // Gate: the brief is only meaningful after onboarding. If a workspace is
+  // attached but its onboarding is not yet done, send the user there first.
+  useEffect(() => {
+    if (workspaceId && !isWsOnboardingDone(workspaceId)) {
+      navigate(`/onboarding?workspaceId=${workspaceId}`, { replace: true })
+    }
+  }, [workspaceId, isWsOnboardingDone, navigate])
+
+  // Pre-fill organization step from clientProfile (captured at Onboarding)
+  // so users don't re-answer the same questions. Only fills EMPTY brief fields.
+  useEffect(() => {
+    if (workspaceId) setActiveWorkspace(workspaceId)
+    const profile = workspaceId ? getProfileFor(workspaceId) : getProfileFor('_unscoped')
+    const org = profile?.organization
+    if (!org) return
+    setBriefState(prev => {
+      const cur = prev.organization
+      const isDefault = <T,>(v: T, def: T) => v === undefined || v === null || v === '' || v === def
+      const nextName = isDefault(cur.organizationName, '') && org.name ? org.name : cur.organizationName
+      const nextIndustry = isDefault(cur.industry, 'other') && org.industry ? mapIndustry(org.industry) : cur.industry
+      const nextRegion = isDefault(cur.region, 'gcc') && org.region ? mapRegion(org.region) : cur.region
+      const nextSize = isDefault(cur.organizationSize, 'large') && org.organizationSize ? mapSize(org.organizationSize) : cur.organizationSize
+      const nextMaturity = isDefault(cur.maturityStage, 'mature') && org.maturityStage ? mapMaturity(org.maturityStage) : cur.maturityStage
+      const nextOpModel = isDefault(cur.operatingModel, 'single-entity') && org.operatingModel ? mapOperatingModel(org.operatingModel) : cur.operatingModel
+      const changed =
+        nextName !== cur.organizationName || nextIndustry !== cur.industry ||
+        nextRegion !== cur.region || nextSize !== cur.organizationSize ||
+        nextMaturity !== cur.maturityStage || nextOpModel !== cur.operatingModel
+      if (!changed) return prev
+      setOrgPrefilled(true)
+      return {
+        ...prev,
+        organization: {
+          ...cur,
+          organizationName: nextName,
+          industry: nextIndustry,
+          region: nextRegion,
+          organizationSize: nextSize,
+          maturityStage: nextMaturity,
+          operatingModel: nextOpModel,
+        },
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId])
 
   // Restore existing brief for this workspace if available
   const [stepIndex, setStepIndex] = useState(0)
@@ -757,12 +833,76 @@ export default function ChallengeBrief() {
     }
   })
   const [saved, setSaved] = useState(false)
+  const [remoteBriefId, setRemoteBriefId] = useState<string | null>(null)
+  const remoteBriefIdRef = useRef<string | null>(null)
+  const createInFlightRef = useRef<Promise<string | null> | null>(null)
+
+  // Resume from server-side brief if one exists for this workspace
+  useEffect(() => {
+    if (!workspaceId) return
+    challengeBriefsAPI.list().then(res => {
+      const raw = (Array.isArray(res.data) ? res.data : res.data?.briefs ?? []) as Array<Record<string, unknown>>
+      const existing = raw.find(b => b.workspace_id === workspaceId && b.status === 'draft')
+      if (!existing) return
+      const id = String(existing.id ?? '')
+      setRemoteBriefId(id)
+      remoteBriefIdRef.current = id
+      const content = existing.content as Partial<ChallengeBriefData> & { _stepIndex?: number } | undefined
+      if (content) {
+        setBriefState(prev => ({ ...prev, ...content }))
+        if (typeof content._stepIndex === 'number') setStepIndex(content._stepIndex)
+      }
+    }).catch(() => {})
+  }, [workspaceId])
+
+  // JSON-clean payload: drop undefined, Date, Set values that fail server validation
+  const cleanForJSON = useCallback((obj: unknown): unknown => {
+    try { return JSON.parse(JSON.stringify(obj)) } catch { return {} }
+  }, [])
 
   const updateBrief = (next: ChallengeBriefData) => {
     setBriefState(next)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  // Server-side autosave (debounced) — creates the brief on first save, patches thereafter
+  const autosavePayload = useMemo(() => ({ ...brief, _stepIndex: stepIndex }), [brief, stepIndex])
+  const onSaveBrief = useCallback(async (v: typeof autosavePayload) => {
+    if (!workspaceId) return
+    const cleanContent = cleanForJSON(v) as Record<string, unknown>
+    // Race-safe: if a create is already in flight, await it instead of starting another
+    if (!remoteBriefIdRef.current && createInFlightRef.current) {
+      const id = await createInFlightRef.current
+      if (id) await challengeBriefsAPI.update(id, { content: cleanContent })
+      return
+    }
+    if (remoteBriefIdRef.current) {
+      await challengeBriefsAPI.update(remoteBriefIdRef.current, { content: cleanContent })
+      return
+    }
+    // First save — POST and gate other concurrent calls until done
+    createInFlightRef.current = (async () => {
+      try {
+        const res = await challengeBriefsAPI.create({
+          workspace_id: workspaceId,
+          title: (v.organization?.organizationName as string) || 'Untitled brief',
+          content: cleanContent,
+        })
+        const id = (res.data as { id?: string })?.id ?? null
+        if (id) {
+          remoteBriefIdRef.current = id
+          setRemoteBriefId(id)
+        }
+        return id
+      } finally {
+        // tiny tick to ensure any waiters resolve before we clear the gate
+        setTimeout(() => { createInFlightRef.current = null }, 0)
+      }
+    })()
+    await createInFlightRef.current
+  }, [workspaceId, cleanForJSON])
+  const { status: briefSaveStatus } = useAutosave({ value: autosavePayload, onSave: onSaveBrief, delay: 800, enabled: !!workspaceId })
 
   const isFirst = stepIndex === 0
   const isLast = stepIndex === STEPS.length - 1
@@ -774,7 +914,10 @@ export default function ChallengeBrief() {
   }
   const exitAndSave = () => { navigate(workspaceId ? `/workspaces/${workspaceId}` : '/workspaces') }
 
-  const completeBrief = () => {
+  const [launching, setLaunching] = useState(false)
+  const [launchError, setLaunchError] = useState<string | null>(null)
+
+  const completeBrief = async () => {
     if (workspaceId) {
       saveToStore(workspaceId, {
         organizationName: brief.organization.organizationName,
@@ -789,7 +932,19 @@ export default function ChallengeBrief() {
         completedAt: new Date().toISOString(),
       })
     }
-    navigate(workspaceId ? `/workspaces/${workspaceId}` : '/workspaces')
+    setLaunching(true)
+    setLaunchError(null)
+    try {
+      const res = await api.post('/hc-platform/diagnose-from-brief', {
+        brief: cleanForJSON(brief),
+        workspace_id: workspaceId ?? null,
+      })
+      const diagnosis = res.data as { review_id: string }
+      navigate(`/brief-results/${diagnosis.review_id}`, { state: { diagnosis } })
+    } catch (err: any) {
+      setLaunchError(err?.response?.data?.detail || 'Could not generate diagnosis. Try again.')
+      setLaunching(false)
+    }
   }
 
   const variants = {
@@ -801,7 +956,7 @@ export default function ChallengeBrief() {
   return (
     <div className="min-h-full bg-[#0c0e14]">
       <div className="flex flex-col items-center px-4 sm:px-6 py-8 sm:py-12">
-        <div className="w-full max-w-3xl space-y-6">
+        <div className="w-full max-w-5xl space-y-6">
           {/* Back to workspace */}
           {workspaceId && (
             <div className="flex items-center justify-between">
@@ -870,7 +1025,7 @@ export default function ChallengeBrief() {
           <div className="rounded-2xl border border-[#1a1e2e] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18 }}>
-                {stepIndex === 0 && <StepOrg value={brief.organization} onChange={v => updateBrief({ ...brief, organization: v })} />}
+                {stepIndex === 0 && <StepOrg value={brief.organization} onChange={v => updateBrief({ ...brief, organization: v })} prefilled={orgPrefilled} />}
                 {stepIndex === 1 && <StepSituation value={brief.businessSituation} onChange={v => updateBrief({ ...brief, businessSituation: v })} />}
                 {stepIndex === 2 && <StepHcChallenges value={brief.hcChallenges} onChange={v => updateBrief({ ...brief, hcChallenges: v })} />}
                 {stepIndex === 3 && (
@@ -883,7 +1038,7 @@ export default function ChallengeBrief() {
                   />
                 )}
                 {stepIndex === 4 && <StepDesiredOutputs value={brief.desiredOutputs} onChange={v => updateBrief({ ...brief, desiredOutputs: v })} />}
-                {stepIndex === 5 && <StepReview brief={brief} onLaunch={completeBrief} />}
+                {stepIndex === 5 && <StepReview brief={brief} onLaunch={completeBrief} launching={launching} launchError={launchError} />}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -892,6 +1047,7 @@ export default function ChallengeBrief() {
           <div className="flex items-center justify-between pt-2">
             <Button variant="ghost" size="lg" onClick={back} disabled={isFirst} leftIcon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
             <div className="flex items-center gap-4">
+              <SaveIndicator status={briefSaveStatus} />
               <span className="text-sm text-slate-600 font-medium">Step {stepIndex + 1} of {STEPS.length}</span>
               {!isLast && (
                 <Button size="lg" onClick={advance} rightIcon={<ArrowRight className="w-4 h-4" />}>Save & continue</Button>
@@ -934,6 +1090,14 @@ function mapSize(v: string): OrgSize {
 function mapMaturity(v: string): OrgMaturityStage {
   const map: Record<string, OrgMaturityStage> = { startup: 'startup', growth: 'growth', scale: 'scaling', mature: 'mature', restructuring: 'transformation' }
   return map[v] ?? 'mature'
+}
+
+function mapOperatingModel(v: string): OrgOperatingModel {
+  const map: Record<string, OrgOperatingModel> = {
+    'single-entity': 'single-entity', 'multi-entity': 'multi-entity',
+    'gcc-shared-services': 'matrix', holding: 'holding-group', 'joint-venture': 'joint-venture',
+  }
+  return map[v] ?? 'single-entity'
 }
 
 function mapDrivers(priorities: string[]): StrategicDriver[] {

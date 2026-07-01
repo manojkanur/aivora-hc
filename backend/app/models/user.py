@@ -5,7 +5,9 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from typing import Any
+
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,6 +45,7 @@ class User(UUIDBase):
     level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    onboarding_state: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="users")

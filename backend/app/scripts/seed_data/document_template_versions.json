@@ -1,0 +1,80 @@
+[
+  {
+    "template_id": "executive_brief",
+    "version": 1,
+    "code_ref": "cv1.strategy.executive_strategy_brief.v1",
+    "sections": {
+      "sections": [
+        {"id": "headline", "title": "Headline", "type": "callout", "prompt_key": "executive_summary_v1", "blocks": [{"text": {"from": "ai.executive_summary.headline"}}]},
+        {"id": "executive_summary", "title": "Executive Summary", "type": "prose", "prompt_key": "executive_summary_v1", "blocks": [{"body": {"from": "ai.executive_summary.summary"}}]},
+        {"id": "key_themes", "title": "Top Themes", "type": "list", "blocks": [{"items": {"from": "ai.executive_summary.top_themes"}}]},
+        {"id": "recommendations", "title": "Strategic Recommendations", "type": "table", "prompt_key": "recommendations_v1", "blocks": [{"rows": {"from": "ai.recommendations.recommendations"}}]},
+        {"id": "risks", "title": "Risks", "type": "list", "prompt_key": "risk_assessment_v1", "blocks": [{"items": {"from": "ai.risk_assessment.risks"}}]},
+        {"id": "next_steps", "title": "Next Steps", "type": "list", "blocks": [{"items": {"from": "context.next_steps", "default": []}}]}
+      ]
+    },
+    "meta": {"layout": "executive_one_pager"}
+  },
+  {
+    "template_id": "business_plan_brief",
+    "version": 1,
+    "code_ref": "cv1.business-plan.business_plan_brief.v1",
+    "sections": {
+      "sections": [
+        {"id": "ambition", "title": "Ambition", "type": "prose", "blocks": [{"body": {"from": "context.ambition"}}]},
+        {"id": "priorities", "title": "Strategic Priorities", "type": "list", "prompt_key": "recommendations_v1", "blocks": [{"items": {"from": "ai.recommendations.recommendations"}}]},
+        {"id": "initiatives", "title": "Initiative Roadmap", "type": "table", "blocks": [{"rows": {"from": "context.initiatives"}}]},
+        {"id": "milestones", "title": "Owners, Milestones, Measures", "type": "table", "blocks": [{"rows": {"from": "context.milestones"}}]},
+        {"id": "risks", "title": "Risks & Dependencies", "type": "list", "prompt_key": "risk_assessment_v1", "blocks": [{"items": {"from": "ai.risk_assessment.risks"}}]}
+      ]
+    },
+    "meta": {"layout": "business_plan"}
+  },
+  {
+    "template_id": "maturity_assessment_report",
+    "version": 1,
+    "code_ref": "cv1.maturity.maturity_assessment_report.v1",
+    "sections": {
+      "sections": [
+        {"id": "summary", "title": "Executive Summary", "type": "prose", "prompt_key": "executive_summary_v1", "blocks": [{"body": {"from": "ai.executive_summary.summary"}}]},
+        {"id": "current_state", "title": "Current State", "type": "kpi-grid", "blocks": [{"kpis": {"from": "context.maturity.dimensions"}}]},
+        {"id": "current_vs_target", "title": "Current vs Target", "type": "two-col-prose", "blocks": [{"left": {"from": "context.current"}, "right": {"from": "context.target"}}]},
+        {"id": "priority_matrix", "title": "Improvement Priority Matrix", "type": "table", "prompt_key": "recommendations_v1", "blocks": [{"rows": {"from": "ai.recommendations.recommendations"}}]},
+        {"id": "roadmap", "title": "Maturity Roadmap", "type": "table", "blocks": [{"rows": {"from": "context.roadmap.phases"}}]}
+      ]
+    },
+    "meta": {"layout": "maturity_report"}
+  },
+  {
+    "template_id": "benchmarking_executive_insight_brief",
+    "version": 1,
+    "code_ref": "cv1.benchmarking.executive_insight_brief.v1",
+    "sections": {
+      "sections": [
+        {"id": "industry_context", "title": "Industry Context", "type": "prose", "prompt_key": "industry_context_v1", "blocks": [{"body": {"from": "ai.industry_context.positioning"}}]},
+        {"id": "peer_positioning", "title": "Peer Positioning", "type": "table", "blocks": [{"rows": {"from": "ai.industry_context.peer_comparisons"}}]},
+        {"id": "benchmark_gaps", "title": "Benchmark Gaps", "type": "list", "prompt_key": "key_findings_v1", "blocks": [{"items": {"from": "ai.key_findings.gaps"}}]},
+        {"id": "best_practice", "title": "Best Practice Recommendations", "type": "list", "prompt_key": "recommendations_v1", "blocks": [{"items": {"from": "ai.recommendations.recommendations"}}]}
+      ]
+    },
+    "meta": {"layout": "benchmarking_brief"}
+  },
+  {
+    "template_id": "framework_review_diagnostic",
+    "version": 1,
+    "code_ref": "cv1.framework-review.framework_review_diagnostic.v1",
+    "sections": {
+      "sections": [
+        {"id": "summary", "title": "Diagnostic Summary", "type": "prose", "prompt_key": "executive_summary_v1", "blocks": [{"body": {"from": "ai.executive_summary.summary"}}]},
+        {"id": "current_state_framework", "title": "Current State Framework", "type": "kpi-grid", "blocks": [{"kpis": {"from": "context.diagnostic_results.dimensions"}}]},
+        {"id": "key_findings", "title": "Strengths & Gaps", "type": "two-col-prose", "prompt_key": "key_findings_v1", "blocks": [{"left": {"from": "ai.key_findings.strengths"}, "right": {"from": "ai.key_findings.gaps"}}]},
+        {"id": "target_state", "title": "Target State Design", "type": "prose", "blocks": [{"body": {"from": "context.target_state.summary"}}]},
+        {"id": "recommendations", "title": "Recommended Changes", "type": "table", "prompt_key": "recommendations_v1", "blocks": [{"rows": {"from": "ai.recommendations.recommendations"}}]},
+        {"id": "governance", "title": "Governance & Accountability", "type": "list", "blocks": [{"items": {"from": "context.governance_recommendations", "default": []}}]},
+        {"id": "roadmap", "title": "Improvement Roadmap", "type": "table", "blocks": [{"rows": {"from": "context.roadmap.phases"}}]},
+        {"id": "risks", "title": "Risks", "type": "list", "prompt_key": "risk_assessment_v1", "blocks": [{"items": {"from": "ai.risk_assessment.risks"}}]}
+      ]
+    },
+    "meta": {"layout": "framework_review_diagnostic"}
+  }
+]

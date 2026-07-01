@@ -21,7 +21,9 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
+  const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname
+  // Never redirect back to /onboarding on login — onboarding is a one-time post-signup flow
+  const from = (!rawFrom || rawFrom === '/onboarding') ? '/dashboard' : rawFrom
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,7 +37,11 @@ export default function Login() {
       if (res.data.tenant) setTenant(res.data.tenant)
       navigate(from, { replace: true })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+      let msg: string | null = null
+      if (typeof detail === 'string') msg = detail
+      else if (Array.isArray(detail)) msg = detail.map((d: { msg?: string }) => d?.msg).filter(Boolean).join('; ') || null
+      else if (detail && typeof detail === 'object') msg = (detail as { msg?: string }).msg ?? null
       setError(msg || 'Invalid email or password')
     } finally {
       setIsLoading(false)

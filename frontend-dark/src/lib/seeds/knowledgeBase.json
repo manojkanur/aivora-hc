@@ -1,0 +1,331 @@
+{
+  "version": "1.0",
+  "categories": [
+    { "id": "frameworks",   "label": "Frameworks" },
+    { "id": "playbooks",    "label": "Playbooks" },
+    { "id": "research",     "label": "Research" },
+    { "id": "case-studies", "label": "Case Studies" },
+    { "id": "tools",        "label": "Tools & Templates" }
+  ],
+  "articles": [
+    {
+      "id": "kb-001",
+      "title": "Designing an HC Strategy That Survives the Boardroom",
+      "category": "frameworks",
+      "dimensions": ["strategy-capability"],
+      "readMinutes": 8,
+      "author": "Aivora Editorial",
+      "date": "2026-04-12",
+      "summary": "A six-part scaffold for translating business strategy into HC priorities the CEO will defend.",
+      "tags": ["strategy", "charter", "executive"],
+      "sections": [
+        { "heading": "Why most HC strategies fail board review", "body": "They read as activity lists, not bets. Boards want to see capital allocation logic - where talent investment creates competitive advantage and what is being deprioritised in exchange." },
+        { "heading": "The six-part scaffold", "body": "1. Business thesis. 2. Capability bets. 3. Workforce demand-supply gap. 4. Capability roadmap. 5. Investment case. 6. Leading indicators. Each part must be one page." },
+        { "heading": "The one-slide test", "body": "If you can't articulate the strategy on a single slide that a non-HR director can repeat back, the strategy isn't strategy yet - it's a workplan." }
+      ]
+    },
+    {
+      "id": "kb-002",
+      "title": "Building a Calibrated HiPo Identification Process",
+      "category": "playbooks",
+      "dimensions": ["leadership-hipo"],
+      "readMinutes": 12,
+      "author": "Aivora Editorial",
+      "date": "2026-03-28",
+      "summary": "Multi-rater HiPo identification that stands up to challenge - calibration mechanics, common pitfalls, and a quarterly cadence.",
+      "tags": ["hipo", "calibration", "talent-review"],
+      "sections": [
+        { "heading": "Define HiPo before you find them", "body": "A HiPo is someone who can grow at least two levels within five years AND embody the leadership behaviours that scale the strategy. Without both halves, the list becomes a popularity contest." },
+        { "heading": "The 9-box trap", "body": "9-box outputs are useful for conversation but dangerous as a deciding artefact. Force ranking by potential is where bias compounds." },
+        { "heading": "Calibration mechanics", "body": "Cross-functional calibration panels. Standardized evidence templates. A devil's-advocate role assigned each session. Track placement changes meeting-to-meeting." }
+      ]
+    },
+    {
+      "id": "kb-003",
+      "title": "The Engagement Survey Is Not the Engagement Strategy",
+      "category": "research",
+      "dimensions": ["engagement-culture"],
+      "readMinutes": 6,
+      "author": "Aivora Research",
+      "date": "2026-04-02",
+      "summary": "Most engagement programs collect signal well and act on it poorly. A framework for closing the listen-to-act loop.",
+      "tags": ["engagement", "listening", "culture"],
+      "sections": [
+        { "heading": "The action gap", "body": "Across 41 organisations we studied in 2025-26, 87% ran an annual survey, but only 34% could point to a decision changed by it. The gap isn't measurement - it's accountability for action." },
+        { "heading": "Manager-team-level accountability", "body": "Engagement scores reported only at function level let managers off the hook. Team-level dashboards visible to the manager's manager change behaviour fastest." }
+      ]
+    },
+    {
+      "id": "kb-004",
+      "title": "Workforce Planning When Strategy Keeps Changing",
+      "category": "playbooks",
+      "dimensions": ["workforce-analytics", "strategy-capability"],
+      "readMinutes": 10,
+      "author": "Aivora Editorial",
+      "date": "2026-03-15",
+      "summary": "Scenario-based workforce planning for volatile environments. How to plan for three futures without tripling the work.",
+      "tags": ["workforce-planning", "scenarios", "analytics"],
+      "sections": [
+        { "heading": "Three scenarios is the sweet spot", "body": "Base, accelerated, and constrained. More than three and the planning collapses under its own weight; fewer than three and you've planned a forecast, not scenarios." },
+        { "heading": "What stays constant across scenarios", "body": "Roughly 60% of capability needs are scenario-independent. Build those first; debate the contingent 40% with the business quarterly." }
+      ]
+    },
+    {
+      "id": "kb-005",
+      "title": "A Job Architecture That Doesn't Calcify",
+      "category": "frameworks",
+      "dimensions": ["talent-architecture"],
+      "readMinutes": 9,
+      "author": "Aivora Editorial",
+      "date": "2026-02-20",
+      "summary": "Job architectures that survive five years share four design properties - fewer levels, broader bands, skills overlays, and a published revision cadence.",
+      "tags": ["job-architecture", "career-paths", "skills"],
+      "sections": [
+        { "heading": "The four design properties", "body": "Fewer levels (8-10 max). Broader pay bands with skill-based progression inside. Skills overlay decoupled from the level structure. Published quarterly revision cadence." },
+        { "heading": "Where most architectures break", "body": "They break when promotion criteria become entitlements rather than evidence. The architecture is only as honest as its calibration discipline." }
+      ]
+    },
+    {
+      "id": "kb-006",
+      "title": "Change Readiness: Measuring the Things That Predict Adoption",
+      "category": "research",
+      "dimensions": ["change-readiness"],
+      "readMinutes": 7,
+      "author": "Aivora Research",
+      "date": "2026-03-08",
+      "summary": "Training completion is a vanity metric. Real adoption signal comes from behaviour change measured 30, 60, and 90 days post go-live.",
+      "tags": ["change", "adoption", "behaviour"],
+      "sections": [
+        { "heading": "The 30-60-90 adoption checkpoints", "body": "30 days: behaviour observed in 20% of target. 60 days: 50%. 90 days: 70%. If you're not at 70% by 90 days, the intervention design - not the people - needs revisiting." }
+      ]
+    },
+    {
+      "id": "kb-007",
+      "title": "Internal Mobility as a Retention Lever",
+      "category": "case-studies",
+      "dimensions": ["talent-architecture", "engagement-culture"],
+      "readMinutes": 11,
+      "author": "Aivora Editorial",
+      "date": "2026-01-30",
+      "summary": "How one 12,000-person professional services firm cut regrettable attrition 23% by opening internal moves and rebuilding manager incentives.",
+      "tags": ["mobility", "retention", "case-study"],
+      "sections": [
+        { "heading": "The two-blocker problem", "body": "Most internal mobility programs fail because managers block transfers and because employees can't find roles. Both have to be fixed at once." },
+        { "heading": "The incentive fix", "body": "The firm started crediting managers for talent exported as well as imported, with both flowing into talent-development KPIs." }
+      ]
+    },
+    {
+      "id": "kb-008",
+      "title": "The Manager Effectiveness Bar - and How to Raise It",
+      "category": "playbooks",
+      "dimensions": ["leadership-hipo", "engagement-culture"],
+      "readMinutes": 8,
+      "author": "Aivora Editorial",
+      "date": "2026-02-10",
+      "summary": "Six behaviours separate top-quartile managers from the rest. A practical roadmap to lift the bottom half by one tier.",
+      "tags": ["managers", "leadership", "development"],
+      "sections": [
+        { "heading": "The six behaviours", "body": "Clear context-setting. Routine 1:1s. Calibrated performance feedback. Visible advocacy. Career development conversations. Decision transparency." }
+      ]
+    },
+    {
+      "id": "kb-009",
+      "title": "Skills Taxonomies: Built or Bought?",
+      "category": "frameworks",
+      "dimensions": ["talent-architecture"],
+      "readMinutes": 7,
+      "author": "Aivora Editorial",
+      "date": "2026-04-05",
+      "summary": "When to license an external taxonomy, when to build, and how to keep either alive after launch.",
+      "tags": ["skills", "taxonomy"],
+      "sections": [
+        { "heading": "License if…", "body": "You need breadth (1000+ skills) and have low patience for curation. Plan for at least 20% local override." },
+        { "heading": "Build if…", "body": "Your business has unusual skills not in commercial taxonomies (e.g. specialised manufacturing, regulated functions)." }
+      ]
+    },
+    {
+      "id": "kb-010",
+      "title": "From Annual Talent Review to Quarterly Talent Operating Rhythm",
+      "category": "playbooks",
+      "dimensions": ["leadership-hipo", "talent-architecture"],
+      "readMinutes": 9,
+      "author": "Aivora Editorial",
+      "date": "2026-03-22",
+      "summary": "The annual talent review is too slow for modern businesses. A quarterly operating rhythm with clear decisions, owners and timelines.",
+      "tags": ["talent-review", "cadence", "succession"],
+      "sections": [
+        { "heading": "What changes in a quarterly cadence", "body": "Smaller agendas, faster decisions, clearer ownership. The annual deep-dive becomes a year-end synthesis, not a stand-alone event." }
+      ]
+    },
+    {
+      "id": "kb-011",
+      "title": "Rewards Architecture for Skills-Based Organizations",
+      "category": "frameworks",
+      "dimensions": ["talent-architecture", "engagement-culture"],
+      "readMinutes": 10,
+      "author": "Aivora Editorial",
+      "date": "2026-02-28",
+      "summary": "Pay-for-skills sounds great until you implement it. A practical model that mixes role-pay and skills-pay without breaking the bank.",
+      "tags": ["rewards", "skills", "pay"],
+      "sections": [
+        { "heading": "Hybrid is the answer", "body": "Pure pay-for-skills creates wage inflation. Role-pay floor plus targeted skills premiums for scarce/strategic skills is more sustainable." }
+      ]
+    },
+    {
+      "id": "kb-012",
+      "title": "Predictive Attrition Models That Don't Embarrass You",
+      "category": "research",
+      "dimensions": ["workforce-analytics"],
+      "readMinutes": 11,
+      "author": "Aivora Research",
+      "date": "2026-04-01",
+      "summary": "Most predictive attrition models perform worse than a simple tenure baseline. Build them right, or don't build them.",
+      "tags": ["analytics", "attrition", "prediction"],
+      "sections": [
+        { "heading": "Baseline first", "body": "If your model can't beat 'tenure under 18 months + recent manager change' as a flag, it doesn't belong in production." },
+        { "heading": "What good looks like", "body": "AUC of 0.78+ on holdout. Quarterly recalibration. Manager-facing explanations, not just scores." }
+      ]
+    },
+    {
+      "id": "kb-013",
+      "title": "Onboarding First-Time Managers - A 90-Day Blueprint",
+      "category": "playbooks",
+      "dimensions": ["leadership-hipo"],
+      "readMinutes": 8,
+      "author": "Aivora Editorial",
+      "date": "2026-03-04",
+      "summary": "First-time managers fail in predictable ways. A 90-day blueprint with weekly checkpoints, peer pods, and coach access.",
+      "tags": ["managers", "onboarding", "first-time"],
+      "sections": [
+        { "heading": "Week-by-week", "body": "Weeks 1-2 context. Weeks 3-4 1:1 routines. Weeks 5-8 feedback skills. Weeks 9-12 team operating rhythm. Peer pod meets bi-weekly throughout." }
+      ]
+    },
+    {
+      "id": "kb-014",
+      "title": "Culture by Design, Not by Default",
+      "category": "frameworks",
+      "dimensions": ["engagement-culture"],
+      "readMinutes": 7,
+      "author": "Aivora Editorial",
+      "date": "2026-01-18",
+      "summary": "Culture is a function of three observable inputs: who you promote, what you tolerate, and what you measure.",
+      "tags": ["culture", "values"],
+      "sections": [
+        { "heading": "The three observable inputs", "body": "Promotion patterns signal what behaviour is rewarded. Tolerated behaviour sets the floor. What gets measured gets normalised." }
+      ]
+    },
+    {
+      "id": "kb-015",
+      "title": "Building an HC Analytics Function Worth Having",
+      "category": "playbooks",
+      "dimensions": ["workforce-analytics"],
+      "readMinutes": 13,
+      "author": "Aivora Editorial",
+      "date": "2026-02-15",
+      "summary": "Most HC analytics teams produce reports nobody acts on. A blueprint for building a function the business pulls from instead.",
+      "tags": ["analytics", "function", "operating-model"],
+      "sections": [
+        { "heading": "Start with the question, not the data", "body": "If a senior leader can't tell you what decision the dashboard will change, don't build the dashboard." }
+      ]
+    },
+    {
+      "id": "kb-016",
+      "title": "Designing for Hybrid Without Choosing Sides",
+      "category": "case-studies",
+      "dimensions": ["engagement-culture", "change-readiness"],
+      "readMinutes": 9,
+      "author": "Aivora Editorial",
+      "date": "2026-04-08",
+      "summary": "A global tech firm's three-year hybrid journey - what they tried, what failed, what stuck.",
+      "tags": ["hybrid", "rto", "experience"],
+      "sections": [
+        { "heading": "The three-act story", "body": "Act 1: top-down mandates. Act 2: team-level autonomy with anchor days. Act 3: outcome contracts with manager calibration." }
+      ]
+    },
+    {
+      "id": "kb-017",
+      "title": "M&A People Integration: The First 100 Days",
+      "category": "playbooks",
+      "dimensions": ["change-readiness", "leadership-hipo"],
+      "readMinutes": 12,
+      "author": "Aivora Editorial",
+      "date": "2026-01-25",
+      "summary": "The talent decisions that matter in M&A - and the ones leaders typically overweight.",
+      "tags": ["m-and-a", "integration", "retention"],
+      "sections": [
+        { "heading": "The retention bucket", "body": "Retention agreements work for 12-18 months. After that, retention is a function of role design and manager quality - not of bonus." }
+      ]
+    },
+    {
+      "id": "kb-018",
+      "title": "An Honest Look at AI in HR",
+      "category": "research",
+      "dimensions": ["workforce-analytics", "change-readiness"],
+      "readMinutes": 10,
+      "author": "Aivora Research",
+      "date": "2026-04-10",
+      "summary": "Where AI is delivering measurable value in HR today, where it's overhyped, and what to pilot before scaling.",
+      "tags": ["ai", "automation", "tooling"],
+      "sections": [
+        { "heading": "What's working", "body": "Document drafting, summarisation, intake triage, structured Q&A. Modest ROI but consistent." },
+        { "heading": "What's not", "body": "Resume screening with bias risk, automated performance scoring, and \"AI coaches\" with no human escalation path." }
+      ]
+    },
+    {
+      "id": "kb-019",
+      "title": "ESG and HC: Beyond the Annual Report",
+      "category": "frameworks",
+      "dimensions": ["strategy-capability", "engagement-culture"],
+      "readMinutes": 6,
+      "author": "Aivora Editorial",
+      "date": "2026-03-12",
+      "summary": "Embedding social KPIs in HC operating decisions, not just disclosures.",
+      "tags": ["esg", "social", "metrics"],
+      "sections": [
+        { "heading": "From reporting to operating", "body": "Choose three social KPIs that already exist as operating signals - pay-gap, attrition equity, promotion equity - and embed them in the talent review." }
+      ]
+    },
+    {
+      "id": "kb-020",
+      "title": "Total Rewards Statement Templates",
+      "category": "tools",
+      "dimensions": ["engagement-culture", "talent-architecture"],
+      "readMinutes": 4,
+      "author": "Aivora Tools",
+      "date": "2026-02-05",
+      "summary": "Three downloadable total rewards statement templates - exec, manager, professional - with personalised value calculations.",
+      "tags": ["template", "rewards"],
+      "sections": [
+        { "heading": "What's included", "body": "Three tiers of statement design, with worked examples and the calculation logic for each line item." }
+      ]
+    },
+    {
+      "id": "kb-021",
+      "title": "Coaching at Scale Without Diluting Quality",
+      "category": "playbooks",
+      "dimensions": ["leadership-hipo", "engagement-culture"],
+      "readMinutes": 8,
+      "author": "Aivora Editorial",
+      "date": "2026-03-18",
+      "summary": "How to widen access to coaching without the quality collapse that usually follows. Tiered models, peer coaching, and AI augmentation.",
+      "tags": ["coaching", "scale", "development"],
+      "sections": [
+        { "heading": "Tiered model", "body": "Executive - external coach. Senior - internal trained coach. Mid - peer pod + manager. Early - manager-as-coach training." }
+      ]
+    },
+    {
+      "id": "kb-022",
+      "title": "Operating Reviews That Include Talent",
+      "category": "frameworks",
+      "dimensions": ["strategy-capability", "workforce-analytics"],
+      "readMinutes": 7,
+      "author": "Aivora Editorial",
+      "date": "2026-02-22",
+      "summary": "A five-slide template for embedding talent metrics in business operating reviews - without making them feel like a side meeting.",
+      "tags": ["operating-review", "metrics", "governance"],
+      "sections": [
+        { "heading": "The five slides", "body": "Critical-role health, regrettable attrition trend, capability gap status, change adoption signal, leadership pipeline depth." }
+      ]
+    }
+  ]
+}

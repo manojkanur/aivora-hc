@@ -278,7 +278,7 @@ def generate_docx(draft_content: dict[str, Any], brand_kit: dict[str, Any]) -> b
 
     # Title
     title_para = doc.add_heading(level=0)
-    run = title_para.add_run(f"{org_name} — {title}")
+    run = title_para.add_run(f"{org_name} - {title}")
     run.font.name = font_name
     run.font.color.rgb = primary_color
     run.font.size = Pt(26)
@@ -337,7 +337,7 @@ def generate_docx(draft_content: dict[str, Any], brand_kit: dict[str, Any]) -> b
         doc.add_paragraph()
 
     # Footer
-    footer = doc.add_paragraph("Confidential – Aivora HC Platform")
+    footer = doc.add_paragraph("Confidential - Aivora HC Platform")
     footer.runs[0].font.size = Pt(9)
     footer.runs[0].font.color.rgb = RGBColor(0xAA, 0xAA, 0xAA)
 

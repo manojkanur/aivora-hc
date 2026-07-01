@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -9,6 +9,9 @@ import { Button } from '../components/ui/Button'
 import { Input, Textarea } from '../components/ui/Input'
 import { cn } from '../lib/utils'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
+import { onboardingAPI } from '../lib/api'
+import { useAutosave } from '../hooks/useAutosave'
+import { SaveIndicator } from '../components/ui/SaveIndicator'
 import {
   useClientProfileStore,
   defaultProfile,
@@ -95,8 +98,8 @@ const NATIONALIZATION_LABELS: Record<NationalizationProgram, string> = {
 }
 
 const RATE_BAND_LABELS: Record<RateBand, string> = {
-  '0-10': '0–10%', '10-25': '10–25%', '25-50': '25–50%',
-  '50-75': '50–75%', '75-100': '75–100%', unknown: 'Unknown',
+  '0-10': '0-10%', '10-25': '10-25%', '25-50': '25-50%',
+  '50-75': '50-75%', '75-100': '75-100%', unknown: 'Unknown',
 }
 
 const AVAILABLE_DOC_LABELS: Record<AvailableDocument, string> = {
@@ -388,7 +391,7 @@ function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputP
         <h2 className="text-2xl font-bold text-white">Evidence & desired outputs</h2>
         <p className="text-sm text-slate-400 mt-1">Tag artefacts you can share, then set the outputs and audience the journey should produce.</p>
       </div>
-      <ChipGroup label="Available evidence" description="Pick what you have access to — helps us recommend journeys that fit your data." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
+      <ChipGroup label="Available evidence" description="Pick what you have access to; this helps us recommend journeys that fit your data." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
       <Textarea label="Notes about evidence (optional)" rows={3} placeholder="e.g. Engagement survey is 11 months old; comp bands cover GCC only." value={evidence.notes ?? ''} onChange={e => onChangeEvidence({ ...evidence, notes: e.target.value || undefined })} />
       <ChipGroup label="Preferred output formats" description="Pick one or more deliverable formats." options={Object.keys(OUTPUT_LABELS) as PreferredOutputType[]} labels={OUTPUT_LABELS} value={outputPrefs.preferredOutputType} onChange={next => patchOut('preferredOutputType', next)} />
       <ChipGroup label="Primary audience" description="Who will read or use the outputs?" options={Object.keys(AUDIENCE_LABELS) as ClientAudience[]} labels={AUDIENCE_LABELS} value={outputPrefs.audience} onChange={next => patchOut('audience', next)} />
@@ -492,12 +495,60 @@ export default function Onboarding() {
   const [searchParams] = useSearchParams()
   const workspaceId = searchParams.get('workspaceId') ?? ''
 
-  const { profile: storedProfile, save, markCompleted } = useClientProfileStore()
-  const { markCompleted: markWsCompleted } = useOnboardingCompletions()
+  const { profile: storedProfile, isCompleted, save, markCompleted, setActiveWorkspace } = useClientProfileStore()
 
-  // Seed draft from stored profile so org data from workspace creation is preserved
+  // Switch the profile store to this workspace's record before reading anything.
+  // This ensures the form shows the right workspace's saved answers, never the
+  // last workspace's data.
+  useEffect(() => {
+    setActiveWorkspace(workspaceId || null)
+  }, [workspaceId, setActiveWorkspace])
+
+  const { isCompleted: isWsCompleted, markCompleted: markWsCompleted } = useOnboardingCompletions()
+
+  // Guard: only skip if THIS workspace's onboarding is done.
+  // The global isCompleted flag stays set across engagements, so we must scope
+  // the skip to the workspace; otherwise creating a new workspace silently jumps
+  // to the brief and the form appears auto-filled from the prior engagement.
+  useEffect(() => {
+    if (workspaceId) {
+      if (isWsCompleted(workspaceId)) {
+        navigate(`/workspaces/${workspaceId}`, { replace: true })
+      }
+    } else if (isCompleted) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isCompleted, workspaceId, navigate]) // eslint-disable-line
+
+  // Seed draft from this workspace's stored profile.
   const [draft, setDraft] = useState<ClientProfile>(() => ({ ...defaultProfile(), ...storedProfile, organization: { ...defaultProfile().organization, ...storedProfile.organization } }))
   const [stepIndex, setStepIndex] = useState(0)
+
+  // When the workspace changes, hard-reset the local draft to that workspace's
+  // stored record (fresh defaults if it's a brand-new workspace).
+  useEffect(() => {
+    setDraft({ ...defaultProfile(), ...storedProfile, organization: { ...defaultProfile().organization, ...storedProfile.organization } })
+    setStepIndex(0)
+  }, [workspaceId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Server-side resumable state — load on mount, scoped to this workspace
+  useEffect(() => {
+    onboardingAPI.get(workspaceId || undefined).then(res => {
+      const remote = (res.data?.state ?? {}) as Partial<ClientProfile> & { _stepIndex?: number }
+      if (remote && Object.keys(remote).length > 0) {
+        setDraft(d => ({ ...d, ...remote, organization: { ...d.organization, ...(remote.organization ?? {}) } }))
+        if (typeof remote._stepIndex === 'number') setStepIndex(remote._stepIndex)
+      }
+    }).catch(() => {})
+  }, [workspaceId])
+
+  const autosavePayload = useMemo(() => ({ ...draft, _stepIndex: stepIndex }), [draft, stepIndex])
+  const onSaveOnboarding = useCallback(async (v: typeof autosavePayload) => {
+    let clean: Record<string, unknown> = {}
+    try { clean = JSON.parse(JSON.stringify(v)) } catch { clean = {} }
+    await onboardingAPI.save(clean, workspaceId || undefined)
+  }, [workspaceId])
+  const { status: saveStatus } = useAutosave({ value: autosavePayload, onSave: onSaveOnboarding, delay: 800 })
 
   const isFirst = stepIndex === 0
   const isLast = stepIndex === STEPS.length - 1
@@ -528,7 +579,7 @@ export default function Onboarding() {
   return (
     <div className="min-h-full bg-[#0c0e14]">
       <div className="flex flex-col items-center px-4 sm:px-6 py-8 sm:py-12">
-        <div className="w-full max-w-2xl space-y-6">
+        <div className="w-full max-w-5xl space-y-6">
 
           {/* Back to workspace */}
           {workspaceId && (
@@ -609,6 +660,7 @@ export default function Onboarding() {
               Back
             </Button>
             <div className="flex items-center gap-4">
+              <SaveIndicator status={saveStatus} />
               <span className="text-sm text-slate-600 font-medium">Step {stepIndex + 1} of {STEPS.length}</span>
               {isLast ? (
                 <Button size="lg" onClick={finish} leftIcon={<Check className="w-4 h-4" />}>

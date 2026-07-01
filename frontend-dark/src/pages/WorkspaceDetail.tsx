@@ -9,11 +9,14 @@ import { useWorkspaceStore } from '../store/workspace'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { useClientProfileStore, type ClientProfile } from '../store/clientProfile'
 import { useBriefStore } from '../store/briefStore'
+import { useJourneyLaunches } from '../store/journeyLaunches'
 import { SkillCard } from '../components/skills/SkillCard'
 import { DraftCard } from '../components/ai/DraftCard'
 import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/SkeletonLoader'
-import { draftsAPI, exportsAPI } from '../lib/api'
+import { challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
+import { recommendStudios, signalsFromBriefContent, type BriefSignals } from '../lib/briefRecommender'
+import type { Skill } from '../store/workspace'
 import { toast } from '../components/ui/Toast'
 import { cn } from '../lib/utils'
 import type { DraftData } from '../components/ai/DraftCard'
@@ -31,7 +34,29 @@ interface JourneyRec {
   icon: string
 }
 
-function computeRecommendations(profile: ClientProfile): JourneyRec[] {
+// Sort studios so the most relevant deliverables surface first:
+//   1) Brief-driven recommendations (top 6) — by recommender score
+//   2) Advisory tier (board decks / playbooks / infographics) — highest-value outputs
+//   3) Enterprise · Professional · Starter
+// Inside any group, alphabetical by name for stable order.
+function sortStudios(skills: Skill[], briefSignals: BriefSignals): Skill[] {
+  const recs = recommendStudios(briefSignals, 6)
+  const recIndex = new Map(recs.map((r, i) => [r.id, i]))
+  const TIER_RANK: Record<string, number> = { advisory: 0, enterprise: 1, professional: 2, starter: 3 }
+  const slug = (s: Skill): string => (s as unknown as { slug?: string }).slug || s.id
+
+  return [...skills].sort((a, b) => {
+    const ra = recIndex.has(slug(a)) ? recIndex.get(slug(a))! : Infinity
+    const rb = recIndex.has(slug(b)) ? recIndex.get(slug(b))! : Infinity
+    if (ra !== rb) return ra - rb
+    const ta = TIER_RANK[a.tier] ?? 99
+    const tb = TIER_RANK[b.tier] ?? 99
+    if (ta !== tb) return ta - tb
+    return a.name.localeCompare(b.name)
+  })
+}
+
+function computeRecommendations(profile: ClientProfile, briefSignals?: { drivers?: string[]; areas?: string[] }): JourneyRec[] {
   const hp = profile.agenda.hcPriorities
   const tc = profile.workforceContext.talentChallenges
   const lc = profile.workforceContext.leadershipChallenges
@@ -43,7 +68,7 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Build the next generation of leaders',
       description: 'Identify high-potential talent, build succession depth, and create structured development plans for critical roles.',
       modules: ['HiPo Studio', 'Leadership Pipeline', 'Succession Planning'],
-      href: '/hipo-studio', color: 'violet', icon: '🚀',
+      href: '/hipo-studio', color: 'violet', icon: '',
       triggers: ['leadership-development', 'succession-planning', 'hipo-gap', 'succession-risk', 'limited-bench', 'leadership-bench-thin'],
     },
     {
@@ -51,7 +76,7 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Align workforce to business strategy',
       description: 'Develop a forward-looking workforce plan that maps capabilities, gaps, and talent supply to your strategic objectives.',
       modules: ['HC Strategy Charter', 'Workforce Planning', 'Capability Assessment'],
-      href: '/challenge-brief', color: 'blue', icon: '📊',
+      href: '/challenge-brief', color: 'blue', icon: '',
       triggers: ['workforce-planning', 'skills-capability', 'skill-mismatch', 'scarcity', 'talent-capability'],
     },
     {
@@ -59,7 +84,7 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Build the right talent pipeline',
       description: 'Redesign your talent acquisition strategy with targeted sourcing, structured selection, and effective onboarding programs.',
       modules: ['Talent Acquisition Studio', 'Early Career', 'Graduate Pipeline'],
-      href: '/challenge-brief', color: 'cyan', icon: '🎯',
+      href: '/challenge-brief', color: 'cyan', icon: '',
       triggers: ['talent-acquisition', 'graduate-pipeline', 'external-hire-dependency', 'scarcity'],
     },
     {
@@ -67,7 +92,7 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Create a compelling employee value proposition',
       description: 'Improve engagement, wellbeing, and retention through a redesigned EX journey and competitive rewards framework.',
       modules: ['Employee Experience', 'Total Rewards', 'Engagement Studio'],
-      href: '/challenge-brief', color: 'emerald', icon: '💚',
+      href: '/challenge-brief', color: 'emerald', icon: '',
       triggers: ['employee-experience', 'rewards-strategy', 'engagement-decline', 'pay-equity', 'benefits-competitiveness', 'high-attrition', 'retention-of-critical-talent'],
     },
     {
@@ -75,7 +100,7 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Redesign for agility and performance',
       description: 'Assess and redesign your operating model, spans of control, and governance structures to enable strategic agility.',
       modules: ['Org Design Blueprint', 'Process Excellence', 'HR Operating Model'],
-      href: '/challenge-brief', color: 'amber', icon: '🏗️',
+      href: '/challenge-brief', color: 'amber', icon: '',
       triggers: ['organization-design', 'hr-operating-model', 'change-management', 'operating-model'],
     },
     {
@@ -83,7 +108,7 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Drive capability and accountability',
       description: 'Build a connected performance management and learning system that closes skill gaps and drives high performance culture.',
       modules: ['Performance Management', 'Learning & Training', 'Skills Development'],
-      href: '/challenge-brief', color: 'orange', icon: '📈',
+      href: '/challenge-brief', color: 'orange', icon: '',
       triggers: ['performance-management', 'learning-development', 'skills-capability', 'skill-mismatch', 'productivity-decline'],
     },
     {
@@ -91,13 +116,19 @@ function computeRecommendations(profile: ClientProfile): JourneyRec[] {
       subtitle: 'Deliver on your nationalization commitments',
       description: 'Develop a structured program to meet nationalization targets through targeted recruitment, development, and retention.',
       modules: ['Nationalization Studio', 'Workforce Planning', 'Capability Assessment'],
-      href: '/challenge-brief', color: 'rose', icon: '🌍',
+      href: '/challenge-brief', color: 'rose', icon: '',
       triggers: ['nationalization'],
     },
   ]
 
   const all = [...hp, ...tc, ...lc, ...wc] as string[]
-  const scored = journeys.map(j => ({ journey: j, score: j.triggers.filter(t => all.includes(t)).length }))
+  // Brief signals also bump scores so the cards react to the saved brief, not just the onboarding profile.
+  const briefAll = [...(briefSignals?.drivers ?? []), ...(briefSignals?.areas ?? [])] as string[]
+  const scored = journeys.map(j => {
+    const base = j.triggers.filter(t => all.includes(t)).length
+    const briefBoost = j.triggers.filter(t => briefAll.includes(t)).length * 2  // brief signals worth more — they're recent + intentional
+    return { journey: j, score: base + briefBoost }
+  })
   scored.sort((a, b) => b.score - a.score)
   const filtered = scored.filter(x => x.score > 0)
   return (filtered.length === 0 ? scored.slice(0, 3) : filtered.slice(0, 5)).map(x => x.journey)
@@ -132,9 +163,16 @@ export default function WorkspaceDetail() {
   const navigate = useNavigate()
 
   const { workspaces, skills, fetchSkills, currentWorkspace } = useWorkspaceStore()
-  const { isCompleted } = useOnboardingCompletions()
-  const { profile } = useClientProfileStore()
+  const { isCompleted, markCompleted, unmarkCompleted } = useOnboardingCompletions()
+  const { profile, isCompleted: profileCompleted, reset: resetProfile, setActiveWorkspace } = useClientProfileStore()
   const { hasBrief, getBrief } = useBriefStore()
+  const { hasLaunched, markLaunched } = useJourneyLaunches()
+
+  // Switch the per-workspace profile store record so {profile, isCompleted}
+  // reflect THIS workspace, not the previous engagement.
+  useEffect(() => {
+    setActiveWorkspace(id || null)
+  }, [id, setActiveWorkspace])
 
   const [activeTab, setActiveTab] = useState<Tab>('skills')
   const [drafts, setDrafts] = useState<DraftData[]>([])
@@ -142,10 +180,32 @@ export default function WorkspaceDetail() {
   const [isLoading, setIsLoading] = useState(true)
 
   const workspace = workspaces.find(w => w.id === id) || currentWorkspace
-  const onboardingDone = id ? isCompleted(id) : false
+  // Onboarding is done if the workspace was marked, the global profile flag is set,
+  // OR if the profile has a completedAt timestamp (handles cases where flag wasn't persisted correctly)
+  const profileEverCompleted = profileCompleted || !!profile.completedAt
+  const onboardingDone = id ? (isCompleted(id) || profileEverCompleted) : profileEverCompleted
+
+  // Sync: if profile is completed but this workspace wasn't marked, mark it now
+  useEffect(() => {
+    if (id && profileEverCompleted && !isCompleted(id)) {
+      markCompleted(id)
+    }
+  }, [id, profileEverCompleted]) // eslint-disable-line
   const briefDone = id ? hasBrief(id) : false
   const existingBrief = id ? getBrief(id) : null
-  const recommendations = onboardingDone ? computeRecommendations(profile) : []
+  const [serverBriefContent, setServerBriefContent] = useState<Record<string, unknown> | null>(null)
+  useEffect(() => {
+    if (!id) return
+    challengeBriefsAPI.list().then(res => {
+      const raw = (Array.isArray(res.data) ? res.data : res.data?.briefs ?? []) as Array<Record<string, unknown>>
+      const existing = raw.find(b => b.workspace_id === id)
+      if (existing && existing.content) setServerBriefContent(existing.content as Record<string, unknown>)
+    }).catch(() => {})
+  }, [id])
+  const briefSignals = signalsFromBriefContent(serverBriefContent)
+  const recommendations = onboardingDone
+    ? computeRecommendations(profile, { drivers: briefSignals.strategicDrivers, areas: briefSignals.hcChallengeAreas })
+    : []
 
   useEffect(() => {
     if (id) fetchSkills(id).then(() => setIsLoading(false))
@@ -171,7 +231,11 @@ export default function WorkspaceDetail() {
     } catch { toast.error('Failed to approve draft') }
   }
 
-  const startOnboarding = () => navigate(`/onboarding?workspaceId=${id}`)
+  const reRunOnboarding = () => {
+    if (id) unmarkCompleted(id)
+    resetProfile()
+    navigate(`/onboarding?workspaceId=${id}`)
+  }
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5 sm:space-y-6">
@@ -190,7 +254,7 @@ export default function WorkspaceDetail() {
           <p className="text-slate-400 mt-0.5 text-sm">{workspace?.client_name}</p>
         </div>
         {onboardingDone && (
-          <button onClick={startOnboarding}
+          <button onClick={reRunOnboarding}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-400 transition-colors">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
             Onboarding complete · Re-run
@@ -230,7 +294,7 @@ export default function WorkspaceDetail() {
               </div>
             </div>
             <Button
-              onClick={startOnboarding}
+              onClick={() => navigate(`/onboarding?workspaceId=${id}`)}
               rightIcon={<ArrowRight className="w-4 h-4" />}
               className="flex-shrink-0 w-full sm:w-auto"
               size="lg"
@@ -307,7 +371,7 @@ export default function WorkspaceDetail() {
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-white">Challenge Brief complete — {existingBrief?.organizationName}</p>
+                <p className="text-sm font-semibold text-white">Challenge Brief complete: {existingBrief?.organizationName}</p>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {existingBrief?.hcAreas?.length ?? 0} HC areas · {existingBrief?.strategicDrivers?.length ?? 0} strategic drivers · {existingBrief?.outputTypes?.length ?? 0} output types
                 </p>
@@ -328,19 +392,25 @@ export default function WorkspaceDetail() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {recommendations.map((rec, i) => {
                 const c = colorMap[rec.color] ?? colorMap.blue
+                const alreadyLaunched = id ? hasLaunched(id, rec.id) : false
                 return (
                   <motion.button
                     key={rec.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    onClick={() => navigate(rec.href)}
+                    onClick={() => {
+                      if (id) markLaunched(id, rec.id)
+                      // If already launched before → go directly to AI advisor (hipo-studio-v2)
+                      // If first time → go to the journey's entry point
+                      navigate(alreadyLaunched ? '/hipo-studio-v2' : rec.href)
+                    }}
                     className={cn('group text-left p-4 rounded-xl border transition-all hover:scale-[1.01]', c.card)}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <span className="text-xl">{rec.icon}</span>
                       <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider', c.badge)}>
-                        Recommended
+                        {alreadyLaunched ? 'In Progress' : 'Recommended'}
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-white leading-tight">{rec.title}</p>
@@ -351,7 +421,7 @@ export default function WorkspaceDetail() {
                       ))}
                     </div>
                     <div className="flex items-center gap-1 mt-3 text-xs text-slate-600 group-hover:text-slate-400 transition-colors">
-                      Launch journey <ArrowRight className="w-3 h-3" />
+                      {alreadyLaunched ? 'Continue in AI Advisor' : 'Launch journey'} <ArrowRight className="w-3 h-3" />
                     </div>
                   </motion.button>
                 )
@@ -392,7 +462,7 @@ export default function WorkspaceDetail() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {skills.map(skill => (
+                  {sortStudios(skills, briefSignals).map(skill => (
                     <SkillCard key={skill.id} skill={skill} onClick={() => handleSkillClick(skill.id)} />
                   ))}
                 </div>
@@ -459,7 +529,7 @@ export default function WorkspaceDetail() {
             <div className="rounded-xl border border-[#1e2433] bg-[#131720] p-5">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <p className="font-semibold text-white">{existingBrief?.organizationName} — Challenge Brief</p>
+                  <p className="font-semibold text-white">{existingBrief?.organizationName}: Challenge Brief</p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Completed {existingBrief?.completedAt ? new Date(existingBrief.completedAt).toLocaleDateString() : ''}
                   </p>

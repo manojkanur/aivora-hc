@@ -1,0 +1,37 @@
+[
+  {
+    "key": "executive_brief",
+    "label": "Executive Strategy Brief",
+    "description": "Board-ready strategic recommendation summary.",
+    "default_governance_tier": "executive",
+    "meta": {}
+  },
+  {
+    "key": "business_plan",
+    "label": "Business Plan",
+    "description": "Operational business plan document.",
+    "default_governance_tier": "strategic",
+    "meta": {}
+  },
+  {
+    "key": "maturity_report",
+    "label": "Maturity Assessment Report",
+    "description": "Current and target state maturity report.",
+    "default_governance_tier": "strategic",
+    "meta": {}
+  },
+  {
+    "key": "benchmarking_brief",
+    "label": "Benchmarking Brief",
+    "description": "Benchmark and peer-positioning brief.",
+    "default_governance_tier": "executive",
+    "meta": {}
+  },
+  {
+    "key": "framework_review",
+    "label": "Framework Review",
+    "description": "Full HC framework review diagnostic.",
+    "default_governance_tier": "tactical",
+    "meta": {}
+  }
+]

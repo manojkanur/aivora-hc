@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Inbox, Download,
   Share2, Settings, CreditCard, X, ShieldCheck, Sparkles,
   HelpCircle, ChevronRight, ChevronLeft, ArrowRight, Rocket,
-  PanelLeftClose, PanelLeftOpen, Brain,
+  PanelLeftClose, PanelLeftOpen, Brain, Sun, Moon, BookOpen, MessageSquareText,
 } from 'lucide-react'
 import { AivoraLogo } from '../brand/AivoraLogo'
 import { useAuthStore } from '../../store/auth'
@@ -14,6 +14,7 @@ import { cn } from '../../lib/utils'
 import { TopBar } from './TopBar'
 import { ToastContainer, useInsufficientCreditsHandler } from '../ui/Toast'
 import { useConversationInsights } from '../../store/conversationInsights'
+import { useThemeStore } from '../../store/theme'
 
 interface NavItem {
   label: string
@@ -23,11 +24,11 @@ interface NavItem {
 }
 
 const platformNav: NavItem[] = [
-  { label: 'Dashboard',   href: '/dashboard',   icon: LayoutDashboard, desc: 'Overview of your workspaces, credits and activity'        },
-  { label: 'Workspaces',  href: '/workspaces',  icon: Briefcase,       desc: 'Client projects — each holds studios and drafts'          },
-  { label: 'Studios',     href: '/skills',      icon: Sparkles,        desc: '27 specialised HC advisory studios powered by AI'         },
-  { label: 'HiPo Studio', href: '/hipo-studio', icon: Rocket,          desc: 'Live HiPo development advisory with bench-strength engine' },
-  { label: 'HiPo Studio (New)', href: '/hipo-studio-v2', icon: Rocket, desc: 'Clean view — AI Advisory as floating chat, full analytics UI' },
+  { label: 'Dashboard',     href: '/dashboard',      icon: LayoutDashboard,   desc: 'Overview of your workspaces, credits and activity'        },
+  { label: 'AI Advisor',    href: '/advisor',        icon: MessageSquareText, desc: 'Conversational diagnostic across six maturity dimensions' },
+  { label: 'Workspaces',    href: '/workspaces',     icon: Briefcase,         desc: 'Client projects, each holds studios and drafts'          },
+  { label: 'Studios',       href: '/skills',         icon: Sparkles,          desc: '27 specialised HC advisory studios powered by AI'         },
+  { label: 'Knowledge',     href: '/knowledge',      icon: BookOpen,          desc: 'Frameworks, playbooks, research and case studies'         },
 ]
 
 const toolsNav: NavItem[] = [
@@ -43,10 +44,10 @@ const accountNav: NavItem[] = [
 
 const TOUR_STEPS = [
   { href: '/dashboard',  title: 'Dashboard',  body: 'Your home base. See active workspaces, credits remaining, and recent activity at a glance.' },
-  { href: '/workspaces', title: 'Workspaces', body: 'Create a workspace per client. After creating one, use "Start Onboarding" to fill the 5-step client profile — it unlocks Challenge Brief and all 27 studios.' },
-  { href: '/skills',     title: 'Studios',    body: '27 specialised advisory modules — from HC Strategy Charter to Leadership Pipeline.' },
+  { href: '/workspaces', title: 'Workspaces', body: 'Create a workspace per client. After creating one, use "Start Onboarding" to fill the 5-step client profile. It unlocks Challenge Brief and all 27 studios.' },
+  { href: '/skills',     title: 'Studios',    body: '27 specialised advisory modules, from HC Strategy Charter to Leadership Pipeline.' },
   { href: '/inbox',      title: 'Draft Inbox',body: 'Every AI-generated draft lands here for your review. Approve to unlock export.' },
-  { href: '/exports',    title: 'Exports',    body: 'Download approved drafts as PowerPoint, PDF, or Word — ready to hand to the client.' },
+  { href: '/exports',    title: 'Exports',    body: 'Download approved drafts as PowerPoint, PDF, or Word, ready to hand to the client.' },
 ]
 
 function NavItemRow({ item, onLinkClick, collapsed }: { item: NavItem; onLinkClick?: () => void; collapsed?: boolean }) {
@@ -85,7 +86,7 @@ function NavItemRow({ item, onLinkClick, collapsed }: { item: NavItem; onLinkCli
 function NavSection({ title, items, onLinkClick, collapsed }: { title: string; items: NavItem[]; onLinkClick?: () => void; collapsed?: boolean }) {
   return (
     <div>
-      {!collapsed && <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-3.5 mb-2">{title}</p>}
+      {!collapsed && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-2">{title}</p>}
       {collapsed && <div className="w-full h-px bg-[#1a1e2e] my-2.5" />}
       <div className="space-y-1">
         {items.map(item => (
@@ -148,7 +149,7 @@ function LearningCenterPanel({ onClose }: { onClose: () => void }) {
             <div className="text-center py-16">
               <Brain className="w-10 h-10 text-slate-700 mx-auto mb-3" />
               <p className="text-slate-500 text-sm font-medium">No insights yet</p>
-              <p className="text-slate-600 text-xs mt-1">Start a conversation in HiPo Studio — the agent will learn from what you share.</p>
+              <p className="text-slate-600 text-xs mt-1">Start a conversation in HiPo Studio. The agent will learn from what you share.</p>
             </div>
           ) : (
             <>
@@ -256,6 +257,7 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
   onLearningClick?: () => void
 }) {
   const { user, tenant } = useAuthStore()
+  const { mode: themeMode, toggle: toggleTheme } = useThemeStore()
   const location = useLocation()
   const isHiPo = location.pathname.startsWith('/hipo-studio') || location.pathname.startsWith('/hipo-studio-v2')
   const totalInsights = useConversationInsights(s => (s.insights ?? []).length)
@@ -263,42 +265,89 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
   return (
     <div className="flex flex-col h-full bg-[#0c0e14]">
       {/* Header */}
-      <div className={cn('flex items-center border-b border-[#1a1e2e]', collapsed ? 'px-2 py-5 justify-center' : 'px-4 py-5 justify-between')}>
-        {!collapsed && (
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <AivoraLogo size="sm" />
-            {tenant && (
-              <span className="text-[10px] text-slate-500 leading-none truncate pl-9 uppercase tracking-wider">{tenant.name}</span>
+      <div className={cn('border-b border-[#1a1e2e]', collapsed ? 'px-2 py-3' : 'px-4 py-5')}>
+        {collapsed ? (
+          // Collapsed: stack icons vertically, all centered
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-[0_0_14px_rgba(59,130,246,0.35)]">
+              <Rocket className="w-[18px] h-[18px] text-white" />
+            </div>
+            <button
+              onClick={toggleTheme}
+              title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label={themeMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              {themeMode === 'dark'
+                ? <Sun className="w-4 h-4 text-amber-400" />
+                : <Moon className="w-4 h-4 text-blue-400" />
+              }
+            </button>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+                className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/5 text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
             )}
           </div>
-        )}
-        {collapsed && (
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-[0_0_14px_rgba(59,130,246,0.35)]">
-            <Rocket className="w-[18px] h-[18px] text-white" />
+        ) : (
+          // Expanded: logo on left, action buttons on right
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <AivoraLogo size="sm" />
+              {tenant && (
+                <span className="text-[10px] text-slate-500 leading-none truncate pl-9 uppercase tracking-wider">{tenant.name}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={toggleTheme}
+                title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label={themeMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                {themeMode === 'dark'
+                  ? <Sun className="w-4 h-4 text-amber-400" />
+                  : <Moon className="w-4 h-4 text-blue-400" />
+                }
+              </button>
+              {onToggleCollapse && (
+                <button
+                  onClick={onToggleCollapse}
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                  className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/5 text-slate-600 hover:text-slate-300 transition-colors"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              )}
+              {onClose && (
+                <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/5 text-slate-500 hover:text-white lg:hidden transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         )}
-        <div className="flex items-center gap-1">
-          {/* Desktop collapse toggle */}
-          {onToggleCollapse && (
-            <button
-              onClick={onToggleCollapse}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/5 text-slate-600 hover:text-slate-300 transition-colors"
-            >
-              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-            </button>
-          )}
-          {/* Mobile close */}
-          {onClose && (
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/5 text-slate-500 hover:text-white lg:hidden transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
       </div>
 
       <nav className={cn('flex-1 overflow-y-auto py-5 space-y-6', collapsed ? 'px-2' : 'px-3')}>
-        <NavSection title="Platform" items={platformNav} onLinkClick={onClose} collapsed={collapsed} />
+        <NavSection
+          title="Platform"
+          items={platformNav.filter(item => {
+            // Knowledge Base is admin-only
+            if (item.href === '/knowledge') {
+              return user?.role === 'admin' || user?.role === 'owner'
+            }
+            return true
+          })}
+          onLinkClick={onClose}
+          collapsed={collapsed}
+        />
         <AnimatePresence>
           {isHiPo && (
             <motion.div key="learning-btn" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
@@ -337,7 +386,7 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
 
         {(user?.role === 'admin' || user?.role === 'owner') && (
           <div>
-            {!collapsed && <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest px-3 mb-1.5">Admin</p>}
+            {!collapsed && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-1.5">Admin</p>}
             {collapsed && <div className="w-full h-px bg-[#1a1e2e] my-2" />}
             <div className="relative group/nav">
               <NavLink

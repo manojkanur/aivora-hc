@@ -1,0 +1,67 @@
+[
+  {
+    "scenario_type": "business_growth",
+    "name": "Business Growth",
+    "description": "Model the workforce implications of YoY headcount and revenue growth.",
+    "default_assumptions": [
+      {"key": "growth_rate", "label": "Annual growth rate", "value": 0.15, "unit": "rate"},
+      {"key": "current_headcount", "label": "Current headcount", "value": 250, "unit": "count"},
+      {"key": "revenue_per_employee", "label": "Revenue per employee", "value": 250000, "unit": "USD"},
+      {"key": "attrition_rate", "label": "Annual attrition", "value": 0.12, "unit": "rate"}
+    ],
+    "formula_ref": "scenario_engine._impacts_business_growth",
+    "metadata": {"horizon_months": 12}
+  },
+  {
+    "scenario_type": "restructuring",
+    "name": "Restructuring",
+    "description": "Quantify cost and capability impact of structural reorganisation.",
+    "default_assumptions": [
+      {"key": "roles_affected", "label": "Roles affected", "value": 40, "unit": "count"},
+      {"key": "average_salary", "label": "Average salary", "value": 95000, "unit": "USD"},
+      {"key": "severance_months", "label": "Severance (months)", "value": 3, "unit": "months"},
+      {"key": "consolidation_savings_rate", "label": "Consolidation savings rate", "value": 0.18, "unit": "rate"}
+    ],
+    "formula_ref": "scenario_engine._impacts_restructuring",
+    "metadata": {"horizon_months": 12}
+  },
+  {
+    "scenario_type": "automation_impact",
+    "name": "Automation Impact",
+    "description": "Estimate role displacement and productivity uplift from automation programmes.",
+    "default_assumptions": [
+      {"key": "automation_coverage", "label": "Process coverage", "value": 0.35, "unit": "rate"},
+      {"key": "roles_in_scope", "label": "Roles in scope", "value": 120, "unit": "count"},
+      {"key": "productivity_uplift", "label": "Productivity uplift", "value": 0.25, "unit": "rate"},
+      {"key": "reskill_cost_per_employee", "label": "Reskill cost per employee", "value": 4500, "unit": "USD"}
+    ],
+    "formula_ref": "scenario_engine._impacts_automation",
+    "metadata": {"horizon_months": 18}
+  },
+  {
+    "scenario_type": "ai_adoption",
+    "name": "AI Adoption",
+    "description": "Model rollout of AI tooling on productivity, capability gaps, and risk posture.",
+    "default_assumptions": [
+      {"key": "adoption_rate", "label": "Workforce adoption rate", "value": 0.45, "unit": "rate"},
+      {"key": "productivity_uplift", "label": "Per-user productivity uplift", "value": 0.18, "unit": "rate"},
+      {"key": "ai_literacy_gap", "label": "AI literacy gap", "value": 0.6, "unit": "rate"},
+      {"key": "license_cost_per_user", "label": "Annual license cost / user", "value": 360, "unit": "USD"}
+    ],
+    "formula_ref": "scenario_engine._impacts_ai_adoption",
+    "metadata": {"horizon_months": 12}
+  },
+  {
+    "scenario_type": "workforce_reduction",
+    "name": "Workforce Reduction",
+    "description": "Plan headcount reduction with cost, risk, and capability-loss implications.",
+    "default_assumptions": [
+      {"key": "reduction_percent", "label": "Reduction (% of HC)", "value": 0.1, "unit": "rate"},
+      {"key": "current_headcount", "label": "Current headcount", "value": 500, "unit": "count"},
+      {"key": "average_salary", "label": "Average salary", "value": 90000, "unit": "USD"},
+      {"key": "severance_months", "label": "Severance (months)", "value": 4, "unit": "months"}
+    ],
+    "formula_ref": "scenario_engine._impacts_workforce_reduction",
+    "metadata": {"horizon_months": 6}
+  }
+]

@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
-import { Menu, ChevronRight, LogOut, User, CreditCard, Bell } from 'lucide-react'
+import { Menu, ChevronRight, LogOut, User, CreditCard, Bell, Sun, Moon } from 'lucide-react'
 import { useAuthStore } from '../../store/auth'
 import { useGamificationStore } from '../../store/gamification'
+import { useThemeStore } from '../../store/theme'
+import { useWorkspaceStore } from '../../store/workspace'
 import { CreditMeter } from '../billing/CreditMeter'
 import { QuestPanel } from '../gamification/QuestPanel'
 import { getInitials } from '../../lib/utils'
 import { authAPI } from '../../lib/api'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -32,16 +36,37 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
   const { activeQuests } = useGamificationStore()
+  const { mode: themeMode, toggle: toggleTheme } = useThemeStore()
+  const { workspaces, skills } = useWorkspaceStore()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [questPanelOpen, setQuestPanelOpen] = useState(false)
 
   const pendingQuests = activeQuests.filter(q => !q.completed).length
 
   const segments = location.pathname.split('/').filter(Boolean)
-  const breadcrumbs = segments.map((seg, i) => ({
-    label: routeLabels[seg] || seg.charAt(0).toUpperCase() + seg.slice(1),
-    href: '/' + segments.slice(0, i + 1).join('/'),
-  }))
+  // Resolve UUIDs into human names by looking them up in the workspace / skill
+  // stores. Falls back to a short id snippet so the breadcrumb is never just
+  // a 36-char hex blob.
+  const breadcrumbs = segments.map((seg, i) => {
+    const href = '/' + segments.slice(0, i + 1).join('/')
+    let label = routeLabels[seg] || seg.charAt(0).toUpperCase() + seg.slice(1)
+
+    if (UUID_RE.test(seg)) {
+      const prev = segments[i - 1]
+      if (prev === 'workspaces') {
+        const ws = workspaces.find(w => w.id === seg)
+        label = ws?.name || ws?.client_name || `Workspace ${seg.slice(0, 6)}`
+      } else if (prev === 'skills') {
+        const sk = skills.find(s => s.id === seg)
+        label = sk?.name || `Studio ${seg.slice(0, 6)}`
+      } else if (prev === 'canvas') {
+        label = `Draft ${seg.slice(0, 6)}`
+      } else {
+        label = seg.slice(0, 6)
+      }
+    }
+    return { label, href }
+  })
 
   const handleLogout = async () => {
     try { await authAPI.logout() } catch {}
@@ -75,6 +100,23 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
         <div className="flex items-center gap-2.5 flex-shrink-0">
           <CreditMeter />
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={themeMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            data-testid="theme-toggle"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#1e2433] bg-[#131720] hover:bg-[#1a1e2e] hover:border-blue-500/40 transition-all"
+          >
+            {themeMode === 'dark'
+              ? <Sun className="w-4 h-4 text-amber-400" />
+              : <Moon className="w-4 h-4 text-blue-400" />
+            }
+            <span className="text-xs font-semibold text-slate-300 hidden sm:inline">
+              {themeMode === 'dark' ? 'Light' : 'Dark'}
+            </span>
+          </button>
 
           <button onClick={() => setQuestPanelOpen(true)}
             className="relative p-2 rounded-xl hover:bg-white/5 text-slate-500 hover:text-blue-400 transition-colors">

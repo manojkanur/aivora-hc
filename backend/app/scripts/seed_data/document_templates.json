@@ -1,0 +1,47 @@
+[
+  {
+    "id": "executive_brief",
+    "document_type_key": "executive_brief",
+    "name": "Executive Strategy Brief",
+    "description": "Board-ready summary of strategic options, key recommendations, and risks. CV1 template; mirrors the Replit cv1.strategy.executive_strategy_brief output package.",
+    "status": "active",
+    "code_ref": "cv1.strategy.executive_strategy_brief",
+    "meta": {"audience": "executive", "module_key": "hc_strategy"}
+  },
+  {
+    "id": "business_plan_brief",
+    "document_type_key": "business_plan",
+    "name": "Business Plan Brief",
+    "description": "Distilled business plan covering ambitions, priorities, milestones, and measures. CV1 template; mirrors cv1.business-plan.business_plan_brief.",
+    "status": "active",
+    "code_ref": "cv1.business-plan.business_plan_brief",
+    "meta": {"audience": "executive", "module_key": "business_plan"}
+  },
+  {
+    "id": "maturity_assessment_report",
+    "document_type_key": "maturity_report",
+    "name": "Maturity Assessment Report",
+    "description": "Detailed current-vs-target maturity report with improvement priority matrix. Mirrors cv1.maturity.maturity_assessment_report.",
+    "status": "active",
+    "code_ref": "cv1.maturity.maturity_assessment_report",
+    "meta": {"audience": "leadership", "module_key": "maturity"}
+  },
+  {
+    "id": "benchmarking_executive_insight_brief",
+    "document_type_key": "benchmarking_brief",
+    "name": "Benchmarking Executive Insight Brief",
+    "description": "Peer-positioning and benchmark gap summary for executives. Mirrors cv1.benchmarking.executive_insight_brief.",
+    "status": "active",
+    "code_ref": "cv1.benchmarking.executive_insight_brief",
+    "meta": {"audience": "executive", "module_key": "benchmarking"}
+  },
+  {
+    "id": "framework_review_diagnostic",
+    "document_type_key": "framework_review",
+    "name": "Framework Review Diagnostic",
+    "description": "Full HC review diagnostic: current state, gap analysis, target state, roadmap, and governance recommendations. Mirrors cv1.framework-review.framework_review_diagnostic.",
+    "status": "active",
+    "code_ref": "cv1.framework-review.framework_review_diagnostic",
+    "meta": {"audience": "consultant", "module_key": "framework_review"}
+  }
+]

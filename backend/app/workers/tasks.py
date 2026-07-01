@@ -48,6 +48,23 @@ def run_ai_job(self, job_id: str) -> dict[str, Any]:
                     user_context=job.context or {},
                     db=db,
                 )
+                # Audit: agent brain phase completed, output available.
+                from app.models.ai import AiAuditLog
+                from app.models.workspace import Workspace as _Workspace
+                ws_row = await db.execute(select(_Workspace).where(_Workspace.id == job.workspace_id))
+                ws = ws_row.scalar_one_or_none()
+                audit = AiAuditLog(
+                    tenant_id=ws.tenant_id if ws else None,
+                    user_id=job.user_id,
+                    skill_id=str(job.skill_id),
+                    action="ai_job.completed",
+                    payload={
+                        "phase": "completed",
+                        "ai_job_id": job_id,
+                        "output_summary": (str(output)[:500] if output is not None else ""),
+                    },
+                )
+                db.add(audit)
                 await db.commit()
                 return {"status": "completed", "job_id": job_id}
             except Exception as exc:

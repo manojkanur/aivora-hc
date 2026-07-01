@@ -70,7 +70,10 @@ async def create_export(
     db: DBDep,
 ) -> Response:
     """Generate a file export and return it directly as a download."""
-    from app.services.export_service import generate_docx, generate_pdf, generate_pptx
+    # v2 generators — branded, format-differentiated layouts.
+    from app.services.export_service_v2 import (
+        generate_docx, generate_html, generate_pdf, generate_pptx,
+    )
 
     # Load draft (and derive workspace_id from it)
     draft_result = await db.execute(select(AiDraft).where(AiDraft.id == payload.draft_id))
@@ -121,6 +124,10 @@ async def create_export(
         content_bytes = generate_pdf(draft_content, brand_kit_data)
         filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.pdf"
         media_type = "application/pdf"
+    elif fmt == ExportFormat.html:
+        content_bytes = generate_html(draft_content, brand_kit_data)
+        filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.html"
+        media_type = "text/html; charset=utf-8"
     else:
         content_bytes = generate_docx(draft_content, brand_kit_data)
         filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.docx"

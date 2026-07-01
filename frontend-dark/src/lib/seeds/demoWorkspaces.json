@@ -1,0 +1,111 @@
+{
+  "workspaces": [
+    {
+      "id": "ws-meridian",
+      "name": "Meridian Bank - HC Strategy Refresh",
+      "client": "Meridian Bank",
+      "sector": "Financial Services",
+      "owner": "You",
+      "createdAt": "2026-04-22",
+      "updatedAt": "2026-06-10",
+      "status": "active",
+      "progress": 68,
+      "headcount": "1k-5k",
+      "horizon": "12m",
+      "activeStudios": ["hc-strategy", "succession", "workforce", "analytics"],
+      "completedStudios": ["maturity", "benchmarking"],
+      "tier": "integrated",
+      "topGap": "leadership-hipo",
+      "summary": "Regional bank refreshing HC strategy in advance of a digital transformation. Stronger on analytics, weaker on leadership bench depth.",
+      "tags": ["strategy-refresh", "leadership-pipeline", "digital-transformation"]
+    },
+    {
+      "id": "ws-helio",
+      "name": "Helio Health - Workforce Plan FY27",
+      "client": "Helio Health Systems",
+      "sector": "Healthcare",
+      "owner": "You",
+      "createdAt": "2026-05-08",
+      "updatedAt": "2026-06-14",
+      "status": "active",
+      "progress": 34,
+      "headcount": "5k-25k",
+      "horizon": "3y",
+      "activeStudios": ["workforce", "talent-acq", "skills-dev"],
+      "completedStudios": ["maturity"],
+      "tier": "structured",
+      "topGap": "workforce-analytics",
+      "summary": "Healthcare network rebuilding its three-year workforce plan after a regional expansion. Skills taxonomy and scenario modelling are gating items.",
+      "tags": ["workforce-planning", "scenarios", "expansion"]
+    },
+    {
+      "id": "ws-orbit",
+      "name": "Orbit Labs - Engagement & Manager Effectiveness",
+      "client": "Orbit Labs",
+      "sector": "Technology",
+      "owner": "You",
+      "createdAt": "2026-03-15",
+      "updatedAt": "2026-06-02",
+      "status": "active",
+      "progress": 82,
+      "headcount": "250-1k",
+      "horizon": "90d",
+      "activeStudios": ["employee-exp", "coaching"],
+      "completedStudios": ["maturity", "hipo", "leadership-dev"],
+      "tier": "integrated",
+      "topGap": "engagement-culture",
+      "summary": "Scaling SaaS company tackling regrettable attrition in product engineering. Strong leadership pipeline; engagement signal showing manager-quality dispersion.",
+      "tags": ["engagement", "attrition", "manager-effectiveness"]
+    }
+  ],
+  "recentActivity": [
+    { "id": "act-1", "workspaceId": "ws-meridian",  "kind": "studio-completed", "studioId": "benchmarking",    "by": "Aivora Advisor", "at": "2026-06-14T09:12:00Z", "summary": "Benchmarking report generated - peer median for leadership bench depth is 1.4× yours." },
+    { "id": "act-2", "workspaceId": "ws-orbit",      "kind": "draft-created",    "draftId": "draft-orbit-eng",  "by": "Aivora Advisor", "at": "2026-06-13T16:47:00Z", "summary": "Engagement narrative deck draft created - awaiting your review." },
+    { "id": "act-3", "workspaceId": "ws-helio",      "kind": "studio-launched",  "studioId": "skills-dev",      "by": "You",           "at": "2026-06-12T11:02:00Z", "summary": "Skills Development studio launched for clinical operations." },
+    { "id": "act-4", "workspaceId": "ws-meridian",  "kind": "export",           "exportId": "exp-meridian-1",  "by": "You",           "at": "2026-06-11T08:30:00Z", "summary": "Exported HC strategy charter v1.2 as PDF (24 pages)." },
+    { "id": "act-5", "workspaceId": "ws-orbit",      "kind": "studio-completed", "studioId": "hipo",            "by": "Aivora Advisor", "at": "2026-06-10T14:18:00Z", "summary": "HiPo identification complete - 18 names with development plans drafted." }
+  ],
+  "drafts": [
+    {
+      "id": "draft-meridian-charter",
+      "workspaceId": "ws-meridian",
+      "title": "Meridian Bank - HC Strategy Charter (v1.2)",
+      "studioId": "hc-strategy",
+      "status": "ready-for-review",
+      "wordCount": 4180,
+      "updatedAt": "2026-06-11T08:30:00Z",
+      "preview": "Meridian's three-year HC strategy is anchored on two business bets: doubling SME lending and standing up an AI-enabled customer servicing platform. Each bet implies distinct capability investment..."
+    },
+    {
+      "id": "draft-orbit-eng",
+      "workspaceId": "ws-orbit",
+      "title": "Orbit Labs - Engagement Action Narrative",
+      "studioId": "employee-exp",
+      "status": "ready-for-review",
+      "wordCount": 2240,
+      "updatedAt": "2026-06-13T16:47:00Z",
+      "preview": "Q2 engagement signal shows a 9-point dispersion between top and bottom quartile managers in product engineering. The pattern is consistent with prior manager-quality research and points to three targeted interventions..."
+    },
+    {
+      "id": "draft-helio-wfp",
+      "workspaceId": "ws-helio",
+      "title": "Helio Health - Workforce Plan FY27 (Draft)",
+      "studioId": "workforce",
+      "status": "drafting",
+      "wordCount": 1620,
+      "updatedAt": "2026-06-09T10:15:00Z",
+      "preview": "Helio's FY27 workforce plan is shaped by the Western region expansion (opening 2026-Q4) and the gradual phase-down of two legacy specialties. Net demand is +1,840 FTE across clinical and operational roles..."
+    }
+  ],
+  "exports": [
+    { "id": "exp-meridian-1", "workspaceId": "ws-meridian", "title": "Meridian - HC Strategy Charter v1.2", "format": "pdf",  "size": "2.4 MB", "pages": 24, "createdAt": "2026-06-11T08:30:00Z" },
+    { "id": "exp-orbit-1",     "workspaceId": "ws-orbit",     "title": "Orbit Labs - HiPo Slate Q2",          "format": "pptx", "size": "8.1 MB", "pages": 32, "createdAt": "2026-06-10T14:18:00Z" },
+    { "id": "exp-meridian-2", "workspaceId": "ws-meridian", "title": "Meridian - Peer Benchmark Report",    "format": "pdf",  "size": "1.7 MB", "pages": 18, "createdAt": "2026-06-08T09:00:00Z" },
+    { "id": "exp-helio-1",     "workspaceId": "ws-helio",     "title": "Helio - Workforce Plan Working Doc", "format": "docx", "size": "0.6 MB", "pages": 12, "createdAt": "2026-06-05T13:25:00Z" }
+  ],
+  "scheduledPosts": [
+    { "id": "post-1", "platform": "linkedin", "title": "Why annual talent reviews aren't enough anymore", "scheduledFor": "2026-06-17T14:00:00Z", "status": "scheduled" },
+    { "id": "post-2", "platform": "linkedin", "title": "The three signals that predict change adoption",   "scheduledFor": "2026-06-19T13:00:00Z", "status": "scheduled" },
+    { "id": "post-3", "platform": "linkedin", "title": "Hybrid working - what the data is actually saying", "scheduledFor": "2026-06-22T09:30:00Z", "status": "draft" }
+  ]
+}

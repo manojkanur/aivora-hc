@@ -302,6 +302,13 @@ def create_app() -> FastAPI:
     # SlowAPI middleware
     app.add_middleware(SlowAPIMiddleware)
 
+    # Audit middleware — writes one audit log row per state-changing request,
+    # so the admin audit log shows the full user activity (logins, workspace
+    # creates, draft approvals, exports, settings changes, etc.) and not just
+    # AI engine events.
+    from app.middleware.audit import AuditMiddleware
+    app.add_middleware(AuditMiddleware)
+
     # Rate limit error handler
     @app.exception_handler(RateLimitExceeded)
     async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
@@ -352,6 +359,14 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, prefix=prefix)
     app.include_router(me_router, prefix=prefix)
     app.include_router(kb_router, prefix=prefix)
+
+    # HC platform routers (Phase 6)
+    from app.api.hc_platform import api_router as hc_platform_api_router
+    app.include_router(hc_platform_api_router, prefix=f"{prefix}/hc-platform")
+
+    # LinkedIn OAuth lives under /api/v1/auth/linkedin/* (not /hc-platform/*)
+    from app.api.hc_platform.linkedin import auth_router as linkedin_auth_router
+    app.include_router(linkedin_auth_router, prefix=prefix)
 
     # Health check (no auth required)
     @app.get("/health", tags=["health"])

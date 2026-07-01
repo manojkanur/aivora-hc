@@ -1,0 +1,26 @@
+[
+  {
+    "key": "hc_maturity_v1",
+    "name": "HC Maturity Model v1",
+    "description": "Global 7-dimension HC maturity model - strategy, processes, people, data & technology, governance, culture, capability. Scored 1.0-5.0 with five bands.",
+    "is_global": true,
+    "version": 1,
+    "dimensions": [
+      {"key": "strategy", "label": "HC Strategy & Alignment", "weight": 0.18},
+      {"key": "processes", "label": "Processes & Operating Model", "weight": 0.14},
+      {"key": "people", "label": "People & Workforce", "weight": 0.16},
+      {"key": "data_technology", "label": "Data & Technology", "weight": 0.14},
+      {"key": "governance", "label": "Governance & Risk", "weight": 0.12},
+      {"key": "culture", "label": "Culture & Engagement", "weight": 0.14},
+      {"key": "capability", "label": "Capability & Skills", "weight": 0.12}
+    ],
+    "bands": [
+      {"band_name": "initial", "min_score": 1.0, "max_score": 1.5, "narrative": "Reactive and ad-hoc - HC activities are unstructured, undocumented, and largely dependent on individuals.", "sort_order": 1},
+      {"band_name": "developing", "min_score": 1.5, "max_score": 2.5, "narrative": "Basic processes are forming, but adoption is uneven and outcomes are inconsistent.", "sort_order": 2},
+      {"band_name": "defined", "min_score": 2.5, "max_score": 3.5, "narrative": "Standardised processes and roles are in place; data is collected but not yet driving decisions.", "sort_order": 3},
+      {"band_name": "managed", "min_score": 3.5, "max_score": 4.5, "narrative": "Quantitatively managed - KPIs, governance, and feedback loops are embedded and reliable.", "sort_order": 4},
+      {"band_name": "optimized", "min_score": 4.5, "max_score": 5.0, "narrative": "Continuously improving - HC is a strategic differentiator with predictive analytics and adaptive capabilities.", "sort_order": 5}
+    ],
+    "metadata": {"replit_source": "premium-maturity"}
+  }
+]

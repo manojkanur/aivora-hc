@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, CheckSquare, Download, Inbox, Trash2, CheckCircle, Clock, Layout } from 'lucide-react'
+import { Search, CheckSquare, Download, Inbox, Trash2, CheckCircle, Clock, Layout, Pencil, X as XIcon, Check } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
@@ -40,9 +40,9 @@ function getDraftTitle(draft: Draft | null): string {
 }
 
 function getPreview(draft: Draft | null): string {
-  if (!draft) return '—'
+  if (!draft) return ' - '
   const content = draft.content
-  if (!content) return '—'
+  if (!content) return ' - '
   const text = content.text as string | undefined
   if (text) return text.slice(0, 120) + (text.length > 120 ? '...' : '')
   const toolInput = content.tool_input as Record<string, unknown> | undefined
@@ -63,6 +63,27 @@ export default function DraftInbox() {
   const [deleteTarget, setDeleteTarget] = useState<Draft | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [exportingId, setExportingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const beginEdit = (d: Draft) => {
+    setEditingId(d.id)
+    const current = (d.content?.text as string | undefined) ?? ''
+    setEditText(current || JSON.stringify(d.content ?? {}, null, 2))
+  }
+  const cancelEdit = () => { setEditingId(null); setEditText('') }
+  const saveEdit = async (d: Draft) => {
+    setSavingEdit(true)
+    try {
+      const nextContent = { ...(d.content ?? {}), text: editText }
+      await draftsAPI.updateContent(d.id, nextContent)
+      setDrafts(prev => prev.map(x => x.id === d.id ? { ...x, content: nextContent } : x))
+      toast.success('Draft updated')
+      cancelEdit()
+    } catch { toast.error('Failed to save changes') }
+    finally { setSavingEdit(false) }
+  }
 
   useEffect(() => { loadDrafts() }, []) // eslint-disable-line
 
@@ -245,8 +266,8 @@ export default function DraftInbox() {
           </div>
 
           {filtered.map((draft, i) => (
+            <React.Fragment key={draft.id}>
             <motion.div
-              key={draft.id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
@@ -274,6 +295,13 @@ export default function DraftInbox() {
               </div>
 
               <div className="w-48 flex items-center justify-end gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => editingId === draft.id ? cancelEdit() : beginEdit(draft)}
+                  title="Edit inline"
+                  className="p-1.5 rounded-lg text-slate-600 hover:bg-[#1a1e2e] hover:text-white transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => navigate(`/canvas/${draft.id}?title=${encodeURIComponent(getDraftTitle(draft))}`)}
                   title="Open in Canvas"
@@ -309,6 +337,30 @@ export default function DraftInbox() {
                 </button>
               </div>
             </motion.div>
+            {editingId === draft.id && (
+              <div className="px-4 pb-4 pt-1 border-b border-[#1e2433] bg-[#0a0c12]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-500">Inline editor</span>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={cancelEdit} className="px-2.5 py-1 rounded-lg border border-[#1e2433] text-slate-400 hover:text-white text-xs flex items-center gap-1">
+                      <XIcon className="w-3 h-3" /> Cancel
+                    </button>
+                    <button onClick={() => saveEdit(draft)} disabled={savingEdit} className="px-2.5 py-1 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs font-semibold flex items-center gap-1 disabled:opacity-60">
+                      <Check className="w-3 h-3" /> {savingEdit ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  value={editText}
+                  onChange={e => setEditText(e.target.value)}
+                  rows={8}
+                  className="w-full bg-[#0c0e14] border border-[#1e2433] rounded-lg px-3 py-2.5 text-sm text-slate-200 font-mono leading-relaxed focus:border-blue-500/50 focus:outline-none resize-y"
+                  placeholder="Edit the draft body here…"
+                />
+                <p className="text-[11px] text-slate-600 mt-1.5">For richer editing (sections, formatting, exports) use Canvas.</p>
+              </div>
+            )}
+            </React.Fragment>
           ))}
         </div>
       )}

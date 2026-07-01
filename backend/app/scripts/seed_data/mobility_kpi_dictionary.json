@@ -1,0 +1,14 @@
+[
+  {"key": "fill_rate", "label": "Fill Rate", "description": "Share of open opportunities filled in the period.", "unit": "rate", "formula": "filled_opportunities / opened_opportunities"},
+  {"key": "internal_fill_rate", "label": "Internal Fill Rate", "description": "Share of filled opportunities filled by internal candidates.", "unit": "rate", "formula": "internal_fills / total_fills"},
+  {"key": "time_to_fill_days", "label": "Time to Fill (days)", "description": "Average days from opportunity open to fill.", "unit": "days", "formula": "sum(fill_date - open_date) / count(filled)"},
+  {"key": "internal_mobility_rate", "label": "Internal Mobility Rate", "description": "Share of workforce that moved internally in the period.", "unit": "rate", "formula": "internal_moves / average_headcount"},
+  {"key": "ready_now_coverage", "label": "Ready-Now Coverage", "description": "Share of critical roles with at least one ready-now successor.", "unit": "rate", "formula": "critical_roles_with_ready_now / total_critical_roles"},
+  {"key": "retention_after_move", "label": "Post-Move Retention (12m)", "description": "Share of internal movers still in role 12 months post-move.", "unit": "rate", "formula": "movers_retained_12m / movers_12m_ago"},
+  {"key": "promotion_rate", "label": "Promotion Rate", "description": "Share of workforce promoted in the period.", "unit": "rate", "formula": "promotions / average_headcount"},
+  {"key": "cross_function_move_rate", "label": "Cross-Function Move Rate", "description": "Share of internal moves that crossed functions.", "unit": "rate", "formula": "cross_function_moves / internal_moves"},
+  {"key": "high_potential_coverage", "label": "High-Potential Coverage", "description": "Share of leadership pool identified as high-potential.", "unit": "rate", "formula": "high_potentials / leadership_pool"},
+  {"key": "capability_gap_index", "label": "Capability Gap Index", "description": "Aggregate gap between required and observed capability across critical roles.", "unit": "score", "formula": "average(required_level - observed_level) across critical_capabilities"},
+  {"key": "match_score_distribution", "label": "Match Score Distribution", "description": "Distribution of mobility match scores (median, p25, p75).", "unit": "score", "formula": "percentile(match_score, [0.25, 0.5, 0.75])"},
+  {"key": "opportunity_response_rate", "label": "Opportunity Response Rate", "description": "Share of matched candidates who responded to outreach.", "unit": "rate", "formula": "responded / matched_outreach"}
+]

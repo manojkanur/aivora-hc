@@ -22,6 +22,7 @@ import { aiAPI, skillsAPI } from '../lib/api'
 import { toast } from '../components/ui/Toast'
 import { useWorkspaceStore } from '../store/workspace'
 import { useClientProfileStore } from '../store/clientProfile'
+import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 import { useConversationInsights } from '../store/conversationInsights'
 import type { ConversationInsight } from '../store/conversationInsights'
 import type { HcPriority } from '../store/clientProfile'
@@ -72,9 +73,9 @@ const REGIONS = [
 ]
 const ORG_SIZES = [
   { value: 'micro', label: 'Micro (< 50 employees)' },
-  { value: 'small', label: 'Small (50–249)' },
-  { value: 'mid', label: 'Mid (250–999)' },
-  { value: 'large', label: 'Large (1,000–9,999)' },
+  { value: 'small', label: 'Small (50-249)' },
+  { value: 'mid', label: 'Mid (250-999)' },
+  { value: 'large', label: 'Large (1,000-9,999)' },
   { value: 'enterprise', label: 'Enterprise (10,000+)' },
 ]
 const MATURITY_STAGES = [
@@ -185,11 +186,11 @@ const NATIONALIZATION_PROGRAMS = [
   { value: 'other', label: 'Other / Not specified' },
 ]
 const RATE_BANDS = [
-  { value: '0-10', label: '0–10%' },
-  { value: '10-25', label: '10–25%' },
-  { value: '25-50', label: '25–50%' },
-  { value: '50-75', label: '50–75%' },
-  { value: '75-100', label: '75–100%' },
+  { value: '0-10', label: '0-10%' },
+  { value: '10-25', label: '10-25%' },
+  { value: '25-50', label: '25-50%' },
+  { value: '50-75', label: '50-75%' },
+  { value: '75-100', label: '75-100%' },
   { value: 'unknown', label: 'Unknown' },
 ]
 const AVAILABLE_DOCS = [
@@ -237,17 +238,17 @@ const URGENCY = [
 ]
 
 const JOURNEY_LIBRARY = [
-  { id: 'hipo-development', name: 'HiPo Development', description: 'Identify, develop, and track High-Potential employees through structured calibration and tiered programmes.', modules: ['HiPo Identification', 'Calibration Engine', 'Development Tracks', 'Executive Reporting'], duration: '4–8 weeks', triggers: ['hipo-gap', 'succession-risk', 'leadership-bench-thin', 'leadership-development', 'succession-planning'] },
-  { id: 'succession-planning', name: 'Succession Planning', description: 'Identify critical roles and build successor benches with readiness assessments.', modules: ['Critical Role Mapping', 'Successor Bench', 'Readiness Assessment', 'Talent Review Charter'], duration: '4–8 weeks', triggers: ['succession-risk', 'limited-bench', 'succession-planning', 'leadership-development'] },
+  { id: 'hipo-development', name: 'HiPo Development', description: 'Identify, develop, and track High-Potential employees through structured calibration and tiered programmes.', modules: ['HiPo Identification', 'Calibration Engine', 'Development Tracks', 'Executive Reporting'], duration: '4-8 weeks', triggers: ['hipo-gap', 'succession-risk', 'leadership-bench-thin', 'leadership-development', 'succession-planning'] },
+  { id: 'succession-planning', name: 'Succession Planning', description: 'Identify critical roles and build successor benches with readiness assessments.', modules: ['Critical Role Mapping', 'Successor Bench', 'Readiness Assessment', 'Talent Review Charter'], duration: '4-8 weeks', triggers: ['succession-risk', 'limited-bench', 'succession-planning', 'leadership-development'] },
   { id: 'leadership-development', name: 'Leadership Development', description: 'Design leadership competency models and development programs across tiers.', modules: ['Competency Model', 'Development Pathways', 'Coaching Integration', 'Impact Measurement'], duration: '8+ weeks', triggers: ['leadership-quality', 'leadership-development-gap', 'leadership-development', 'skills-capability'] },
-  { id: 'workforce-planning', name: 'Workforce Planning', description: 'Forecast future workforce needs vs supply with scenario modelling.', modules: ['Demand Forecast', 'Supply Analysis', 'Gap Modelling', 'Action Plan'], duration: '2–4 weeks', triggers: ['scarcity', 'aging-workforce', 'skill-mismatch', 'workforce-planning'] },
-  { id: 'talent-acquisition', name: 'Talent Acquisition', description: 'End-to-end hiring process — demand planning, sourcing, pipeline, selection.', modules: ['Demand Planning', 'Sourcing Strategy', 'Pipeline Management', 'Selection Design'], duration: '4–8 weeks', triggers: ['external-hire-dependency', 'graduate-pipeline', 'talent-acquisition', 'scarcity'] },
-  { id: 'nationalization', name: 'Nationalization Programme', description: 'Design and accelerate your nationalization agenda with target-setting, pipeline and compliance tracking.', modules: ['Target Setting', 'Pipeline Design', 'Compliance Dashboard', 'Engagement Plan'], duration: '4–8 weeks', triggers: ['nationalization'] },
+  { id: 'workforce-planning', name: 'Workforce Planning', description: 'Forecast future workforce needs vs supply with scenario modelling.', modules: ['Demand Forecast', 'Supply Analysis', 'Gap Modelling', 'Action Plan'], duration: '2-4 weeks', triggers: ['scarcity', 'aging-workforce', 'skill-mismatch', 'workforce-planning'] },
+  { id: 'talent-acquisition', name: 'Talent Acquisition', description: 'End-to-end hiring process: demand planning, sourcing, pipeline, selection.', modules: ['Demand Planning', 'Sourcing Strategy', 'Pipeline Management', 'Selection Design'], duration: '4-8 weeks', triggers: ['external-hire-dependency', 'graduate-pipeline', 'talent-acquisition', 'scarcity'] },
+  { id: 'nationalization', name: 'Nationalization Programme', description: 'Design and accelerate your nationalization agenda with target-setting, pipeline and compliance tracking.', modules: ['Target Setting', 'Pipeline Design', 'Compliance Dashboard', 'Engagement Plan'], duration: '4-8 weeks', triggers: ['nationalization'] },
 ]
 
 const AI_MSGS = [
   "Welcome to Aivora HC. Let's start by establishing your organization's profile. Industry, region, size, and maturity stage help calibrate every model and benchmark to your specific context.",
-  "Now let's map your strategic agenda. The business and human-capital priorities you select determine which advisory lenses Aivora applies — and which studios are most relevant for your situation.",
+  "Now let's map your strategic agenda. The business and human-capital priorities you select determine which advisory lenses Aivora applies, and which studios are most relevant for your situation.",
   "Understanding your workforce and talent challenges helps me surface the right risk signals. If nationalization applies to your context, I'll factor programme-specific insights into the advisory outputs.",
   "Evidence and output preferences tell me how to shape deliverables. The stronger the evidence you have available, the higher the advisory confidence score I can report.",
   "Based on everything you've shared, I've ranked the journeys where you'll get the most value first. Each card shows the modules involved, the reasoning, and the estimated timeline.",
@@ -260,6 +261,69 @@ const STEP_META = [
   { label: 'Evidence & Output' },
   { label: 'Recommendations' },
 ]
+
+// ─── Brief → HipoStudio prefill mappers ──────────────────────────────────────
+// Maps canonical brief enums onto the value lists used by HipoStudio's selects.
+
+const BRIEF_INDUSTRY_TO_HIPO: Record<string, string> = {
+  'banking-finance': 'banking-finance', insurance: 'banking-finance',
+  'energy-utilities': 'utilities', 'oil-gas': 'oil-gas',
+  telecom: 'telco', 'healthcare-pharma': 'healthcare',
+  'retail-consumer': 'retail', manufacturing: 'manufacturing',
+  'transportation-logistics': 'transport-logistics',
+  'construction-real-estate': 'real-estate',
+  'technology-software': 'tech', 'professional-services': 'professional-services',
+  'public-sector': 'public-sector', education: 'education', hospitality: 'hospitality',
+}
+
+const BRIEF_REGION_TO_HIPO: Record<string, string> = {
+  gcc: 'gcc', mena: 'mena', africa: 'africa', europe: 'europe',
+  'north-america': 'americas', 'south-america': 'americas',
+  'asia-pacific': 'asia-pacific', global: 'global',
+}
+
+const BRIEF_SIZE_TO_HIPO: Record<string, string> = {
+  small: 'small', mid: 'mid', large: 'large', enterprise: 'enterprise',
+}
+
+const BRIEF_MATURITY_TO_HIPO: Record<string, string> = {
+  startup: 'startup', growth: 'growth', scaling: 'scale',
+  mature: 'mature', transformation: 'restructuring', turnaround: 'restructuring',
+}
+
+const BRIEF_OPMODEL_TO_HIPO: Record<string, string> = {
+  'single-entity': 'single-entity', 'multi-entity': 'multi-entity',
+  'holding-group': 'holding', matrix: 'gcc-shared-services',
+  federated: 'multi-entity', 'joint-venture': 'joint-venture',
+}
+
+const BRIEF_HC_AREA_TO_HIPO_PRIORITY: Record<string, string> = {
+  'workforce-planning': 'workforce-planning', leadership: 'leadership-development',
+  succession: 'succession-planning', 'employee-experience': 'employee-experience',
+  rewards: 'rewards-strategy', 'capability-skills': 'skills-capability',
+  'talent-acquisition': 'talent-acquisition', performance: 'performance-management',
+  'learning-training': 'learning-development', 'organization-design': 'organization-design',
+  'culture-change-readiness': 'change-management',
+  'governance-operating-model': 'hr-operating-model',
+}
+
+const BRIEF_DRIVER_TO_HIPO_BIZ: Record<string, string> = {
+  growth: 'growth', 'cost-optimization': 'cost-efficiency',
+  transformation: 'digital-transformation', 'merger-acquisition': 'm-and-a',
+  'digital-disruption': 'digital-transformation',
+  'sustainability-esg': 'esg-sustainability', restructuring: 'resilience',
+  'regulatory-change': 'risk-compliance', 'talent-shortage': 'talent-capability',
+  'market-entry': 'geographic-expansion',
+}
+
+function pickLatestBriefHipo(briefs: Record<string, WorkspaceBrief>): WorkspaceBrief | null {
+  const arr = Object.values(briefs)
+  if (arr.length === 0) return null
+  return arr.reduce<WorkspaceBrief | null>((latest, b) => {
+    if (!latest) return b
+    return new Date(b.completedAt).getTime() > new Date(latest.completedAt).getTime() ? b : latest
+  }, null)
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WizardData {
@@ -429,6 +493,8 @@ function StepOrg({ data, onNext }: { data: WizardData; onNext: (d: Partial<Wizar
     region: data.region, country: data.country, org_size: data.org_size,
     maturity_stage: data.maturity_stage, operating_model: data.operating_model,
   })
+  // True if anything was prefilled at mount — used to show a subtle banner.
+  const hadPrefill = !!(data.org_name || data.industry || data.region || data.org_size || data.maturity_stage || data.operating_model)
   // Sync when parent seeds org_name after workspace fetch
   useEffect(() => {
     if (data.org_name && !local.org_name) {
@@ -444,7 +510,11 @@ function StepOrg({ data, onNext }: { data: WizardData; onNext: (d: Partial<Wizar
         <h1 className="text-4xl font-light text-white mb-1">
           Organization <span className="font-bold text-blue-400">Profile</span>
         </h1>
-        <p className="text-sm text-slate-400 mb-10">Basic context helps calibrate every model and benchmark to your specific environment.</p>
+        <p className="text-sm text-slate-400 mb-3">Basic context helps calibrate every model and benchmark to your specific environment.</p>
+        {hadPrefill && (
+          <p className="text-[11px] text-[#60a5fa]/80 mb-7">Pre-filled from your brief - edit if needed</p>
+        )}
+        {!hadPrefill && <div className="mb-7" />}
 
         <div className="space-y-7">
           {/* Org name */}
@@ -522,7 +592,7 @@ function StepPriorities({ data, onNext, onBack }: { data: WizardData; onNext: (d
         <h1 className="text-4xl font-light text-white mb-1">
           Priorities & <span className="font-bold text-blue-400">Pain Points</span>
         </h1>
-        <p className="text-sm text-slate-400 mb-10">Select all that apply — these drive which advisory lenses and studios are most relevant.</p>
+        <p className="text-sm text-slate-400 mb-10">Select all that apply; these drive which advisory lenses and studios are most relevant.</p>
 
         <div className="space-y-8">
           <ChipGroup label="Business Priorities" options={BUSINESS_PRIORITIES} selected={local.business_priorities} onToggle={toggle('business_priorities')} />
@@ -545,7 +615,7 @@ function StepPriorities({ data, onNext, onBack }: { data: WizardData; onNext: (d
               <div className="space-y-2">
                 {local.key_pain_points.map((pt, i) => (
                   <div key={i} className="flex items-start gap-3 px-4 py-3 bg-[#131720] border border-[#1e2433] rounded-xl">
-                    <span className="text-[10px] font-bold text-slate-600 mt-0.5 w-4 flex-shrink-0">{i + 1}</span>
+                    <span className="text-[10px] font-bold text-slate-400 mt-0.5 w-4 flex-shrink-0">{i + 1}</span>
                     <span className="text-sm text-slate-300 flex-1 leading-snug">{pt}</span>
                     <button onClick={() => setLocal(p => ({ ...p, key_pain_points: p.key_pain_points.filter((_, idx) => idx !== i) }))}
                       className="p-1 hover:bg-white/5 rounded-lg text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
@@ -593,7 +663,7 @@ function StepWorkforce({ data, onNext, onBack }: { data: WizardData; onNext: (d:
         <h1 className="text-4xl font-light text-white mb-1">
           Workforce & <span className="font-bold text-blue-400">Nationalization</span>
         </h1>
-        <p className="text-sm text-slate-400 mb-10">Select every challenge that applies — this surfaces the right risk signals in your advisory outputs.</p>
+        <p className="text-sm text-slate-400 mb-10">Select every challenge that applies; this surfaces the right risk signals in your advisory outputs.</p>
 
         <div className="space-y-8">
           <ChipGroup label="Workforce Challenges" options={WORKFORCE_CHALLENGES} selected={local.workforce_challenges} onToggle={toggle('workforce_challenges')} />
@@ -998,7 +1068,7 @@ function LearningJourneyPanel({
                 <div className="text-center py-4">
                   <Brain className="w-6 h-6 text-slate-700 mx-auto mb-2" />
                   <p className="text-[9px] text-slate-600 leading-relaxed">
-                    Start chatting — the agent learns<br />from every message you send
+                    Start chatting. The agent learns<br />from every message you send.
                   </p>
                 </div>
               ) : (
@@ -1100,7 +1170,7 @@ function HiPoCanvasSection({ orgName }: { orgName: string }) {
     // Store the chosen format in sessionStorage so CanvasPage can pre-select it
     sessionStorage.setItem('hipo_canvas_format', fmt)
     sessionStorage.setItem('hipo_canvas_org', orgName)
-    navigate(`/canvas/hipo-${Date.now()}?title=${encodeURIComponent(`HiPo Advisory — ${orgName || 'Organisation'}`)}&format=${fmt}&source=hipo`)
+    navigate(`/canvas/hipo-${Date.now()}?title=${encodeURIComponent(`HiPo Advisory: ${orgName || 'Organisation'}`)}&format=${fmt}&source=hipo`)
   }
 
   return (
@@ -1139,8 +1209,8 @@ function HiPoCanvasSection({ orgName }: { orgName: string }) {
 // ─── Live Dashboard ───────────────────────────────────────────────────────────
 function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: LivePanel; floatingChat?: boolean }) {
   const orgLabel   = INDUSTRIES.find(i => i.value === data.industry)?.label ?? data.industry
-  const sizeLabel  = ORG_SIZES.find(s => s.value === data.org_size)?.label?.split(' ')[0] ?? '—'
-  const matLabel   = MATURITY_STAGES.find(m => m.value === data.maturity_stage)?.label ?? '—'
+  const sizeLabel  = ORG_SIZES.find(s => s.value === data.org_size)?.label?.split(' ')[0] ?? ' - '
+  const matLabel   = MATURITY_STAGES.find(m => m.value === data.maturity_stage)?.label ?? ' - '
 
   const { profile: clientProfile, save: saveProfile } = useClientProfileStore()
   const { addInsight, getInsightsForSession, markApplied, removeInsight, upsertSession } = useConversationInsights()
@@ -1152,7 +1222,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
 
   const sessionInsights = useConversationInsights(s => (s.insights ?? []).filter(i => i.sessionId === sessionId))
 
-  const initMsg = `Welcome to AIVORA HC. Your ${data.org_name || 'organization'} profile in ${orgLabel} shows ${live.priorities.filter(p => p.level === 'High').length} high-priority HC areas. Bench strength is ${live.bench_strength}/100. ${live.risk_high > 30 ? `⚠️ ${live.risk_high}% of your talent pool is at high retention risk — that's the first thing I'd address.` : 'Retention risk is manageable.'} Where would you like to start — succession, workforce risk, or benchmarking?`
+  const initMsg = `Welcome to AIVORA HC. Your ${data.org_name || 'organization'} profile in ${orgLabel} shows ${live.priorities.filter(p => p.level === 'High').length} high-priority HC areas. Bench strength is ${live.bench_strength}/100. ${live.risk_high > 30 ? `Warning: ${live.risk_high}% of your talent pool is at high retention risk. That's the first thing I'd address.` : 'Retention risk is manageable.'} Where would you like to start: succession, workforce risk, or benchmarking?`
 
   const [msgs, setMsgs] = useState<AdvisoryMsg[]>([{ role: 'ai', text: initMsg }])
   const [input, setInput] = useState('')
@@ -1286,12 +1356,12 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
       // LEFT col — Org Profile
       ly = secHead('ORGANIZATION PROFILE', ly)
       const orgRows2 = [
-        ['Organisation', data.org_name || '—'],
-        ['Industry', orgLabel || '—'],
-        ['Region', REGIONS.find(r => r.value === data.region)?.label ?? '—'],
-        ['Size', ORG_SIZES.find(s => s.value === data.org_size)?.label ?? '—'],
-        ['Maturity Stage', matLabel || '—'],
-        ['Operating Model', OPERATING_MODELS.find(m => m.value === data.operating_model)?.label ?? '—'],
+        ['Organisation', data.org_name || ' - '],
+        ['Industry', orgLabel || ' - '],
+        ['Region', REGIONS.find(r => r.value === data.region)?.label ?? ' - '],
+        ['Size', ORG_SIZES.find(s => s.value === data.org_size)?.label ?? ' - '],
+        ['Maturity Stage', matLabel || ' - '],
+        ['Operating Model', OPERATING_MODELS.find(m => m.value === data.operating_model)?.label ?? ' - '],
       ]
       orgRows2.forEach(([lbl, val], idx) => {
         if (idx % 2 === 0) { fill(...gray1); doc.rect(LC, ly - 1, LW, 8, 'F') }
@@ -1349,7 +1419,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
       ry2 = secHead('LEADERSHIP PIPELINE', ry2, violet)
       const pipeDefs = [
         { l: 'Ready Now', v: live.readiness_now, col: blue,   note: 'Succession-ready today' },
-        { l: '1–2 Years', v: live.readiness_near, col: violet, note: 'Fast-track eligible' },
+        { l: '1-2 Years', v: live.readiness_near, col: violet, note: 'Fast-track eligible' },
         { l: '3+ Years',  v: live.readiness_later, col: [71,85,105] as [number,number,number], note: 'Long-term pipeline' },
       ]
       pipeDefs.forEach(r => {
@@ -1458,7 +1528,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
     try {
       const prs = new PptxGenJS()
       prs.layout = 'LAYOUT_WIDE'  // 13.33" × 7.5"
-      prs.title = `${data.org_name || 'Aivora HC'} — Human Capital Advisory`
+      prs.title = `${data.org_name || 'Aivora HC'}: Human Capital Advisory`
 
       // Design tokens (PptxGenJS uses hex without #)
       const C = { dark: '080b11', card: '111827', card2: '1a2035', blue: '3b82f6', blueD: '1d4ed8', blueL: '93c5fd',
@@ -1541,10 +1611,10 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
       // ─────────────────────────────────────────────────────────────────
       // SLIDE 2: Executive Summary
       const s2 = mkSlide(2, 7)
-      sectionTitle(s2, 'Executive Summary', `${data.org_name || 'Organization'}  —  ${orgLabel}  ·  ${matLabel}`)
+      sectionTitle(s2, 'Executive Summary', `${data.org_name || 'Organization'}  ·  ${orgLabel}  ·  ${matLabel}`)
       const kpis2 = [
         { l: 'Bench Strength', v: `${live.bench_strength}`, u: '/100', c: live.bench_strength>=70?C.green:live.bench_strength>=45?C.amber:C.red, note: live.bench_strength>=70?'Above average':'Below target' },
-        { l: 'Retention Risk', v: `${live.risk_high}%`, u: 'high-risk', c: C.red, note: live.risk_high>30?'Elevated — act now':'Manageable level' },
+        { l: 'Retention Risk', v: `${live.risk_high}%`, u: 'high-risk', c: C.red, note: live.risk_high>30?'Elevated, act now':'Manageable level' },
         { l: 'HC Priorities', v: `${data.hc_priorities.length}`, u: 'active', c: C.blue, note: _prios.slice(0,2).join(', ') || 'See priorities slide' },
         { l: 'Ready-Now Pipeline', v: `${live.readiness_now}%`, u: 'succession', c: C.violet, note: live.readiness_now>=20?'On track':'Below 20% target' },
       ]
@@ -1634,7 +1704,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
       // Pipeline cohorts
       const pipe5 = [
         { l: 'Ready Now', v: live.readiness_now, c: C.blue,   desc: 'Succession-ready today. Priority: retain & nominate.', target: 20 },
-        { l: '1–2 Years', v: live.readiness_near, c: C.violet, desc: 'Highest-ROI acceleration target. Fast-track eligible.',  target: 35 },
+        { l: '1-2 Years', v: live.readiness_near, c: C.violet, desc: 'Highest-ROI acceleration target. Fast-track eligible.',  target: 35 },
         { l: '3+ Years', v: live.readiness_later, c: C.slate6, desc: 'Long-term pipeline. Focus on identification quality.',    target: 45 },
       ]
       pipe5.forEach((r, i) => {
@@ -1795,7 +1865,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
     // Maturity dimension handlers
     if (lower.includes('strategy maturity') || (lower.includes('strategy') && lower.includes('matur'))) {
       const level = live.maturity_score >= 60 ? 'strong' : 'developing'
-      return `Strategy maturity for ${data.org_name || orgLabel} is ${level} (score: ${live.maturity_score}/100). At ${matLabel} stage, ${live.maturity_score >= 60 ? 'your HC strategy is well-linked to business goals — focus on formalizing the annual strategy review cadence and embedding HC metrics into the business scorecard.' : 'the biggest gap is translating business strategy into HC planning cycles. Start with a 12-month HC strategic roadmap aligned to your top 3 business priorities: ' + (data.business_priorities.slice(0,2).join(', ') || 'growth and efficiency') + '.'}`
+      return `Strategy maturity for ${data.org_name || orgLabel} is ${level} (score: ${live.maturity_score}/100). At ${matLabel} stage, ${live.maturity_score >= 60 ? 'your HC strategy is well-linked to business goals. Focus on formalizing the annual strategy review cadence and embedding HC metrics into the business scorecard.' : 'the biggest gap is translating business strategy into HC planning cycles. Start with a 12-month HC strategic roadmap aligned to your top 3 business priorities: ' + (data.business_priorities.slice(0,2).join(', ') || 'growth and efficiency') + '.'}`
     }
     if (lower.includes('processes maturity') || (lower.includes('processes') && lower.includes('matur'))) {
       const level = live.bench_strength > 50 ? 'moderate' : 'early-stage'
@@ -1803,97 +1873,110 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
     }
     if (lower.includes('people maturity') || (lower.includes('people') && lower.includes('matur'))) {
       const riskAdj = live.risk_high > 35 ? 'under pressure' : 'reasonably stable'
-      return `People maturity is ${riskAdj} — ${live.risk_high}% of your pool is high-retention-risk. For ${sizeLabel}-scale ${orgLabel}, people maturity is driven by: (1) quality of line manager capability, (2) depth of HiPo identification, (3) strength of career pathing. Your ${live.readiness_now}% ready-now rate suggests line manager development and structured career conversations should be top priorities.`
+      return `People maturity is ${riskAdj}: ${live.risk_high}% of your pool is high-retention-risk. For ${sizeLabel}-scale ${orgLabel}, people maturity is driven by: (1) quality of line manager capability, (2) depth of HiPo identification, (3) strength of career pathing. Your ${live.readiness_now}% ready-now rate suggests line manager development and structured career conversations should be top priorities.`
     }
     if (lower.includes('data maturity') || (lower.includes('data') && lower.includes('matur'))) {
       const dataLevel = data.maturity_stage === 'mature' ? 'established' : data.maturity_stage === 'scale' ? 'growing' : 'nascent'
-      return `Data maturity is ${dataLevel} for a ${matLabel}-stage org. You have ${data.available_docs.length} evidence sources in your profile. To move the needle: (1) consolidate people data into a single HC dashboard, (2) establish monthly bench-strength and attrition metrics, (3) link people data to financial outcomes. ${data.available_docs.length < 3 ? 'Start by digitizing exit data and engagement surveys — these are your fastest signals.' : 'You have a solid data foundation — focus on predictive analytics for attrition risk.'}`
+      return `Data maturity is ${dataLevel} for a ${matLabel}-stage org. You have ${data.available_docs.length} evidence sources in your profile. To move the needle: (1) consolidate people data into a single HC dashboard, (2) establish monthly bench-strength and attrition metrics, (3) link people data to financial outcomes. ${data.available_docs.length < 3 ? 'Start by digitizing exit data and engagement surveys; these are your fastest signals.' : 'You have a solid data foundation. Focus on predictive analytics for attrition risk.'}`
     }
     if (lower.includes('tech maturity') || (lower.includes('tech') && lower.includes('matur'))) {
-      return `Tech maturity at ${matLabel} stage: ${data.maturity_stage === 'mature' ? 'most mature organizations have HRIS, ATS, and LMS integrated — the next frontier is AI-driven talent analytics and predictive succession tools.' : 'priority investments are: a unified HRIS platform, digital performance management, and an LMS. Avoid over-engineering — 3 well-adopted tools beat 10 underused ones.'} For ${orgLabel}, I'd prioritize platforms that support ${data.hc_priorities[0] ? HC_PRIORITIES.find(h => h.value === data.hc_priorities[0])?.label : 'your top HC priorities'} first.`
+      return `Tech maturity at ${matLabel} stage: ${data.maturity_stage === 'mature' ? 'most mature organizations have HRIS, ATS, and LMS integrated. The next frontier is AI-driven talent analytics and predictive succession tools.' : 'priority investments are: a unified HRIS platform, digital performance management, and an LMS. Avoid over-engineering; 3 well-adopted tools beat 10 underused ones.'} For ${orgLabel}, I'd prioritize platforms that support ${data.hc_priorities[0] ? HC_PRIORITIES.find(h => h.value === data.hc_priorities[0])?.label : 'your top HC priorities'} first.`
     }
     if (lower.includes('gov') && lower.includes('matur')) {
-      return `Governance maturity determines how well HC decisions are made and enforced. For ${orgLabel} with a ${data.operating_model} model: ${data.operating_model === 'single-entity' ? 'governance is simpler — focus on clear RACI for HC decisions, quarterly HR leadership reviews, and a board-level talent committee.' : 'multi-entity governance needs: group-level HC policy framework, entity-level flexibility guidelines, and a cross-entity talent mobility protocol.'} ${live.maturity_score > 60 ? 'Your maturity score suggests governance foundations are in place — elevate to predictive governance.' : 'Start with an HC governance charter and decision-rights matrix.'}`
+      return `Governance maturity determines how well HC decisions are made and enforced. For ${orgLabel} with a ${data.operating_model} model: ${data.operating_model === 'single-entity' ? 'governance is simpler. Focus on clear RACI for HC decisions, quarterly HR leadership reviews, and a board-level talent committee.' : 'multi-entity governance needs: group-level HC policy framework, entity-level flexibility guidelines, and a cross-entity talent mobility protocol.'} ${live.maturity_score > 60 ? 'Your maturity score suggests governance foundations are in place. Elevate to predictive governance.' : 'Start with an HC governance charter and decision-rights matrix.'}`
     }
 
     // Succession
     if (lower.includes('succession') || lower.includes('bench')) {
       const depth = live.readiness_now < 15 ? 'thin' : live.readiness_now < 25 ? 'developing' : 'solid'
-      return `Your succession bench is ${depth} — ${live.readiness_now}% ready now, ${live.readiness_near}% in 1–2 years, ${live.readiness_later}% in 3+ years. For a ${matLabel}-stage ${orgLabel}, best practice is 20%+ ready-now. Actions: (1) run a critical role mapping exercise for the top 50 roles, (2) assign 2+ successors per critical role, (3) fast-track the ${live.readiness_near}% near-ready cohort through accelerated exposure and stretch assignments. Timeline: 90-day sprint to close the readiness gap.`
+      return `Your succession bench is ${depth}: ${live.readiness_now}% ready now, ${live.readiness_near}% in 1-2 years, ${live.readiness_later}% in 3+ years. For a ${matLabel}-stage ${orgLabel}, best practice is 20%+ ready-now. Actions: (1) run a critical role mapping exercise for the top 50 roles, (2) assign 2+ successors per critical role, (3) fast-track the ${live.readiness_near}% near-ready cohort through accelerated exposure and stretch assignments. Timeline: 90-day sprint to close the readiness gap.`
     }
 
     // Retention / attrition
     if (lower.includes('retention') || lower.includes('attrition') || lower.includes('high risk') || lower.includes('high-risk')) {
-      return `With ${live.risk_high}% at high retention risk, priority actions for ${data.org_name || orgLabel}: (1) run stay interviews with the top 20% most critical high-risk talent this month, (2) create a retention bonus pool for high-risk HiPos in critical roles, (3) accelerate career pathing conversations — most HiPos leave due to perceived limited growth, not compensation. For ${orgLabel} at ${sizeLabel} scale, untreated high-risk attrition typically costs 1.5–2x annual salary per loss plus 6–12 months productivity drag.`
+      return `With ${live.risk_high}% at high retention risk, priority actions for ${data.org_name || orgLabel}: (1) run stay interviews with the top 20% most critical high-risk talent this month, (2) create a retention bonus pool for high-risk HiPos in critical roles, (3) accelerate career pathing conversations, since most HiPos leave due to perceived limited growth, not compensation. For ${orgLabel} at ${sizeLabel} scale, untreated high-risk attrition typically costs 1.5-2x annual salary per loss plus 6-12 months productivity drag.`
     }
 
     // Medium risk segment
     if (lower.includes('medium') && (lower.includes('risk') || lower.includes('segment'))) {
-      return `Your medium-risk segment (${live.risk_med}%) is the "watchlist" — they're not planning to leave immediately, but are vulnerable to poaching or internal frustration. Key lever: proactive career conversations in the next 30–60 days. Assign stretch projects, clarify next-role pathways, and check compensation competitiveness against market. Prevention here is 5x cheaper than replacement.`
+      return `Your medium-risk segment (${live.risk_med}%) is the "watchlist". They're not planning to leave immediately, but are vulnerable to poaching or internal frustration. Key lever: proactive career conversations in the next 30-60 days. Assign stretch projects, clarify next-role pathways, and check compensation competitiveness against market. Prevention here is 5x cheaper than replacement.`
     }
 
     // Low risk
     if (lower.includes('low') && lower.includes('risk')) {
-      return `Your low-risk segment (${live.risk_low}%) are your anchors — highly committed talent who are unlikely to leave. Don't neglect them: engage them as mentors, involve them in strategy, and recognize their loyalty. Risk: low-risk can quietly become disengaged if they feel overlooked while you focus on retaining high-risk talent.`
+      return `Your low-risk segment (${live.risk_low}%) are your anchors: highly committed talent who are unlikely to leave. Don't neglect them: engage them as mentors, involve them in strategy, and recognize their loyalty. Risk: low-risk can quietly become disengaged if they feel overlooked while you focus on retaining high-risk talent.`
     }
 
     // Benchmarking / industry / peers
     if (lower.includes('benchmark') || lower.includes('industry') || lower.includes('peers') || lower.includes('compare')) {
       const benchLabel = live.bench_strength < 50 ? 'below industry average' : live.bench_strength < 70 ? 'at industry average' : 'above industry average'
-      return `${orgLabel} benchmark vs peers: Bench strength ${live.bench_strength}/100 is ${benchLabel}. Best-in-class ${orgLabel} companies at ${matLabel} stage maintain: bench strength ≥75, ready-now succession ≥20%, HiPo pool ≥4% of headcount. Your biggest gap: ready-now at ${live.readiness_now}% vs 20% target = ${Math.max(0,20-live.readiness_now)}pp to close. Achievable in 2–3 cohort cycles (12–18 months) with structured acceleration programs.`
+      return `${orgLabel} benchmark vs peers: Bench strength ${live.bench_strength}/100 is ${benchLabel}. Best-in-class ${orgLabel} companies at ${matLabel} stage maintain: bench strength ≥75, ready-now succession ≥20%, HiPo pool ≥4% of headcount. Your biggest gap: ready-now at ${live.readiness_now}% vs 20% target = ${Math.max(0,20-live.readiness_now)}pp to close. Achievable in 2-3 cohort cycles (12-18 months) with structured acceleration programs.`
     }
 
     // Leadership pipeline / ready now / 1-2 years / 3+ years
     if (lower.includes('ready now') || lower.includes('ready-now')) {
-      return `Your ready-now cohort (${live.readiness_now}%) are succession-ready today. Actions: (1) formally nominate them for the next critical vacancy, (2) give them enterprise-wide visibility through cross-functional projects, (3) ensure compensation is at or above market — this cohort gets poached most aggressively. Target: grow this cohort to 20% within 12 months.`
+      return `Your ready-now cohort (${live.readiness_now}%) are succession-ready today. Actions: (1) formally nominate them for the next critical vacancy, (2) give them enterprise-wide visibility through cross-functional projects, (3) ensure compensation is at or above market, since this cohort gets poached most aggressively. Target: grow this cohort to 20% within 12 months.`
     }
-    if ((lower.includes('1') && lower.includes('2') && lower.includes('year')) || lower.includes('1–2') || lower.includes('1-2')) {
-      return `Your 1–2 year cohort (${live.readiness_near}%) is your most investable segment. They're close enough to ready that targeted acceleration will pay off quickly. Priority interventions: 6-month rotations in critical functions, executive sponsorship assignments, structured coaching, and participation in leadership forums. Each intervention typically pulls readiness forward by 6–9 months.`
+    if ((lower.includes('1') && lower.includes('2') && lower.includes('year')) || lower.includes('1-2') || lower.includes('1-2')) {
+      return `Your 1-2 year cohort (${live.readiness_near}%) is your most investable segment. They're close enough to ready that targeted acceleration will pay off quickly. Priority interventions: 6-month rotations in critical functions, executive sponsorship assignments, structured coaching, and participation in leadership forums. Each intervention typically pulls readiness forward by 6-9 months.`
     }
     if (lower.includes('3+') || lower.includes('3 year') || lower.includes('accelerate')) {
-      return `Your 3+ year cohort (${live.readiness_later}%) are your long-term pipeline. Don't over-invest in acceleration here — instead, focus on identification quality (are the right people in this cohort?), early capability building, and experience breadth. Some will self-select out; focus resources on the top 25% of this cohort who show the highest potential signals.`
+      return `Your 3+ year cohort (${live.readiness_later}%) are your long-term pipeline. Don't over-invest in acceleration here; instead, focus on identification quality (are the right people in this cohort?), early capability building, and experience breadth. Some will self-select out; focus resources on the top 25% of this cohort who show the highest potential signals.`
     }
     if (lower.includes('leadership') || lower.includes('pipeline')) {
-      return `Leadership pipeline: ${live.readiness_now}% ready now vs 20% target — ${live.readiness_now >= 20 ? 'on track, focus on quality depth.' : `${20-live.readiness_now}pp gap to close.`} The ${live.readiness_near}% in 1–2 years is your highest-ROI acceleration target. For ${orgLabel}, accelerate through: executive exposure programs, cross-functional P&L ownership, external leadership cohort participation, and structured 1:1 coaching with C-suite. Timeline to close the gap: 3–4 cohort cycles.`
+      return `Leadership pipeline: ${live.readiness_now}% ready now vs 20% target. ${live.readiness_now >= 20 ? 'On track, focus on quality depth.' : `${20-live.readiness_now}pp gap to close.`} The ${live.readiness_near}% in 1-2 years is your highest-ROI acceleration target. For ${orgLabel}, accelerate through: executive exposure programs, cross-functional P&L ownership, external leadership cohort participation, and structured 1:1 coaching with C-suite. Timeline to close the gap: 3-4 cohort cycles.`
     }
 
     // Workforce / risk
     if (lower.includes('workforce') || lower.includes('risk breakdown')) {
-      return `Workforce risk for ${data.org_name || orgLabel}: High ${live.risk_high}% · Medium ${live.risk_med}% · Low ${live.risk_low}%. ${live.risk_high > 35 ? 'ELEVATED — immediate role criticality + retention heatmap needed.' : 'Manageable — focus interventions on the high-risk segment.'} Main drivers flagged in your profile: ${data.workforce_challenges.length > 0 ? data.workforce_challenges.slice(0,3).map(v=>WORKFORCE_CHALLENGES.find(w=>w.value===v)?.label).filter(Boolean).join(', ') : 'attrition, skill gaps, engagement decline'}.`
+      return `Workforce risk for ${data.org_name || orgLabel}: High ${live.risk_high}% · Medium ${live.risk_med}% · Low ${live.risk_low}%. ${live.risk_high > 35 ? 'ELEVATED: immediate role criticality + retention heatmap needed.' : 'Manageable. Focus interventions on the high-risk segment.'} Main drivers flagged in your profile: ${data.workforce_challenges.length > 0 ? data.workforce_challenges.slice(0,3).map(v=>WORKFORCE_CHALLENGES.find(w=>w.value===v)?.label).filter(Boolean).join(', ') : 'attrition, skill gaps, engagement decline'}.`
     }
 
     // Nationalization
     if (lower.includes('nationalization') || lower.includes('localiz') || lower.includes('programme')) {
-      if (!data.nationalization_on) return `Nationalization is not flagged in your profile. For ${orgLabel} operating in GCC markets, this is a strategic risk — regulators are tightening quotas. I can model a nationalization programme design if this becomes relevant.`
+      if (!data.nationalization_on) return `Nationalization is not flagged in your profile. For ${orgLabel} operating in GCC markets, this is a strategic risk: regulators are tightening quotas. I can model a nationalization programme design if this becomes relevant.`
       return `${NATIONALIZATION_PROGRAMS.find(n => n.value === data.nationalization_program)?.label} target: ${RATE_BANDS.find(r => r.value === data.current_rate_band)?.label ?? '?'} → ${RATE_BANDS.find(r => r.value === data.target_rate_band)?.label ?? '?'}. To hit that target: (1) structured national talent pipeline with university partnerships, (2) early-career accelerated programme with 18-month rotation, (3) senior national talent advisory committee, (4) monthly compliance dashboard reporting to CHRO. Want a full programme charter?`
     }
 
     // HC priorities
     if (lower.includes('priorit') || lower.includes('leadership pipeline') || lower.includes('leadership development') || lower.includes('succession planning') || lower.includes('skills') || lower.includes('culture')) {
       const topPriorities = data.hc_priorities.slice(0,3).map(v => HC_PRIORITIES.find(h => h.value === v)?.label).filter(Boolean)
-      return `For ${data.org_name || orgLabel}, your top HC priority is "${txt.replace('Tell me more about ', '').replace(' maturity', '')}" — here's my advisory: At ${matLabel} maturity, ${live.bench_strength < 50 ? 'you need to build foundational capability before optimizing.' : 'you\'re ready to move from foundational to differentiated practices.'} Recommended next step: run a focused 4-week diagnostic on this area, identify the top 3 gaps, and build a 90-day action plan. ${topPriorities.length > 0 ? `This links directly to your stated priorities: ${topPriorities.join(', ')}.` : ''}`
+      return `For ${data.org_name || orgLabel}, your top HC priority is "${txt.replace('Tell me more about ', '').replace(' maturity', '')}". Here's my advisory: At ${matLabel} maturity, ${live.bench_strength < 50 ? 'you need to build foundational capability before optimizing.' : 'you\'re ready to move from foundational to differentiated practices.'} Recommended next step: run a focused 4-week diagnostic on this area, identify the top 3 gaps, and build a 90-day action plan. ${topPriorities.length > 0 ? `This links directly to your stated priorities: ${topPriorities.join(', ')}.` : ''}`
     }
 
     // Pain points / challenges
     if (lower.includes('pain') || lower.includes('challenge')) {
       const pains = data.key_pain_points.length > 0 ? data.key_pain_points.slice(0,2).join('; ') : 'the workforce challenges you flagged'
-      return `Root-cause analysis on "${pains}": the primary driver is ${live.risk_high > 30 ? 'talent pipeline fragility — you\'re losing critical talent faster than you\'re developing replacements.' : 'capability gaps — the skills needed for future roles aren\'t being built fast enough.'} Typical resolution: 2-quarter focused programme with clear milestones. Want a phased action plan?`
+      return `Root-cause analysis on "${pains}": the primary driver is ${live.risk_high > 30 ? 'talent pipeline fragility. You\'re losing critical talent faster than you\'re developing replacements.' : 'capability gaps. The skills needed for future roles aren\'t being built fast enough.'} Typical resolution: 2-quarter focused programme with clear milestones. Want a phased action plan?`
     }
 
     // Deliverable-specific
     if (lower.includes('executive deck') || lower.includes('structure') && lower.includes('deck')) {
-      return `For ${data.org_name || orgLabel}'s executive deck, I'd structure it as: (1) Strategic Context — 2 slides on business priorities and HC challenge; (2) Current State — bench strength ${live.bench_strength}/100, retention risk ${live.risk_high}%, pipeline readiness; (3) Gap Analysis — vs industry benchmark; (4) Recommended Actions — 3–5 prioritized initiatives; (5) Investment & Timeline. Total: 10–12 slides. Tone: ${data.output_types.includes('board-pack') ? 'board-level — facts first, no jargon.' : 'executive — concise with clear recommendations.'}`
+      return `For ${data.org_name || orgLabel}'s executive deck, I'd structure it as: (1) Strategic Context: 2 slides on business priorities and HC challenge; (2) Current State: bench strength ${live.bench_strength}/100, retention risk ${live.risk_high}%, pipeline readiness; (3) Gap Analysis vs industry benchmark; (4) Recommended Actions: 3-5 prioritized initiatives; (5) Investment & Timeline. Total: 10-12 slides. Tone: ${data.output_types.includes('board-pack') ? 'board-level, facts first, no jargon.' : 'executive: concise with clear recommendations.'}`
     }
     if (lower.includes('hc framework') || lower.includes('framework structure')) {
-      return `HC Framework for ${orgLabel}: at ${matLabel} stage, I'd recommend a 5-pillar framework — (1) Talent Identification & Assessment, (2) Development & Acceleration, (3) Performance & Rewards, (4) Succession & Continuity, (5) HC Analytics. Each pillar maps to your priorities: ${data.hc_priorities.slice(0,2).map(v=>HC_PRIORITIES.find(h=>h.value===v)?.label).filter(Boolean).join(' and ')||'leadership development and workforce planning'}. Want me to detail the key activities under each?`
+      return `HC Framework for ${orgLabel}: at ${matLabel} stage, I'd recommend a 5-pillar framework: (1) Talent Identification & Assessment, (2) Development & Acceleration, (3) Performance & Rewards, (4) Succession & Continuity, (5) HC Analytics. Each pillar maps to your priorities: ${data.hc_priorities.slice(0,2).map(v=>HC_PRIORITIES.find(h=>h.value===v)?.label).filter(Boolean).join(' and ')||'leadership development and workforce planning'}. Want me to detail the key activities under each?`
     }
     if (lower.includes('maturity improvement') || lower.includes('maturity improve') || lower.includes('focus on')) {
-      return `Top maturity improvements for ${orgLabel}: (1) **Strategy** — formalize annual HC-strategy alignment workshop; (2) **People** — implement quarterly talent calibration; (3) **Data** — build a real-time HC dashboard with 5 core metrics (bench strength, attrition risk, readiness, engagement, time-to-fill); (4) **Tech** — consolidate onto 1–2 integrated platforms; (5) **Governance** — establish monthly CHRO review with scorecard. Start with Data — it unlocks everything else.`
+      return `Top maturity improvements for ${orgLabel}: (1) **Strategy**: formalize annual HC-strategy alignment workshop; (2) **People**: implement quarterly talent calibration; (3) **Data**: build a real-time HC dashboard with 5 core metrics (bench strength, attrition risk, readiness, engagement, time-to-fill); (4) **Tech**: consolidate onto 1-2 integrated platforms; (5) **Governance**: establish monthly CHRO review with scorecard. Start with Data; it unlocks everything else.`
     }
 
-    // Generic intelligent fallback
+    // Who-are-you / introduction handling
+    if (lower.match(/^(who|what|wht).*?(r u|are you|ru)/) || lower === 'who r u' || lower === 'who are you' || lower === 'hi' || lower === 'hello' || lower === 'hey') {
+      return `I'm Aivora's AI Advisory for ${data.org_name || orgLabel}, a HC strategy advisor that helps you act on bench strength, retention risk, succession depth, and capability gaps. Ask me anything specific: "What's our top retention risk?", "Show me succession gaps", or "Draft a deck for the board".`
+    }
+
+    // Generic intelligent fallback — rotated so repeated misses don't echo the same line
     const context = `${data.org_name || orgLabel} (${orgLabel}, ${matLabel}, ${sizeLabel})`
-    return `For ${context}: bench strength is ${live.bench_strength}/100, ${live.risk_high}% high retention risk, ${live.readiness_now}% ready-now. Based on your question, I'd focus on the intersection of ${lower.split(' ').filter(w=>w.length>5).slice(0,2).join(' and ')||'leadership and risk'} — the highest-impact area for your profile. Want me to build a specific action plan for that? Or I can go deeper on: succession depth, retention risk segments, workforce planning, benchmarking, or maturity improvements.`
+    const focus = lower.split(' ').filter(w => w.length > 5).slice(0, 2).join(' and ') || 'leadership and risk'
+    const variants = [
+      `For ${context}: bench strength ${live.bench_strength}/100, ${live.risk_high}% high retention risk, ${live.readiness_now}% ready-now. Based on your question, the highest-impact area is around ${focus}. Want a specific action plan, or shall I go deeper on succession depth, retention risk segments, or benchmarking?`,
+      `Quick read for ${context}, your numbers: ${live.bench_strength}/100 bench, ${live.risk_high}% retention risk, ${live.readiness_now}% ready-now. I can drill into ${focus}, or pivot to workforce planning, maturity improvements, or peer benchmarks. Which lens helps most?`,
+      `Looking at ${context}: ${live.bench_strength}/100 bench strength, ${live.risk_high}% high retention risk. To make this actionable on ${focus}, I'd suggest we either (a) build a phased plan, (b) drill into the segment data, or (c) compare to peers. Which one?`,
+      `Honest take on ${context}: with ${live.risk_high}% retention risk and ${live.readiness_now}% ready-now, the question on ${focus} likely traces back to either pipeline depth or capability gaps. Tell me which feels closer and I'll go deep.`,
+    ]
+    // Use msgs.length to rotate so consecutive fallbacks pick different wording
+    return variants[msgs.length % variants.length]
   }
 
   const send = async (overrideText?: string) => {
@@ -2017,8 +2100,8 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
         {[
           { label: 'HC Priorities', val: `${data.hc_priorities.length}`, unit: 'active', icon: Target, color: 'text-blue-400', key: 'priorities', detail: data.hc_priorities.map(v => HC_PRIORITIES.find(h => h.value === v)?.label).filter(Boolean).join(', ') || 'None selected' },
-          { label: 'Bench Strength', val: `${live.bench_strength}`, unit: '/100', icon: Gauge, color: live.bench_strength >= 70 ? 'text-green-400' : live.bench_strength >= 45 ? 'text-amber-400' : 'text-red-400', key: 'bench', detail: `${live.bench_strength < 50 ? 'Below' : live.bench_strength < 70 ? 'At' : 'Above'} industry average. Ready now: ${live.readiness_now}%, 1–2yr: ${live.readiness_near}%` },
-          { label: 'Retention Risk', val: `${live.risk_high}%`, unit: 'high', icon: AlertTriangle, color: 'text-red-400', key: 'retention', detail: `High: ${live.risk_high}% · Medium: ${live.risk_med}% · Low: ${live.risk_low}%. ${live.risk_high > 30 ? 'Elevated — immediate action needed.' : 'Manageable risk level.'}` },
+          { label: 'Bench Strength', val: `${live.bench_strength}`, unit: '/100', icon: Gauge, color: live.bench_strength >= 70 ? 'text-green-400' : live.bench_strength >= 45 ? 'text-amber-400' : 'text-red-400', key: 'bench', detail: `${live.bench_strength < 50 ? 'Below' : live.bench_strength < 70 ? 'At' : 'Above'} industry average. Ready now: ${live.readiness_now}%, 1-2yr: ${live.readiness_near}%` },
+          { label: 'Retention Risk', val: `${live.risk_high}%`, unit: 'high', icon: AlertTriangle, color: 'text-red-400', key: 'retention', detail: `High: ${live.risk_high}% · Medium: ${live.risk_med}% · Low: ${live.risk_low}%. ${live.risk_high > 30 ? 'Elevated. Immediate action needed.' : 'Manageable risk level.'}` },
           { label: 'Pain Points', val: `${data.key_pain_points.length}`, unit: 'logged', icon: Zap, color: 'text-indigo-400', key: 'pain', detail: data.key_pain_points.length > 0 ? data.key_pain_points.slice(0, 2).join(' · ') : 'No pain points logged yet' },
         ].map(m => (
           <motion.button key={m.label} type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -2082,11 +2165,11 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                     <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">Organization Intelligence</h3>
                     <ul className="space-y-2">
                       {[
-                        { label: 'Industry', val: INDUSTRIES.find(i => i.value === data.industry)?.label ?? '—', icon: Building2 },
-                        { label: 'Region', val: REGIONS.find(r => r.value === data.region)?.label ?? '—', icon: Target },
-                        { label: 'Size', val: ORG_SIZES.find(s => s.value === data.org_size)?.label?.split(' ')[0] ?? '—', icon: Users },
-                        { label: 'Maturity', val: MATURITY_STAGES.find(m => m.value === data.maturity_stage)?.label ?? '—', icon: TrendingUp, highlight: true },
-                        { label: 'Model', val: OPERATING_MODELS.find(m => m.value === data.operating_model)?.label ?? '—', icon: Zap },
+                        { label: 'Industry', val: INDUSTRIES.find(i => i.value === data.industry)?.label ?? ' - ', icon: Building2 },
+                        { label: 'Region', val: REGIONS.find(r => r.value === data.region)?.label ?? ' - ', icon: Target },
+                        { label: 'Size', val: ORG_SIZES.find(s => s.value === data.org_size)?.label?.split(' ')[0] ?? ' - ', icon: Users },
+                        { label: 'Maturity', val: MATURITY_STAGES.find(m => m.value === data.maturity_stage)?.label ?? ' - ', icon: TrendingUp, highlight: true },
+                        { label: 'Model', val: OPERATING_MODELS.find(m => m.value === data.operating_model)?.label ?? ' - ', icon: Zap },
                       ].map(r => (
                         <li key={r.label} className="flex items-center justify-between gap-2">
                           <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
@@ -2122,8 +2205,8 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                     <ul className="space-y-2">
                       {[
                         { label: 'Confidence', val: live.bench_strength >= 60 ? 'Medium' : 'Low', color: 'text-amber-400' },
-                        { label: 'Urgency', val: URGENCY.find(u => u.value === data.urgency)?.label ?? '—', color: 'text-blue-400' },
-                        { label: 'Confidentiality', val: CONFIDENTIALITY.find(c => c.value === data.confidentiality)?.label ?? '—', color: 'text-slate-300' },
+                        { label: 'Urgency', val: URGENCY.find(u => u.value === data.urgency)?.label ?? ' - ', color: 'text-blue-400' },
+                        { label: 'Confidentiality', val: CONFIDENTIALITY.find(c => c.value === data.confidentiality)?.label ?? ' - ', color: 'text-slate-300' },
                       ].map(s => (
                         <li key={s.label} className="flex justify-between text-[10px]">
                           <span className="text-slate-500">{s.label}</span>
@@ -2211,16 +2294,15 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'ai' && (
-                  <div className="w-7 h-7 rounded-full bg-blue-900/60 border border-blue-500/40 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="w-3.5 h-3.5 text-blue-400" />
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 shadow-[0_0_0_2px_rgba(59,130,246,0.15)] flex items-center justify-center flex-shrink-0 mt-1">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
-                <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${m.role === 'ai' ? 'bg-white/5 border border-white/8 text-slate-200' : 'bg-blue-600 text-white'}`}>
-                  <p className="text-[10px] font-bold mb-1 opacity-50">{m.role === 'ai' ? 'AIVORA HC' : 'You'}</p>
+                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${m.role === 'ai' ? 'bg-blue-500/5 border border-blue-500/15 text-slate-200 rounded-tl-sm' : 'bg-blue-600 text-white rounded-tr-sm shadow-[0_2px_8px_rgba(37,99,235,0.25)]'}`}>
                   {m.text}
                 </div>
                 {m.role === 'user' && (
-                  <div className="w-7 h-7 rounded-full bg-slate-700 border border-white/15 flex-shrink-0 mt-1 flex items-center justify-center text-[10px] font-bold text-white">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 ring-2 ring-blue-500/20 flex-shrink-0 mt-1 flex items-center justify-center text-[10px] font-bold text-white">
                     {data.org_name.slice(0, 2).toUpperCase() || 'ME'}
                   </div>
                 )}
@@ -2228,8 +2310,8 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             ))}
             {typing && (
               <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-blue-900/60 border border-blue-500/40 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-blue-400" />
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 shadow-[0_0_0_2px_rgba(59,130,246,0.15)] flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="bg-white/5 border border-white/8 rounded-2xl px-4 py-3 flex items-center gap-1">
                   {[0, 1, 2].map(d => <div key={d} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d * 150}ms` }} />)}
@@ -2330,7 +2412,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             <div className="space-y-3">
               {[
                 { label: 'Ready Now', pct: live.readiness_now, vals: [10,12,14,15,live.readiness_now], col: '#3b82f6' },
-                { label: '1–2 Years', pct: live.readiness_near, vals: [35,38,40,41,live.readiness_near], col: '#6366f1' },
+                { label: '1-2 Years', pct: live.readiness_near, vals: [35,38,40,41,live.readiness_near], col: '#6366f1' },
                 { label: '3+ Years', pct: live.readiness_later, vals: [44,42,40,43,live.readiness_later], col: '#475569' },
               ].map(r => (
                 <button key={r.label} type="button"
@@ -2389,7 +2471,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             ) : (
               editNotes
                 ? <p className="text-[10px] text-slate-400 leading-relaxed">{editNotes}</p>
-                : <p className="text-[10px] text-slate-600 italic">No notes — click Edit Report to add context</p>
+                : <p className="text-[10px] text-slate-600 italic">No notes. Click Edit Report to add context.</p>
             )}
           </div>
         </div>}
@@ -2455,8 +2537,8 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               <div className="space-y-4">
                 {[
                   { label: 'Ready Now', pct: live.readiness_now, vals: [10,12,14,15,live.readiness_now], col: '#3b82f6' },
-                  { label: '1–2 Years', pct: live.readiness_near, vals: [35,38,40,41,live.readiness_near], col: '#6366f1' },
-                  { label: '3–5 Years', pct: live.readiness_later, vals: [52,50,48,45,live.readiness_later], col: '#8b5cf6' },
+                  { label: '1-2 Years', pct: live.readiness_near, vals: [35,38,40,41,live.readiness_near], col: '#6366f1' },
+                  { label: '3-5 Years', pct: live.readiness_later, vals: [52,50,48,45,live.readiness_later], col: '#8b5cf6' },
                 ].map(r => (
                   <button key={r.label} type="button" onClick={() => send(`What actions will accelerate ${r.label} readiness?`)} className="w-full text-left group">
                     <div className="flex items-center justify-between mb-1">
@@ -2519,7 +2601,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               ) : (
                 editNotes
                   ? <p className="text-xs text-slate-400 leading-relaxed">{editNotes}</p>
-                  : <p className="text-xs text-slate-600 italic">No notes — click Edit Report to add context</p>
+                  : <p className="text-xs text-slate-600 italic">No notes. Click Edit Report to add context.</p>
               )}
             </div>
           </div>
@@ -2716,23 +2798,33 @@ export default function HipoStudio() {
   const navigate = useNavigate()
   const { workspaces, fetchWorkspaces } = useWorkspaceStore()
   const { profile, isCompleted } = useClientProfileStore()
+  const briefs = useBriefStore(s => s.briefs)
 
   const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardData>(() => {
     const p = profile
-    // Always pre-fill org fields — they come from workspace creation even before onboarding is done
+    // If the user already filled out a brief for any workspace, prefer the
+    // most-recent brief over the empty client-profile defaults — that way
+    // HipoStudio's intake doesn't re-ask questions the brief already answered.
+    const brief = pickLatestBriefHipo(briefs)
+    const bInd  = brief ? BRIEF_INDUSTRY_TO_HIPO[brief.industry] ?? '' : ''
+    const bReg  = brief ? BRIEF_REGION_TO_HIPO[brief.region] ?? '' : ''
+    const bSize = brief ? BRIEF_SIZE_TO_HIPO[brief.organizationSize] ?? '' : ''
+    const bMat  = brief ? BRIEF_MATURITY_TO_HIPO[brief.maturityStage] ?? '' : ''
+    const bOp   = brief ? BRIEF_OPMODEL_TO_HIPO[brief.operatingModel] ?? '' : ''
+    const bBiz  = brief ? (brief.strategicDrivers ?? []).map(d => BRIEF_DRIVER_TO_HIPO_BIZ[d]).filter(Boolean) as string[] : []
+    const bHc   = brief ? (brief.hcAreas ?? []).map(a => BRIEF_HC_AREA_TO_HIPO_PRIORITY[a]).filter(Boolean) as string[] : []
     return {
-      org_name: p.organization.name ?? '',
-      industry: p.organization.industry !== 'other' ? p.organization.industry : '',
+      org_name: p.organization.name || (brief?.organizationName ?? ''),
+      industry: (p.organization.industry !== 'other' ? p.organization.industry : bInd) || '',
       sub_sector: p.organization.subSector ?? '',
-      region: p.organization.region !== 'gcc' ? p.organization.region : '',
+      region: (p.organization.region !== 'gcc' ? p.organization.region : bReg) || (bReg || ''),
       country: p.organization.country ?? '',
-      org_size: p.organization.organizationSize !== 'mid' ? p.organization.organizationSize : '',
-      maturity_stage: p.organization.maturityStage !== 'mature' ? p.organization.maturityStage : '',
-      operating_model: p.organization.operatingModel !== 'single-entity' ? p.organization.operatingModel : '',
-      // Agenda + workforce only if onboarding was completed
-      business_priorities: isCompleted ? p.agenda.businessPriorities : [],
-      hc_priorities: isCompleted ? p.agenda.hcPriorities : [],
+      org_size: (p.organization.organizationSize !== 'mid' ? p.organization.organizationSize : bSize) || '',
+      maturity_stage: (p.organization.maturityStage !== 'mature' ? p.organization.maturityStage : bMat) || '',
+      operating_model: (p.organization.operatingModel !== 'single-entity' ? p.organization.operatingModel : bOp) || '',
+      business_priorities: isCompleted ? p.agenda.businessPriorities : bBiz,
+      hc_priorities: isCompleted ? p.agenda.hcPriorities : bHc,
       transformation_agenda: isCompleted ? p.agenda.transformationAgenda : [],
       key_pain_points: isCompleted ? p.agenda.keyPainPoints : [],
       workforce_challenges: isCompleted ? p.workforceContext.workforceChallenges : [],
@@ -2823,7 +2915,7 @@ export default function HipoStudio() {
             </div>
             <div className="flex items-center gap-2 text-[10px]">
               <span className="text-slate-500">Urgency</span>
-              <span className="text-white font-bold">{URGENCY.find(u => u.value === data.urgency)?.label ?? '—'}</span>
+              <span className="text-white font-bold">{URGENCY.find(u => u.value === data.urgency)?.label ?? ' - '}</span>
             </div>
             <button onClick={() => { setPhase('wizard'); setStep(0) }}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 bg-amber-500/15 border border-amber-500/25 text-amber-400 rounded-lg font-bold hover:bg-amber-500/25 transition-colors">
@@ -2876,26 +2968,48 @@ export default function HipoStudio() {
 }
 
 // ─── HiPo Studio V2 (floating chat variant) ───────────────────────────────────
+// Key for persisting HiPo session per workspace
+function hipoKey(wsId: string | undefined) {
+  return `aivora-hipo-session${wsId ? `-${wsId}` : ''}`
+}
+
 export function HipoStudioV2() {
   const { id: workspaceId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { workspaces, fetchWorkspaces } = useWorkspaceStore()
   const { profile, isCompleted } = useClientProfileStore()
+  const briefs = useBriefStore(s => s.briefs)
 
   const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardData>(() => {
+    // Restore from saved session if available
+    try {
+      const saved = localStorage.getItem(hipoKey(workspaceId))
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.data) return parsed.data as WizardData
+      }
+    } catch { /* ignore */ }
     const p = profile
+    const brief = pickLatestBriefHipo(briefs)
+    const bInd  = brief ? BRIEF_INDUSTRY_TO_HIPO[brief.industry] ?? '' : ''
+    const bReg  = brief ? BRIEF_REGION_TO_HIPO[brief.region] ?? '' : ''
+    const bSize = brief ? BRIEF_SIZE_TO_HIPO[brief.organizationSize] ?? '' : ''
+    const bMat  = brief ? BRIEF_MATURITY_TO_HIPO[brief.maturityStage] ?? '' : ''
+    const bOp   = brief ? BRIEF_OPMODEL_TO_HIPO[brief.operatingModel] ?? '' : ''
+    const bBiz  = brief ? (brief.strategicDrivers ?? []).map(d => BRIEF_DRIVER_TO_HIPO_BIZ[d]).filter(Boolean) as string[] : []
+    const bHc   = brief ? (brief.hcAreas ?? []).map(a => BRIEF_HC_AREA_TO_HIPO_PRIORITY[a]).filter(Boolean) as string[] : []
     return {
-      org_name: p.organization.name ?? '',
-      industry: p.organization.industry !== 'other' ? p.organization.industry : '',
+      org_name: p.organization.name || (brief?.organizationName ?? ''),
+      industry: (p.organization.industry !== 'other' ? p.organization.industry : bInd) || '',
       sub_sector: p.organization.subSector ?? '',
-      region: p.organization.region !== 'gcc' ? p.organization.region : '',
+      region: (p.organization.region !== 'gcc' ? p.organization.region : bReg) || (bReg || ''),
       country: p.organization.country ?? '',
-      org_size: p.organization.organizationSize !== 'mid' ? p.organization.organizationSize : '',
-      maturity_stage: p.organization.maturityStage !== 'mature' ? p.organization.maturityStage : '',
-      operating_model: p.organization.operatingModel !== 'single-entity' ? p.organization.operatingModel : '',
-      business_priorities: isCompleted ? p.agenda.businessPriorities : [],
-      hc_priorities: isCompleted ? p.agenda.hcPriorities : [],
+      org_size: (p.organization.organizationSize !== 'mid' ? p.organization.organizationSize : bSize) || '',
+      maturity_stage: (p.organization.maturityStage !== 'mature' ? p.organization.maturityStage : bMat) || '',
+      operating_model: (p.organization.operatingModel !== 'single-entity' ? p.organization.operatingModel : bOp) || '',
+      business_priorities: isCompleted ? p.agenda.businessPriorities : bBiz,
+      hc_priorities: isCompleted ? p.agenda.hcPriorities : bHc,
       transformation_agenda: isCompleted ? p.agenda.transformationAgenda : [],
       key_pain_points: isCompleted ? p.agenda.keyPainPoints : [],
       workforce_challenges: isCompleted ? p.workforceContext.workforceChallenges : [],
@@ -2914,8 +3028,27 @@ export function HipoStudioV2() {
       urgency: isCompleted ? p.outputPreferences.urgency : 'this-quarter',
     }
   })
-  const [phase, setPhase] = useState<'wizard' | 'generating' | 'dashboard'>('wizard')
-  const [live, setLive] = useState<LivePanel | null>(null)
+  const [phase, setPhase] = useState<'wizard' | 'generating' | 'dashboard'>(() => {
+    // Restore phase — if we have a saved dashboard, go straight there
+    try {
+      const saved = localStorage.getItem(hipoKey(workspaceId))
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.phase === 'dashboard' && parsed.live) return 'dashboard'
+      }
+    } catch { /* ignore */ }
+    return 'wizard'
+  })
+  const [live, setLive] = useState<LivePanel | null>(() => {
+    try {
+      const saved = localStorage.getItem(hipoKey(workspaceId))
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.live) return parsed.live as LivePanel
+      }
+    } catch { /* ignore */ }
+    return null
+  })
   const [skillId, setSkillId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -2955,6 +3088,10 @@ export function HipoStudioV2() {
         toast.success('HiPo Advisory generated')
       } catch { /* proceed */ }
     }
+    // Persist so returning to this page restores the dashboard, not the wizard
+    try {
+      localStorage.setItem(hipoKey(workspaceId), JSON.stringify({ data: d, live: panel, phase: 'dashboard' }))
+    } catch { /* ignore quota errors */ }
     setLive(panel)
     setPhase('dashboard')
   }
@@ -2983,9 +3120,9 @@ export function HipoStudioV2() {
             </div>
             <div className="flex items-center gap-2 text-[10px]">
               <span className="text-slate-500">Urgency</span>
-              <span className="text-white font-bold">{URGENCY.find(u => u.value === data.urgency)?.label ?? '—'}</span>
+              <span className="text-white font-bold">{URGENCY.find(u => u.value === data.urgency)?.label ?? ' - '}</span>
             </div>
-            <button onClick={() => { setPhase('wizard'); setStep(0) }}
+            <button onClick={() => { try { localStorage.removeItem(hipoKey(workspaceId)) } catch { /* ignore */ } setPhase('wizard'); setStep(0) }}
               className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 bg-amber-500/15 border border-amber-500/25 text-amber-400 rounded-lg font-bold hover:bg-amber-500/25 transition-colors">
               <AlertTriangle className="w-3 h-3" /> Edit Profile
             </button>

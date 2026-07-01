@@ -5,13 +5,14 @@ import json
 import uuid
 from typing import Any, AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import CurrentUser, DBDep, check_credits
 from app.config import settings
-from app.models.ai import AiDraft, AiJob, AiJobStatus, DraftApprovalStatus
+from app.models.ai import AiAuditLog, AiDraft, AiJob, AiJobStatus, DraftApprovalStatus
 from app.models.skill import SkillRegistry
 from app.models.workspace import Workspace
 from app.schemas.ai import AiDraftResponse, AiJobCreate, AiJobResponse, DraftApprovalUpdate, HermesJobCreate
@@ -87,6 +88,30 @@ async def create_ai_job(
     )
     db.add(job)
     await db.flush()
+
+    # Audit log: record the four-phase trace so the admin dashboard can show
+    # "user input -> skill -> memory -> agent brain -> output".
+    # `payload` JSON holds the inputs available at dispatch time. The worker
+    # appends the output phase when the job completes.
+    memory_snapshot = {
+        "onboarding_state": current_user.onboarding_state or {},
+    }
+    audit = AiAuditLog(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        skill_id=skill.slug,
+        action="ai_job.dispatched",
+        payload={
+            "phase": "dispatch",
+            "ai_job_id": str(job.id),
+            "workspace_id": str(payload.workspace_id),
+            "skill": {"id": str(skill.id), "slug": skill.slug, "name": skill.name},
+            "user_input": payload.context or {},
+            "memory_snapshot": memory_snapshot,
+            "agent": {"model": settings.AI_MODEL, "provider": "configured"},
+        },
+    )
+    db.add(audit)
     await db.commit()  # commit before dispatching so worker can find the job
 
     # Dispatch to Celery
@@ -277,6 +302,275 @@ async def update_draft_approval(
     await db.flush()
     await db.refresh(draft)
     return _draft_to_response(draft)
+
+
+@router.patch("/drafts/{draft_id}/content", response_model=AiDraftResponse)
+async def update_draft_content(
+    draft_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBDep,
+    payload: dict[str, Any] = Body(...),
+) -> AiDraftResponse:
+    """
+    Inline-edit the draft body. Accepts {"content": {...}} to replace the entire
+    content blob, or {"patch": {...}} to merge keys into existing content.
+    """
+    result = await db.execute(select(AiDraft).where(AiDraft.id == draft_id))
+    draft = result.scalar_one_or_none()
+    if draft is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+    ws_result = await db.execute(
+        select(Workspace).where(
+            Workspace.id == draft.workspace_id,
+            Workspace.tenant_id == current_user.tenant_id,
+        )
+    )
+    if ws_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    if "content" in payload and isinstance(payload["content"], dict):
+        draft.content = payload["content"]
+    elif "patch" in payload and isinstance(payload["patch"], dict):
+        merged = dict(draft.content or {})
+        merged.update(payload["patch"])
+        draft.content = merged
+    else:
+        raise HTTPException(status_code=400, detail="Provide 'content' or 'patch' object")
+
+    flag_modified(draft, "content")
+    draft.version = (draft.version or 0) + 1
+    await db.flush()
+    await db.refresh(draft)
+    return _draft_to_response(draft)
+
+
+
+@router.post("/drafts/{draft_id}/chat")
+async def chat_with_draft(
+    draft_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBDep,
+    payload: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """
+    Conversational + edit interface on top of a draft.
+
+    Input: {"prompt": str, "history": [{"role": "user"|"assistant", "text": str}, ...]}.
+    The model returns a JSON object {"reply": str, "patch": null | {...}}.
+    - reply: short, conversational message shown back to the user.
+    - patch: if non-null, a partial content dict to merge into draft.content.
+
+    Writes an audit log row regardless of whether a patch was applied.
+    """
+    from app.services.ai_orchestrator import _get_client  # type: ignore
+
+    prompt = str(payload.get("prompt", "")).strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    history = payload.get("history")
+    if not isinstance(history, list):
+        history = []
+
+    result = await db.execute(select(AiDraft).where(AiDraft.id == draft_id))
+    draft = result.scalar_one_or_none()
+    if draft is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+    ws_result = await db.execute(
+        select(Workspace).where(
+            Workspace.id == draft.workspace_id,
+            Workspace.tenant_id == current_user.tenant_id,
+        )
+    )
+    if ws_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    current_content = draft.content or {}
+
+    # Surface the EDITABLE keys only — exclude metadata + Canvas slide blobs so
+    # the model never accidentally patches an irrelevant key.
+    EDITABLE_BLOCKLIST = {
+        "skill_slug", "generated_at", "tool_name", "tool_input", "raw_text",
+        "canvas_slides", "canvas_brand", "canvas_title", "canvas_format", "title",
+    }
+    editable_keys = [k for k in current_content.keys() if k not in EDITABLE_BLOCKLIST]
+    editable_summary = ", ".join(editable_keys) if editable_keys else "(none yet)"
+
+    system = (
+        "You are a senior HC consultant helping a user discuss and refine a draft advisory report. "
+        "You can answer questions about the draft, suggest improvements, or rewrite specific "
+        "sections when the user asks for an edit.\n\n"
+        "You MUST return a single JSON object with exactly two keys:\n"
+        "  reply  (string): a short conversational reply for the user, 1-4 sentences. "
+        "Describe what you changed if you applied a patch.\n"
+        "  patch  (object or null): the edit to apply.\n\n"
+        "Rules for `patch`:\n"
+        f"  1. The patch keys MUST be from this allowed list (case-sensitive): {editable_summary}\n"
+        "  2. Do NOT use canvas_slides, tool_input, raw_text, skill_slug, generated_at, "
+        "title, canvas_*. These are not part of the report body.\n"
+        "  3. Pick the key whose meaning matches the user's request. If the user asks for a "
+        "recommendation, patch 'recommendations'. If they ask to shorten the summary, patch "
+        "'executive_summary'. If they ask to add findings, patch 'key_findings'.\n"
+        "  4. Return the FULL new value for the chosen key. For strings, return the new full string. "
+        "For arrays/objects, return the full new array/object preserving prior items unless the "
+        "user asked to remove them.\n"
+        "  5. If the user is only asking a question (no edit intent), set `patch` to null.\n"
+        "Never include markdown fences. Never wrap the JSON in any prose."
+    )
+
+    chat_messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    chat_messages.append({
+        "role": "system",
+        "content": (
+            "Current draft content (do not exceed these top-level keys when patching):\n"
+            + json.dumps(current_content, ensure_ascii=False)[:6000]
+        ),
+    })
+    for m in history[-6:]:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role")
+        text = str(m.get("text") or "")
+        if role in ("user", "assistant") and text:
+            chat_messages.append({"role": role, "content": text[:1500]})
+    chat_messages.append({"role": "user", "content": prompt[:2000]})
+
+    try:
+        client = _get_client()
+        response = await client.chat.completions.create(
+            model=settings.AI_MODEL,
+            response_format={"type": "json_object"},
+            messages=chat_messages,  # type: ignore[arg-type]
+            temperature=0.5,
+            max_tokens=1500,
+        )
+        raw_text = response.choices[0].message.content or "{}"
+        result_obj = json.loads(raw_text)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Chat failed: {exc}") from exc
+
+    reply = str(result_obj.get("reply") or "").strip() or "Done."
+    patch = result_obj.get("patch")
+    applied = False
+    applied_keys: list[str] = []
+    if isinstance(patch, dict) and patch:
+        # Strictly merge: keys must already exist AND not be in the blocklist.
+        # This prevents the model from clobbering metadata or canvas state via chat.
+        merged = dict(current_content)
+        for k, v in patch.items():
+            if k in EDITABLE_BLOCKLIST:
+                continue
+            if k in merged:
+                merged[k] = v
+                applied_keys.append(k)
+        if applied_keys and merged != current_content:
+            draft.content = merged
+            flag_modified(draft, "content")
+            draft.version = (draft.version or 0) + 1
+            applied = True
+            await db.flush()
+            await db.refresh(draft)
+
+    audit = AiAuditLog(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        skill_id=str(draft.skill_id),
+        action="ai_draft.chat",
+        payload={
+            "phase": "completed",
+            "draft_id": str(draft_id),
+            "prompt": prompt[:500],
+            "patch_applied": applied,
+            "patch_keys": applied_keys,
+            "raw_patch_keys": list(patch.keys()) if isinstance(patch, dict) else [],
+            "agent": {"model": settings.AI_MODEL},
+        },
+    )
+    db.add(audit)
+    await db.commit()
+
+    return {
+        "reply": reply,
+        "patch_applied": applied,
+        "applied_keys": applied_keys,
+        "content": draft.content if applied else None,
+        "version": draft.version,
+    }
+
+
+@router.post("/canvas/edit")
+async def canvas_ai_edit(
+    current_user: CurrentUser,
+    db: DBDep,
+    payload: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """
+    Apply a prompt-driven edit to a Canvas slide set.
+
+    Expects {"prompt": str, "slides": [{"id": str, "elements": [{"id": str, "type": str, "content": str}]}]}.
+    Returns {"slides": [...]} with the same structure but edited content per the prompt.
+    Uses the configured LLM (whatever AI engine the backend is wired to).
+    """
+    prompt = str(payload.get("prompt", "")).strip()
+    slides = payload.get("slides")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+    if not isinstance(slides, list):
+        raise HTTPException(status_code=400, detail="slides must be a list")
+
+    # Build a system prompt that constrains the model to return the same
+    # structure with edited content only.
+    from app.services.ai_orchestrator import _get_client  # type: ignore
+
+    system = (
+        "You are a senior HC consultant editing a presentation. The user will give you a JSON object "
+        "with a 'slides' array. Each slide has 'id' and 'elements'. Each element has 'id', 'type' "
+        "('title' | 'heading' | 'label' | 'bullet' | 'body'), and 'content'. "
+        "Apply the user's instruction to the slides. Return a JSON object with the SAME shape "
+        "(same slide ids, same element ids, same types) but with edited 'content' strings. "
+        "Do not invent new ids. Do not drop any element. Do not return markdown fences or any prose. "
+        "Return ONLY the JSON object."
+    )
+    user_message = json.dumps({"instruction": prompt, "slides": slides}, ensure_ascii=False)
+
+    try:
+        client = _get_client()
+        response = await client.chat.completions.create(
+            model=settings.AI_MODEL,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.4,
+            max_tokens=4000,
+        )
+        raw_text = response.choices[0].message.content or "{}"
+        result = json.loads(raw_text)
+        if not isinstance(result, dict) or "slides" not in result:
+            raise ValueError("Model returned unexpected shape")
+
+        # Audit trail for this edit so it shows up in admin logs alongside other AI activity.
+        audit = AiAuditLog(
+            tenant_id=current_user.tenant_id,
+            user_id=current_user.id,
+            skill_id="canvas",
+            action="ai_canvas.edit",
+            payload={
+                "phase": "completed",
+                "prompt": prompt[:500],
+                "input_slide_count": len(slides),
+                "output_slide_count": len(result.get("slides", [])) if isinstance(result.get("slides"), list) else 0,
+                "agent": {"model": settings.AI_MODEL},
+            },
+        )
+        db.add(audit)
+        await db.commit()
+        return result
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Canvas edit failed: {exc}") from exc
 
 
 @router.delete("/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)

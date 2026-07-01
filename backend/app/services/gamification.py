@@ -110,7 +110,7 @@ SEED_BADGES: list[dict[str, Any]] = [
     {
         "slug": "hc-architect-legendary",
         "name": "HC Architect",
-        "description": "Unlocked 10+ HC skills – true architect status.",
+        "description": "Unlocked 10+ HC skills - true architect status.",
         "icon_url": "/static/badges/hc-architect.svg",
         "rarity": BadgeRarity.legendary,
     },

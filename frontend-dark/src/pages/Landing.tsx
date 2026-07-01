@@ -18,7 +18,7 @@ const stats = [
 
 const flow = [
   { num: '01', icon: Building2, title: 'Smart Client Onboarding',  desc: 'Capture industry, region, priorities, workforce challenges and evidence preferences in 5 structured steps.', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/25' },
-  { num: '02', icon: Target,    title: 'Challenge Brief',           desc: 'Define the advisory challenge, HC domains, questions, constraints, and desired outputs — pre-populated from your onboarding.', color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/25' },
+  { num: '02', icon: Target,    title: 'Challenge Brief',           desc: 'Define the advisory challenge, HC domains, questions, constraints, and desired outputs, pre-populated from your onboarding.', color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/25' },
   { num: '03', icon: Sparkles,  title: 'Run 27 HC Studios',         desc: 'Each studio receives your client context automatically. Generate board-ready outputs in minutes.', color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/25' },
   { num: '04', icon: BarChart3, title: 'Export & Publish',          desc: 'Download as PPTX, PDF, or DOCX with your brand kit. Publish directly to LinkedIn.', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25' },
 ]
@@ -108,7 +108,7 @@ export default function Landing() {
 
             <motion.p variants={fadeUp} custom={2} className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
               Smart onboarding captures your client context once. 27 HC studios use it to generate board-ready
-              deliverables in minutes — not weeks.
+              deliverables in minutes, not weeks.
             </motion.p>
 
             <motion.div variants={fadeUp} custom={3} className="flex items-center justify-center gap-3 flex-wrap">

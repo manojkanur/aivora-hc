@@ -36,9 +36,21 @@ export default function Signup() {
       setToken(res.data.token)
       setUser(res.data.user)
       if (res.data.tenant) setTenant(res.data.tenant)
-      navigate('/onboarding', { replace: true })
+      // Only send to onboarding if not already completed (guards against stale state)
+      try {
+        const stored = localStorage.getItem('aivora-client-profile')
+        const parsed = stored ? JSON.parse(stored) : null
+        const alreadyCompleted = parsed?.state?.isCompleted === true
+        navigate(alreadyCompleted ? '/dashboard' : '/onboarding', { replace: true })
+      } catch {
+        navigate('/onboarding', { replace: true })
+      }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+      let msg: string | null = null
+      if (typeof detail === 'string') msg = detail
+      else if (Array.isArray(detail)) msg = detail.map((d: { msg?: string }) => d?.msg).filter(Boolean).join('; ') || null
+      else if (detail && typeof detail === 'object') msg = (detail as { msg?: string }).msg ?? null
       setError(msg || 'Failed to create account. Please try again.')
     } finally {
       setIsLoading(false)

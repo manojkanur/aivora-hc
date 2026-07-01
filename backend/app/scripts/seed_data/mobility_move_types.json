@@ -1,0 +1,9 @@
+[
+  {"code": "rotation", "label": "Rotation", "description": "Time-bound rotation across functions or geographies for development."},
+  {"code": "permanent_move", "label": "Permanent Move", "description": "Permanent transfer to a new role or location."},
+  {"code": "stretch", "label": "Stretch Assignment", "description": "Stretch assignment alongside current role to build new capability."},
+  {"code": "project", "label": "Project Assignment", "description": "Time-bound project assignment with defined scope and exit criteria."},
+  {"code": "secondment", "label": "Secondment", "description": "External or cross-entity secondment retaining home role."},
+  {"code": "promotion", "label": "Promotion", "description": "Upward move to a higher career level."},
+  {"code": "cross_functional", "label": "Cross-Functional Move", "description": "Lateral move to a different function at the same level."}
+]

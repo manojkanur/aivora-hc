@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentTenant, CurrentUser, DBDep
@@ -38,7 +38,31 @@ async def list_workspaces(current_user: CurrentUser, db: DBDep) -> list[Workspac
     result = await db.execute(
         select(Workspace).where(Workspace.tenant_id == current_user.tenant_id)
     )
-    return [WorkspaceResponse.model_validate(w) for w in result.scalars().all()]
+    workspaces = result.scalars().all()
+
+    # Total available studios across the platform — used as the catalogue baseline.
+    total_skills_row = await db.execute(
+        select(func.count(SkillRegistry.id)).where(SkillRegistry.status == "active")
+    )
+    total_skills = int(total_skills_row.scalar() or 0)
+
+    # Per-workspace count of studios that have actually been opened/launched.
+    counts_row = await db.execute(
+        select(WorkspaceSkill.workspace_id, func.count(WorkspaceSkill.id))
+        .where(WorkspaceSkill.workspace_id.in_([w.id for w in workspaces]))
+        .group_by(WorkspaceSkill.workspace_id)
+    )
+    launched: dict[uuid.UUID, int] = {ws_id: count for ws_id, count in counts_row.all()}
+
+    out: list[WorkspaceResponse] = []
+    for w in workspaces:
+        resp = WorkspaceResponse.model_validate(w)
+        # Show the catalogue total when nothing has been launched yet so the card
+        # never reads "0 studios" on a fresh workspace.
+        resp.skill_count = launched.get(w.id) or total_skills
+        resp.last_activity = w.updated_at
+        out.append(resp)
+    return out
 
 
 @router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)

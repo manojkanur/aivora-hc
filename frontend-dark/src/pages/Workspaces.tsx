@@ -50,9 +50,9 @@ const REGION_OPTIONS: { value: ClientRegion; label: string }[] = [
 
 const SIZE_OPTIONS: { value: ClientOrganizationSize; label: string }[] = [
   { value: 'micro',      label: 'Micro (< 50)'       },
-  { value: 'small',      label: 'Small (50–249)'     },
-  { value: 'mid',        label: 'Mid (250–999)'      },
-  { value: 'large',      label: 'Large (1,000–9,999)'},
+  { value: 'small',      label: 'Small (50-249)'     },
+  { value: 'mid',        label: 'Mid (250-999)'      },
+  { value: 'large',      label: 'Large (1,000-9,999)'},
   { value: 'enterprise', label: 'Enterprise (10,000+)'},
 ]
 
@@ -104,7 +104,7 @@ function OrgSelect<T extends string>({ label, value, onChange, options, placehol
 export default function Workspaces() {
   const navigate = useNavigate()
   const { workspaces, fetchWorkspaces, createWorkspace, isLoading } = useWorkspaceStore()
-  const { profile: existingProfile, isCompleted: profileCompleted, save: saveProfile, setProfile } = useClientProfileStore()
+  const { profile: existingProfile, isCompleted: profileCompleted, save: saveProfile, setProfile, setActiveWorkspace } = useClientProfileStore()
 
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active')
@@ -160,12 +160,18 @@ export default function Workspaces() {
         description: formData.description,
       })
 
-      // Merge org details into existing profile — preserve onboarding data and isCompleted state
-      const baseProfile = profileCompleted ? existingProfile : defaultProfile()
+      // Scope the profile store to the brand-new workspace BEFORE writing,
+      // so the seeded profile lands in this workspace's record only — never
+      // bleeds into a previous engagement.
+      setActiveWorkspace(ws.id)
+
+      // Start every new workspace with a fresh client profile.
+      // Only seed the org name + the bits the create form actually captured,
+      // so onboarding does not appear "auto-filled" from a previous engagement.
       setProfile({
-        ...baseProfile,
+        ...defaultProfile(),
         organization: {
-          ...baseProfile.organization,
+          ...defaultProfile().organization,
           name: formData.client_name,
           industry: (formData.industry || 'other') as ClientIndustry,
           region: (formData.region || 'gcc') as ClientRegion,
@@ -178,8 +184,9 @@ export default function Workspaces() {
 
       setShowCreateModal(false)
       setFormData({ name: '', client_name: '', description: '', industry: '', region: '', organizationSize: '', maturityStage: '', operatingModel: '' })
-      toast.success('Workspace created!')
-      navigate(`/workspaces/${ws.id}`)
+      toast.success('Workspace created. Let us walk through onboarding.')
+      // Force onboarding before the user can do anything else.
+      navigate(`/onboarding?workspaceId=${ws.id}`)
     } catch {
       toast.error('Failed to create workspace')
     } finally {
@@ -311,7 +318,7 @@ export default function Workspaces() {
               onChange={e => setFormData(d => ({ ...d, name: e.target.value }))}
             />
             <Input
-              label="Client / Organization Name"
+              label="Organization Name"
               placeholder="Acme Corp"
               value={formData.client_name}
               onChange={e => setFormData(d => ({ ...d, client_name: e.target.value }))}

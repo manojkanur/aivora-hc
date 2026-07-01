@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Send, Sparkles, CheckCircle, Clock,
@@ -11,7 +11,11 @@ import { ExportToolbar } from '../components/exports/ExportToolbar'
 import { SkillCreditBadge } from '../components/skills/SkillCreditBadge'
 import { ManualWizard } from '../components/skills/ManualWizard'
 import { useCreditsStore } from '../store/credits'
-import { aiAPI, draftsAPI, skillsAPI, kbAPI } from '../lib/api'
+import { aiAPI, draftsAPI, skillsAPI, kbAPI, workspaceSkillsAPI } from '../lib/api'
+import { useAutosave } from '../hooks/useAutosave'
+import { SaveIndicator } from '../components/ui/SaveIndicator'
+import { StudioOutputDashboard } from '../components/studio/StudioOutputDashboard'
+import { useClientProfileStore } from '../store/clientProfile'
 import { toast } from '../components/ui/Toast'
 import { cn } from '../lib/utils'
 import { formatRelativeTime } from '../lib/utils'
@@ -38,17 +42,17 @@ interface IntakeConfig { intro: string; questions: IntakeQuestion[] }
 
 const SKILL_INTAKE: Record<string, IntakeConfig> = {
   'hc-framework': {
-    intro: "Hi! I'm going to help you build a comprehensive **HC Framework** for your client. I'll ask you a few quick questions to tailor the output — let's go.",
+    intro: "Hi! I'm going to help you build a comprehensive **HC Framework** for your client. I'll ask you a few quick questions to tailor the output. Let's go.",
     questions: [
       { key: 'org_name',            label: 'Organisation name',       prompt: "What is the **name of the organisation** we're building this HC framework for?" },
       { key: 'industry',            label: 'Industry',                prompt: "What **industry or sector** does the organisation operate in? (e.g. Financial Services, Retail, Manufacturing)" },
       { key: 'headcount',           label: 'Headcount',               prompt: "What is the **approximate headcount** of the organisation?" },
-      { key: 'strategic_priorities',label: 'Strategic priorities',    prompt: "What are the **top 3–5 strategic priorities** for the business right now? (e.g. geographic expansion, cost reduction, digital transformation)" },
+      { key: 'strategic_priorities',label: 'Strategic priorities',    prompt: "What are the **top 3-5 strategic priorities** for the business right now? (e.g. geographic expansion, cost reduction, digital transformation)" },
       { key: 'maturity_level', label: 'HC maturity level', prompt: "How would you describe the **current HC maturity**?", choices: [
-        { value: 'nascent',     desc: 'Just starting — minimal HC processes in place' },
-        { value: 'developing',  desc: 'Some processes — inconsistent but improving' },
-        { value: 'advanced',    desc: 'Strong capability — structured and measurable' },
-        { value: 'leading',     desc: 'Best-in-class — innovative and data-driven' },
+        { value: 'nascent',     desc: 'Just starting: minimal HC processes in place' },
+        { value: 'developing',  desc: 'Some processes, inconsistent but improving' },
+        { value: 'advanced',    desc: 'Strong capability: structured and measurable' },
+        { value: 'leading',     desc: 'Best-in-class: innovative and data-driven' },
       ]},
     ],
   },
@@ -57,7 +61,7 @@ const SKILL_INTAKE: Record<string, IntakeConfig> = {
     questions: [
       { key: 'org_name',      label: 'Organisation name',   prompt: "What is the **name of the organisation**?" },
       { key: 'horizon_years', label: 'Strategy horizon',    prompt: "What is the **strategy horizon** in years? (e.g. 3 years, 5 years)" },
-      { key: 'focus_areas',   label: 'HC focus areas',      prompt: "What are the **key HC focus areas**? (e.g. talent acquisition, L&D, culture, leadership development — list as many as relevant)" },
+      { key: 'focus_areas',   label: 'HC focus areas',      prompt: "What are the **key HC focus areas**? (e.g. talent acquisition, L&D, culture, leadership development; list as many as relevant)" },
       { key: 'business_goals',label: 'Business goals',      prompt: "What are the **top business goals** this HC strategy must support? (e.g. grow revenue by 30%, enter 3 new markets, reduce attrition)" },
     ],
   },
@@ -65,8 +69,8 @@ const SKILL_INTAKE: Record<string, IntakeConfig> = {
     intro: "I'll help you conduct an **HC Maturity Assessment**. Let me gather some context first.",
     questions: [
       { key: 'org_name',       label: 'Organisation name', prompt: "What is the **name of the organisation**?" },
-      { key: 'dimensions',     label: 'Assessment dimensions', prompt: "Which **HC dimensions** should we assess? (e.g. talent, leadership, culture, analytics, learning — list all relevant ones)" },
-      { key: 'current_scores', label: 'Self-assessed scores', prompt: "Can you share any **self-assessed scores (1–5)** per dimension? If unsure, just say 'not sure' and I'll use industry baselines." },
+      { key: 'dimensions',     label: 'Assessment dimensions', prompt: "Which **HC dimensions** should we assess? (e.g. talent, leadership, culture, analytics, learning; list all relevant ones)" },
+      { key: 'current_scores', label: 'Self-assessed scores', prompt: "Can you share any **self-assessed scores (1-5)** per dimension? If unsure, just say 'not sure' and I'll use industry baselines." },
     ],
   },
   'talent-acquisition': {
@@ -74,7 +78,7 @@ const SKILL_INTAKE: Record<string, IntakeConfig> = {
     questions: [
       { key: 'org_name',         label: 'Organisation name', prompt: "What is the **name of the organisation**?" },
       { key: 'open_roles',       label: 'Open roles',        prompt: "How many **open roles** are they looking to fill?" },
-      { key: 'target_profile',   label: 'Target profile',    prompt: "Describe the **target talent profile** — what skills, experience level, or type of candidates are they hiring?" },
+      { key: 'target_profile',   label: 'Target profile',    prompt: "Describe the **target talent profile**: what skills, experience level, or type of candidates are they hiring?" },
       { key: 'timeline_months',  label: 'Timeline',          prompt: "What is the **target timeline** for filling these roles? (in months)" },
     ],
   },
@@ -84,8 +88,8 @@ const DEFAULT_INTAKE: IntakeConfig = {
   intro: "I'll help you generate a professional HC deliverable. Let me ask a few questions to tailor the output for your client.",
   questions: [
     { key: 'org_name',    label: 'Organisation name', prompt: "What is the **name of the organisation** we're working with?" },
-    { key: 'context',     label: 'Context',           prompt: "Give me a brief **overview of the engagement context** — what challenge or goal are we addressing?" },
-    { key: 'priorities',  label: 'Key priorities',    prompt: "What are the **3–5 key priorities or outcomes** you want this deliverable to cover?" },
+    { key: 'context',     label: 'Context',           prompt: "Give me a brief **overview of the engagement context**: what challenge or goal are we addressing?" },
+    { key: 'priorities',  label: 'Key priorities',    prompt: "What are the **3-5 key priorities or outcomes** you want this deliverable to cover?" },
     { key: 'audience',    label: 'Audience',          prompt: "Who is the **primary audience** for this output? (e.g. C-suite, HR leadership, board)" },
   ],
 }
@@ -179,6 +183,13 @@ export default function SkillStudio() {
   const navigate = useNavigate()
   const { skills, fetchSkills } = useWorkspaceStore()
   const { deductOptimistic, refundOptimistic } = useCreditsStore()
+  const setActiveProfileWorkspace = useClientProfileStore(s => s.setActiveWorkspace)
+
+  // Switch the client-profile store to this workspace so the output dashboard
+  // shows THIS engagement's org intel, never the previous one's.
+  useEffect(() => {
+    setActiveProfileWorkspace(workspaceId || null)
+  }, [workspaceId, setActiveProfileWorkspace])
 
   // Ensure skills are loaded (in case user navigated directly to this page)
   useEffect(() => {
@@ -188,7 +199,7 @@ export default function SkillStudio() {
   const skill = skills.find(s => s.id === skillId)
   const activeIntake = (skill?.slug ? SKILL_INTAKE[skill.slug] : undefined) ?? DEFAULT_INTAKE
 
-  const [mode, setMode] = useState<'ai' | 'manual'>('ai')
+  const [mode, setMode] = useState<'ai' | 'manual'>('manual')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -204,7 +215,7 @@ export default function SkillStudio() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Knowledge base
-  const [kbOpen, setKbOpen] = useState(false)
+  const [kbOpen, setKbOpen] = useState(true)
   const [kbFiles, setKbFiles] = useState<{ name: string; content: string; status: 'loading' | 'done' | 'error' }[]>([])
   const [kbUrls, setKbUrls] = useState<{ url: string; status: 'idle' | 'loading' | 'done' | 'error'; text?: string }[]>([])
   const [urlInput, setUrlInput] = useState('')
@@ -229,6 +240,44 @@ export default function SkillStudio() {
     if (workspaceId && skillId) loadDrafts(true)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [workspaceId, skillId]) // eslint-disable-line
+
+  // Resume studio intake state from server (workspace_skills.state)
+  useEffect(() => {
+    if (!workspaceId || !skillId) return
+    workspaceSkillsAPI.getState(workspaceId, skillId).then(res => {
+      const state = (res.data?.state ?? {}) as {
+        questionIndex?: number
+        collectedContext?: Record<string, string>
+        manualInputs?: Record<string, string>
+        mode?: 'ai' | 'manual'
+      }
+      if (state && typeof state === 'object') {
+        if (state.collectedContext) setCollectedContext(state.collectedContext)
+        if (state.manualInputs) setManualInputs(state.manualInputs)
+        if (typeof state.questionIndex === 'number') setQuestionIndex(state.questionIndex)
+        // AI mode disabled — always manual
+        setMode('manual')
+      }
+    }).catch(() => {})
+  }, [workspaceId, skillId])
+
+  // Autosave intake state on change
+  const intakePayload = useMemo(() => ({
+    questionIndex,
+    collectedContext,
+    manualInputs,
+    mode,
+  }), [questionIndex, collectedContext, manualInputs, mode])
+  const onSaveIntake = useCallback(async (v: typeof intakePayload) => {
+    if (!workspaceId || !skillId) return
+    await workspaceSkillsAPI.saveState(workspaceId, skillId, v)
+  }, [workspaceId, skillId])
+  const { status: intakeSaveStatus } = useAutosave({
+    value: intakePayload,
+    onSave: onSaveIntake,
+    delay: 800,
+    enabled: !!(workspaceId && skillId) && phase === 'intake',
+  })
 
   const loadDrafts = async (selectLatest = false) => {
     try {
@@ -276,11 +325,11 @@ export default function SkillStudio() {
       setQuestionIndex(nextIndex)
       setTimeout(() => {
         const summary = activeIntake.questions
-          .map((q, i) => `**${q.label}:** ${Object.values(newContext)[i] ?? '—'}`)
+          .map((q, i) => `**${q.label}:** ${Object.values(newContext)[i] ?? ' - '}`)
           .join('\n')
         setMessages(m => [...m, {
           role: 'assistant',
-          content: `Great — here's what I have:\n\n${summary}\n\nReady to generate the full ${skill?.name ?? 'deliverable'}? Click **Generate** below, or type any corrections.`,
+          content: `Great, here's what I have:\n\n${summary}\n\nReady to generate the full ${skill?.name ?? 'deliverable'}? Click **Generate** below, or type any corrections.`,
         }])
       }, 300)
     }
@@ -305,7 +354,7 @@ export default function SkillStudio() {
       const res = await aiAPI.startJob(workspaceId, skillId, ctx)
       console.log('[Generate] job created:', res.data)
       const jobId = res.data.id
-      setGenProgress('Queued — AI is working...')
+      setGenProgress('Queued. AI is working...')
 
       // Store interval ID locally — never read pollRef inside the callback
       let dots = 0
@@ -350,7 +399,7 @@ export default function SkillStudio() {
       await draftsAPI.approve(draftId)
       setDrafts(prev => prev.map(d => d.id === draftId ? { ...d, approval_status: 'approved' } : d))
       if (selectedDraft?.id === draftId) setSelectedDraft(d => d ? { ...d, approval_status: 'approved' } : d)
-      toast.success('Draft approved — ready to export!')
+      toast.success('Draft approved, ready to export!')
     } catch { toast.error('Failed to approve') }
   }
 
@@ -476,29 +525,7 @@ export default function SkillStudio() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* AI / Manual toggle */}
-          {phase !== 'generating' && (
-            <div className="flex items-center border border-[#1e2433] rounded-lg p-0.5 bg-[#0E0E0E]">
-              <button
-                onClick={() => setMode('ai')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors',
-                  mode === 'ai' ? 'bg-[#131720] text-white' : 'text-slate-600 hover:text-white'
-                )}
-              >
-                <Sparkles className="w-3 h-3" /> AI
-              </button>
-              <button
-                onClick={() => setMode('manual')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors',
-                  mode === 'manual' ? 'bg-[#131720] text-white' : 'text-slate-600 hover:text-white'
-                )}
-              >
-                Manual
-              </button>
-            </div>
-          )}
+          {phase === 'intake' && <SaveIndicator status={intakeSaveStatus} className="mr-2" />}
           {skill && <SkillCreditBadge credits={skill.credit_cost} />}
 
           {selectedDraft && phase !== 'generating' && (
@@ -548,9 +575,93 @@ export default function SkillStudio() {
       {/* Body */}
       <div className="flex flex-1 min-h-0">
 
+        {/* Knowledge Base sidebar — removed per product call. Kept the state above
+            so AI context assembly that consumed kbFiles/kbUrls still compiles. */}
+        <div className="hidden">
+          <div className="px-4 py-3 border-b border-[#1e2433] flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-[#3b82f6]" />
+            <span className="text-sm font-semibold text-white">Knowledge Base</span>
+            {(kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length) > 0 && (
+              <span className="ml-auto text-xs bg-[#3b82f6]/20 text-[#60a5fa] px-1.5 py-0.5 rounded-full font-medium">
+                {kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length} loaded
+              </span>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            {/* File upload */}
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Upload files</p>
+              <p className="text-[11px] text-slate-600 mb-2">PDF, DOCX, TXT, CSV. Content is extracted and added to the AI context.</p>
+              <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.pdf,.docx,.csv" className="hidden" onChange={handleFileUpload} />
+              {kbFiles.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {kbFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#131720] rounded-lg border border-[#1e2433]">
+                      {f.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
+                      {f.status === 'done' && <FileText className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
+                      {f.status === 'error' && <FileText className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                      <span className="text-xs text-slate-300 flex-1 truncate">{f.name}</span>
+                      {f.status === 'error' && <span className="text-[10px] text-red-400">Failed</span>}
+                      {f.status === 'loading' && <span className="text-[10px] text-slate-500">Extracting...</span>}
+                      <button onClick={() => setKbFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white transition-colors border border-dashed border-[#1e2433] hover:border-[#3b82f6] rounded-lg px-3 py-2 w-full justify-center"
+              >
+                <Paperclip className="w-3 h-3" /> Upload files
+              </button>
+            </div>
+
+            {/* URL scrape */}
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Scrape URLs</p>
+              <p className="text-[11px] text-slate-600 mb-2">Paste a webpage URL. Text is extracted and added to context.</p>
+              {kbUrls.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {kbUrls.map((u, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#131720] rounded-lg border border-[#1e2433]">
+                      {u.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
+                      {u.status === 'done' && <Link2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
+                      {u.status === 'error' && <Link2 className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                      {u.status === 'idle' && <Link2 className="w-3 h-3 text-slate-500 flex-shrink-0" />}
+                      <span className="text-xs text-slate-300 flex-1 truncate">{u.url}</span>
+                      {u.status === 'error' && <span className="text-[10px] text-red-400">Failed</span>}
+                      <button onClick={() => setKbUrls(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-1.5">
+                <input
+                  value={urlInput}
+                  onChange={e => setUrlInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl() } }}
+                  placeholder="https://..."
+                  className="flex-1 px-3 py-1.5 text-xs border border-[#1e2433] rounded-lg bg-[#131720] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+                />
+                <button
+                  onClick={handleAddUrl}
+                  disabled={!urlInput.trim()}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#3b82f6] text-white disabled:opacity-40 hover:bg-[#60a5fa] transition-colors flex-shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Left: Manual wizard */}
         {mode === 'manual' && phase === 'intake' && (
-          <div className="flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]" style={{ width: '520px' }}>
+          <div className="flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]" style={{ width: '480px' }}>
             <ManualWizard
               skillSlug={skill?.slug ?? ''}
               skillName={skill?.name ?? 'Deliverable'}
@@ -562,97 +673,7 @@ export default function SkillStudio() {
 
         {/* Left: Chat intake */}
         {mode === 'ai' && (
-        <div className="w-96 flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]">
-
-          {/* Knowledge Base panel */}
-          <div className="border-b border-[#1e2433]">
-            <button
-              onClick={() => setKbOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#1a1e2e] transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-3.5 h-3.5 text-[#3b82f6]" />
-                <span className="text-xs font-semibold text-white">Knowledge Base</span>
-                {(kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length) > 0 && (
-                  <span className="text-xs bg-[#3b82f6]/20 text-[#60a5fa] px-1.5 py-0.5 rounded-full font-medium">
-                    {kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length}
-                  </span>
-                )}
-              </div>
-              {kbOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
-            </button>
-
-            {kbOpen && (
-              <div className="px-4 pb-3 space-y-3">
-                {/* File upload */}
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Files</p>
-                  <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.pdf,.docx,.csv" className="hidden" onChange={handleFileUpload} />
-                  {kbFiles.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {kbFiles.map((f, i) => (
-                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0E0E0E] rounded-lg border border-[#1e2433]">
-                          {f.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
-                          {f.status === 'done' && <FileText className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
-                          {f.status === 'error' && <FileText className="w-3 h-3 text-red-400 flex-shrink-0" />}
-                          <span className="text-xs text-slate-300 flex-1 truncate">{f.name}</span>
-                          {f.status === 'error' && <span className="text-[10px] text-red-400">Failed</span>}
-                          {f.status === 'loading' && <span className="text-[10px] text-slate-500">Extracting...</span>}
-                          <button onClick={() => setKbFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white transition-colors border border-dashed border-[#1e2433] hover:border-[#3b82f6] rounded-lg px-3 py-1.5 w-full justify-center"
-                  >
-                    <Paperclip className="w-3 h-3" /> Upload files
-                  </button>
-                </div>
-
-                {/* URL scrape */}
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">URLs</p>
-                  {kbUrls.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {kbUrls.map((u, i) => (
-                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0E0E0E] rounded-lg border border-[#1e2433]">
-                          {u.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
-                          {u.status === 'done' && <Link2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
-                          {u.status === 'error' && <Link2 className="w-3 h-3 text-red-400 flex-shrink-0" />}
-                          {u.status === 'idle' && <Link2 className="w-3 h-3 text-slate-500 flex-shrink-0" />}
-                          <span className="text-xs text-slate-300 flex-1 truncate">{u.url}</span>
-                          {u.status === 'error' && <span className="text-[10px] text-red-400">Failed</span>}
-                          <button onClick={() => setKbUrls(prev => prev.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 transition-colors">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-1.5">
-                    <input
-                      value={urlInput}
-                      onChange={e => setUrlInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl() } }}
-                      placeholder="https://..."
-                      className="flex-1 px-3 py-1.5 text-xs border border-[#1e2433] rounded-lg bg-[#0E0E0E] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
-                    />
-                    <button
-                      onClick={handleAddUrl}
-                      disabled={!urlInput.trim()}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#3b82f6] text-white disabled:opacity-40 hover:bg-[#60a5fa] transition-colors flex-shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="w-80 flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]">
 
           {/* Progress pills */}
           <div className="px-4 py-3 border-b border-[#1e2433] flex gap-1.5 flex-wrap">
@@ -726,11 +747,11 @@ export default function SkillStudio() {
                           } else {
                             setQuestionIndex(nextIndex)
                             const summary = activeIntake.questions
-                              .map((q, i) => `**${q.label}:** ${Object.values(newContext)[i] ?? '—'}`)
+                              .map((q, i) => `**${q.label}:** ${Object.values(newContext)[i] ?? ' - '}`)
                               .join('\n')
                             setMessages(m => [...m, {
                               role: 'assistant',
-                              content: `Great — here's what I have:\n\n${summary}\n\nReady to generate the full ${skill?.name ?? 'deliverable'}? Click **Generate** below, or type any corrections.`,
+                              content: `Great, here's what I have:\n\n${summary}\n\nReady to generate the full ${skill?.name ?? 'deliverable'}? Click **Generate** below, or type any corrections.`,
                             }])
                           }
                         }, 0)
@@ -785,7 +806,7 @@ export default function SkillStudio() {
               <div className="w-12 h-12 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
               <div>
                 <p className="text-base font-semibold text-white">{genProgress}</p>
-                <p className="text-sm text-slate-600 mt-1">The AI is generating your {skill?.name} deliverable.<br />This usually takes 20–60 seconds.</p>
+                <p className="text-sm text-slate-600 mt-1">The AI is generating your {skill?.name} deliverable.<br />This usually takes 20-60 seconds.</p>
               </div>
             </div>
           )}
@@ -809,49 +830,20 @@ export default function SkillStudio() {
 
           {(phase === 'output' || (phase === 'intake' && selectedDraft)) && selectedDraft && (
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="max-w-3xl mx-auto space-y-4">
-                {/* Draft header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-lg font-bold text-white">{skill?.name} — Output</h2>
-                    <span className={cn(
-                      'text-xs px-2.5 py-0.5 rounded-full font-semibold',
-                      selectedDraft.approval_status === 'approved'
-                        ? 'bg-[#131720] text-white'
-                        : 'bg-amber-100 text-amber-700 border border-amber-200'
-                    )}>
-                      {selectedDraft.approval_status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <Clock className="w-3.5 h-3.5" />
-                    {formatRelativeTime(selectedDraft.created_at)}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="bg-[#131720] border border-[#1e2433] rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
-                  {renderDraftContent(selectedDraft.content)}
-                </div>
-
-                {/* Approve CTA if pending */}
-                {selectedDraft.approval_status === 'pending' && (
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                    <Zap className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                    <p className="text-sm text-amber-800 flex-1">Review the output above. Approve to unlock export.</p>
-                    <Button size="sm" leftIcon={<CheckCircle className="w-4 h-4" />} onClick={() => handleApprove(selectedDraft.id)}>
-                      Approve
-                    </Button>
-                  </div>
-                )}
-
-                {selectedDraft.approval_status === 'approved' && (
-                  <div className="flex items-center gap-3 p-4 bg-[#131720] border border-[#1e2433] rounded-xl">
-                    <CheckCircle className="w-5 h-5 text-slate-500 flex-shrink-0" />
-                    <p className="text-sm text-slate-300 flex-1">Draft approved. Download below or run again for a revised version.</p>
-                    <ExportToolbar draftId={selectedDraft.id} />
-                  </div>
-                )}
+              <div className="max-w-6xl mx-auto">
+                <StudioOutputView
+                  skillName={skill?.name ?? 'Studio'}
+                  skillCategory={skill?.category}
+                  draft={selectedDraft}
+                  onApprove={() => handleApprove(selectedDraft.id)}
+                  onOpenCanvas={() => navigate(`/canvas/${selectedDraft.id}?title=${encodeURIComponent(skill?.name ?? 'Deliverable')}`)}
+                  onNewRun={() => { setSelectedDraft(null); setPhase('intake') }}
+                  exportToolbar={selectedDraft.approval_status === 'approved' ? <ExportToolbar draftId={selectedDraft.id} /> : null}
+                  onContentPatched={(content) => {
+                    setSelectedDraft(prev => prev ? { ...prev, content } : prev)
+                    setDrafts(prev => prev.map(d => d.id === selectedDraft.id ? { ...d, content } : d))
+                  }}
+                />
               </div>
             </div>
           )}
@@ -908,4 +900,74 @@ export default function SkillStudio() {
       </div>
     </div>
   )
+}
+
+// ── HiPo-style output view adapter ─────────────────────────────────────────
+// Maps the generic draft.content shape into the StudioOutputDashboard inputs.
+function StudioOutputView({
+  skillName, skillCategory, draft, onApprove, onOpenCanvas, onNewRun, exportToolbar, onContentPatched,
+}: {
+  skillName: string
+  skillCategory?: string
+  draft: Draft
+  onApprove: () => void
+  onOpenCanvas: () => void
+  onNewRun: () => void
+  exportToolbar: React.ReactNode
+  onContentPatched?: (content: Record<string, unknown>) => void
+}) {
+  const { profile } = useClientProfileStore()
+  const content = (draft.content ?? {}) as Record<string, unknown>
+
+  // Pull org intel from the profile store if onboarding has been done
+  const orgIntel = {
+    industry: profile?.organization?.industry ? humanise(profile.organization.industry) : undefined,
+    region:   profile?.organization?.region   ? humanise(profile.organization.region)   : undefined,
+    size:     profile?.organization?.organizationSize ? humanise(profile.organization.organizationSize) : undefined,
+    maturity: profile?.organization?.maturityStage ? humanise(profile.organization.maturityStage) : undefined,
+    model:    profile?.organization?.operatingModel ? humanise(profile.organization.operatingModel) : undefined,
+  }
+
+  // Map well-known content keys onto the dashboard sections if present.
+  const recommendationsRaw = (content.recommendations ?? content.actions ?? []) as unknown
+  const recommendations = Array.isArray(recommendationsRaw)
+    ? recommendationsRaw.slice(0, 8).map((r: unknown) => {
+        if (typeof r === 'string') return { title: r }
+        const obj = r as { title?: string; recommendation?: string; rationale?: string; tone?: 'high' | 'medium' | 'low' }
+        return { title: obj.title ?? obj.recommendation ?? '', rationale: obj.rationale, tone: obj.tone }
+      }).filter(r => r.title)
+    : []
+
+  const notes = typeof content.advisory_notes === 'string' ? content.advisory_notes
+              : typeof content.notes === 'string' ? content.notes
+              : ''
+
+  // Maturity heatmap — synthetic if not provided, so the dashboard always feels populated.
+  const maturity: Array<{ label: string; level: 'High' | 'Medium' | 'Low' }> =
+    (Array.isArray(content.maturity_heatmap) ? content.maturity_heatmap : []) as Array<{ label: string; level: 'High' | 'Medium' | 'Low' }>
+
+  return (
+    <StudioOutputDashboard
+      studioName={skillName}
+      studioCategory={skillCategory}
+      orgName={profile?.organization?.name}
+      status={draft.approval_status}
+      generatedAt={formatRelativeTime(draft.created_at)}
+      orgIntel={orgIntel}
+      maturity={maturity}
+      recommendations={recommendations}
+      notes={notes}
+      rawContent={content}
+      onApprove={onApprove}
+      onOpenCanvas={onOpenCanvas}
+      onNewRun={onNewRun}
+      exportToolbar={exportToolbar}
+      draftId={draft.id}
+      onContentPatched={onContentPatched}
+    />
+  )
+}
+
+function humanise(s: string): string {
+  return s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }

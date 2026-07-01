@@ -1,0 +1,312 @@
+{
+  "version": "1.0",
+  "scaleNote": "Likert questions: 1=Strongly Disagree, 2=Disagree, 3=Neutral, 4=Agree, 5=Strongly Agree. Score normalized to 0-100.",
+  "questions": [
+    {
+      "id": "sc-01",
+      "text": "Our HC priorities are explicitly tied to a documented business strategy reviewed at least annually.",
+      "type": "likert",
+      "dimensions": ["strategy-capability"],
+      "studios": ["strategy", "hc-framework", "challenge-brief"],
+      "weight": 1.2
+    },
+    {
+      "id": "sc-02",
+      "text": "Leadership can articulate the top three capability gaps that would put the strategy at risk.",
+      "type": "likert",
+      "dimensions": ["strategy-capability"],
+      "studios": ["strategy", "leadership", "challenge-brief"],
+      "weight": 1.0
+    },
+    {
+      "id": "sc-03",
+      "text": "We have a multi-year workforce plan that scenarios out demand, supply, and gap.",
+      "type": "likert",
+      "dimensions": ["strategy-capability", "workforce-analytics"],
+      "studios": ["strategy", "workforce-planning"],
+      "weight": 1.1
+    },
+    {
+      "id": "sc-04",
+      "text": "Which of these strategic shifts is your organization navigating right now?",
+      "type": "multi",
+      "dimensions": ["strategy-capability", "change-readiness"],
+      "studios": ["strategy", "challenge-brief", "engage", "transformation"],
+      "options": [
+        { "value": "growth", "label": "Aggressive growth / market expansion" },
+        { "value": "cost", "label": "Cost optimization / restructuring" },
+        { "value": "digital", "label": "Digital / AI transformation" },
+        { "value": "ma", "label": "M&A integration" },
+        { "value": "esg", "label": "ESG / sustainability mandate" },
+        { "value": "succession", "label": "Founder / leadership transition" }
+      ],
+      "weight": 1.0
+    },
+    {
+      "id": "ta-01",
+      "text": "We have a unified job architecture (levels, families, descriptors) used across the organization.",
+      "type": "likert",
+      "dimensions": ["talent-architecture"],
+      "studios": ["talent-architecture", "talent-acquisition", "rewards"],
+      "weight": 1.2
+    },
+    {
+      "id": "ta-02",
+      "text": "Career paths are documented and visible to employees for at least 70% of roles.",
+      "type": "likert",
+      "dimensions": ["talent-architecture", "engagement-culture"],
+      "studios": ["talent-architecture", "career-design"],
+      "weight": 1.0
+    },
+    {
+      "id": "ta-03",
+      "text": "We have a defined skills taxonomy used in hiring, development, and mobility decisions.",
+      "type": "likert",
+      "dimensions": ["talent-architecture", "workforce-analytics"],
+      "studios": ["talent-architecture", "skills", "talent-acquisition"],
+      "weight": 1.1
+    },
+    {
+      "id": "ta-04",
+      "text": "Succession plans exist for every business-critical role with at least one named ready-now successor.",
+      "type": "likert",
+      "dimensions": ["talent-architecture", "leadership-hipo"],
+      "studios": ["talent-architecture", "succession", "leadership"],
+      "weight": 1.2
+    },
+    {
+      "id": "ta-05",
+      "text": "How would you describe internal mobility today?",
+      "type": "single",
+      "dimensions": ["talent-architecture"],
+      "studios": ["talent-architecture", "mobility"],
+      "options": [
+        { "value": "low", "label": "Rare - most moves are external hires" },
+        { "value": "ad-hoc", "label": "Happens, but informally" },
+        { "value": "structured", "label": "Defined program with posting + manager approval" },
+        { "value": "marketplace", "label": "Open internal marketplace with skills-based matching" }
+      ],
+      "weight": 1.0
+    },
+    {
+      "id": "ec-01",
+      "text": "We collect employee engagement signals at least quarterly (pulse, listening posts, sentiment).",
+      "type": "likert",
+      "dimensions": ["engagement-culture"],
+      "studios": ["engagement", "engage", "experience"],
+      "weight": 1.1
+    },
+    {
+      "id": "ec-02",
+      "text": "Managers receive their own team's engagement results and are accountable for action plans.",
+      "type": "likert",
+      "dimensions": ["engagement-culture", "leadership-hipo"],
+      "studios": ["engagement", "leadership", "manager-effectiveness"],
+      "weight": 1.2
+    },
+    {
+      "id": "ec-03",
+      "text": "Our stated culture values are observable in how decisions get made and how performance is rewarded.",
+      "type": "likert",
+      "dimensions": ["engagement-culture"],
+      "studios": ["culture", "engagement", "rewards"],
+      "weight": 1.0
+    },
+    {
+      "id": "ec-04",
+      "text": "What is your most pressing engagement / culture concern?",
+      "type": "single",
+      "dimensions": ["engagement-culture"],
+      "studios": ["engagement", "engage", "culture"],
+      "options": [
+        { "value": "attrition", "label": "Regrettable attrition in critical segments" },
+        { "value": "burnout", "label": "Burnout and wellbeing decline" },
+        { "value": "dei", "label": "DEI representation or inclusion gaps" },
+        { "value": "hybrid", "label": "Hybrid / return-to-office tensions" },
+        { "value": "trust", "label": "Trust in leadership eroding" },
+        { "value": "manager", "label": "Inconsistent manager quality" }
+      ],
+      "weight": 1.0
+    },
+    {
+      "id": "lh-01",
+      "text": "We have a calibrated, multi-rater process for identifying high-potential talent.",
+      "type": "likert",
+      "dimensions": ["leadership-hipo"],
+      "studios": ["hipo", "leadership", "talent-review"],
+      "weight": 1.2
+    },
+    {
+      "id": "lh-02",
+      "text": "Identified HiPos have individualized development plans tracked by HR and reviewed twice yearly.",
+      "type": "likert",
+      "dimensions": ["leadership-hipo"],
+      "studios": ["hipo", "development", "leadership"],
+      "weight": 1.1
+    },
+    {
+      "id": "lh-03",
+      "text": "Our leadership bench has at least 1.5 ready successors per critical role on average.",
+      "type": "likert",
+      "dimensions": ["leadership-hipo", "talent-architecture"],
+      "studios": ["hipo", "succession", "leadership"],
+      "weight": 1.2
+    },
+    {
+      "id": "lh-04",
+      "text": "First-time managers receive structured onboarding and coaching in their first 90 days.",
+      "type": "likert",
+      "dimensions": ["leadership-hipo"],
+      "studios": ["leadership", "manager-effectiveness", "development"],
+      "weight": 1.0
+    },
+    {
+      "id": "lh-05",
+      "text": "What is the dominant leadership gap you're trying to close?",
+      "type": "single",
+      "dimensions": ["leadership-hipo"],
+      "studios": ["hipo", "leadership", "challenge-brief"],
+      "options": [
+        { "value": "bench", "label": "Thin bench at the top two levels" },
+        { "value": "transition", "label": "Functional-to-enterprise leader transitions failing" },
+        { "value": "first-time", "label": "First-time manager effectiveness" },
+        { "value": "diversity", "label": "Leadership representation / diversity" },
+        { "value": "digital", "label": "Digital and data fluency at the top" }
+      ],
+      "weight": 1.1
+    },
+    {
+      "id": "wa-01",
+      "text": "We have a single source of truth for headcount, hires, exits, and movement across the org.",
+      "type": "likert",
+      "dimensions": ["workforce-analytics"],
+      "studios": ["analytics", "workforce-planning"],
+      "weight": 1.0
+    },
+    {
+      "id": "wa-02",
+      "text": "Business leaders see workforce KPIs in their regular operating reviews.",
+      "type": "likert",
+      "dimensions": ["workforce-analytics", "strategy-capability"],
+      "studios": ["analytics", "strategy"],
+      "weight": 1.1
+    },
+    {
+      "id": "wa-03",
+      "text": "We can predict attrition risk for critical segments at least one quarter ahead.",
+      "type": "likert",
+      "dimensions": ["workforce-analytics"],
+      "studios": ["analytics", "retention"],
+      "weight": 1.2
+    },
+    {
+      "id": "wa-04",
+      "text": "We measure cost-per-hire, time-to-productivity, and quality-of-hire consistently.",
+      "type": "likert",
+      "dimensions": ["workforce-analytics", "talent-architecture"],
+      "studios": ["analytics", "talent-acquisition"],
+      "weight": 1.0
+    },
+    {
+      "id": "cr-01",
+      "text": "We use a defined change methodology (e.g., ADKAR, Kotter) on transformation initiatives.",
+      "type": "likert",
+      "dimensions": ["change-readiness"],
+      "studios": ["change", "transformation"],
+      "weight": 1.0
+    },
+    {
+      "id": "cr-02",
+      "text": "Change adoption is measured (not just trained / informed) and feeds back into design.",
+      "type": "likert",
+      "dimensions": ["change-readiness", "workforce-analytics"],
+      "studios": ["change", "transformation", "analytics"],
+      "weight": 1.1
+    },
+    {
+      "id": "cr-03",
+      "text": "Our middle managers are equipped and accountable for cascading change to teams.",
+      "type": "likert",
+      "dimensions": ["change-readiness", "leadership-hipo"],
+      "studios": ["change", "manager-effectiveness", "leadership"],
+      "weight": 1.2
+    },
+    {
+      "id": "cr-04",
+      "text": "How much change is your workforce absorbing simultaneously right now?",
+      "type": "single",
+      "dimensions": ["change-readiness"],
+      "studios": ["change", "challenge-brief", "engage"],
+      "options": [
+        { "value": "low", "label": "Steady state - one or two initiatives" },
+        { "value": "moderate", "label": "Several concurrent initiatives - manageable" },
+        { "value": "high", "label": "Heavy load - signs of fatigue" },
+        { "value": "saturated", "label": "Saturated - adoption stalling, attrition rising" }
+      ],
+      "weight": 1.0
+    },
+    {
+      "id": "ctx-org-size",
+      "text": "What is your organization's full-time headcount?",
+      "type": "single",
+      "dimensions": [],
+      "studios": ["onboarding", "challenge-brief"],
+      "options": [
+        { "value": "lt-250", "label": "Under 250" },
+        { "value": "250-1k", "label": "250 - 1,000" },
+        { "value": "1k-5k", "label": "1,000 - 5,000" },
+        { "value": "5k-25k", "label": "5,000 - 25,000" },
+        { "value": "gt-25k", "label": "Over 25,000" }
+      ],
+      "weight": 0
+    },
+    {
+      "id": "ctx-sector",
+      "text": "Which sector best describes your business?",
+      "type": "single",
+      "dimensions": [],
+      "studios": ["onboarding", "challenge-brief"],
+      "options": [
+        { "value": "fs", "label": "Financial Services" },
+        { "value": "tech", "label": "Technology / Software" },
+        { "value": "mfg", "label": "Manufacturing / Industrials" },
+        { "value": "retail", "label": "Retail / Consumer" },
+        { "value": "health", "label": "Healthcare / Life Sciences" },
+        { "value": "energy", "label": "Energy / Utilities" },
+        { "value": "public", "label": "Public Sector / NGO" },
+        { "value": "prof", "label": "Professional Services" }
+      ],
+      "weight": 0
+    },
+    {
+      "id": "ctx-horizon",
+      "text": "What is your planning horizon for this advisory engagement?",
+      "type": "single",
+      "dimensions": [],
+      "studios": ["onboarding", "challenge-brief", "strategy"],
+      "options": [
+        { "value": "90d", "label": "Next 90 days - execution sprint" },
+        { "value": "12m", "label": "Next 12 months - annual plan" },
+        { "value": "3y", "label": "3-year horizon - strategic plan" },
+        { "value": "5y", "label": "5-year horizon - long-range capability" }
+      ],
+      "weight": 0
+    },
+    {
+      "id": "ctx-outputs",
+      "text": "Which outputs would be most valuable to you from this engagement?",
+      "type": "multi",
+      "dimensions": [],
+      "studios": ["onboarding", "challenge-brief"],
+      "options": [
+        { "value": "board", "label": "Board / CHRO narrative deck" },
+        { "value": "playbook", "label": "Implementation playbook" },
+        { "value": "diagnostic", "label": "Diagnostic scorecard" },
+        { "value": "comms", "label": "Leader and employee communications" },
+        { "value": "metrics", "label": "KPI / metric tree" },
+        { "value": "roadmap", "label": "Phased roadmap with milestones" }
+      ],
+      "weight": 0
+    }
+  ]
+}

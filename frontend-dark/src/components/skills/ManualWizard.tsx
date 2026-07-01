@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
+import { useBriefStore, type WorkspaceBrief } from '../../store/briefStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ const REGIONS = [
   'North America', 'Europe', 'Asia Pacific', 'Middle East & Africa',
   'Latin America', 'Global / Multi-region', 'UK & Ireland', 'ANZ',
 ]
-const HEADCOUNTS = ['1–50', '51–200', '201–1,000', '1,001–5,000', '5,001–20,000', '20,000+']
+const HEADCOUNTS = ['1-50', '51-200', '201-1,000', '1,001-5,000', '5,001-20,000', '20,000+']
 const LIFECYCLE_STAGES = [
   'Start-up', 'Growth / Scale-up', 'Established Enterprise',
   'Transformation / Restructure', 'Mature / Optimising', 'Pre-IPO / M&A',
@@ -135,16 +136,16 @@ const SKILL_STEPS: Record<string, StepDef[]> = {
       question: "How would you describe the current HC maturity?",
       hint: 'This sets the baseline for all recommendations',
       type: 'single', options: [
-        'Nascent — minimal processes in place',
-        'Developing — some processes, inconsistent',
-        'Advanced — structured and measurable',
-        'Leading — best-in-class, data-driven',
+        'Nascent: minimal processes in place',
+        'Developing: some processes, inconsistent',
+        'Advanced: structured and measurable',
+        'Leading: best-in-class, data-driven',
       ],
     },
     {
       key: 'strategic_priorities', label: 'Priorities',
       question: "What are the top strategic priorities for the HC function?",
-      hint: 'Select all that apply — these anchor the framework pillars',
+      hint: 'Select all that apply; these anchor the framework pillars',
       type: 'multi', options: STRATEGIC_PRIORITIES,
     },
     {
@@ -171,7 +172,7 @@ const SKILL_STEPS: Record<string, StepDef[]> = {
     {
       key: 'business_goals', label: 'Business Goals',
       question: "What business outcomes must the HC strategy support?",
-      hint: 'Be specific — the AI will align HC initiatives to these goals',
+      hint: 'Be specific; the AI will align HC initiatives to these goals',
       type: 'textarea', placeholder: 'e.g. Grow revenue by 30%, enter 3 new markets, reduce attrition below 10%...',
     },
     {
@@ -192,7 +193,7 @@ const SKILL_STEPS: Record<string, StepDef[]> = {
     {
       key: 'current_scores', label: 'Current Scores',
       question: "Do you have self-assessed scores for any of these dimensions?",
-      hint: 'Enter 1–5 scores per dimension, or leave blank to use industry baselines',
+      hint: 'Enter 1-5 scores per dimension, or leave blank to use industry baselines',
       type: 'textarea', placeholder: 'e.g. Talent Acquisition: 3, L&D: 2, Performance: 4...',
     },
     {
@@ -228,7 +229,7 @@ const SKILL_STEPS: Record<string, StepDef[]> = {
     {
       key: 'open_roles', label: 'Open Roles',
       question: "How many roles are you looking to fill?",
-      type: 'single', options: ['1–5', '6–20', '21–50', '51–100', '100+'],
+      type: 'single', options: ['1-5', '6-20', '21-50', '51-100', '100+'],
     },
     {
       key: 'target_profile', label: 'Target Profile',
@@ -580,7 +581,7 @@ const SKILL_STEPS: Record<string, StepDef[]> = {
       key: 'target_profile', label: 'Target Cohort',
       question: "Who are you targeting with this programme?",
       type: 'multi', options: [
-        'School leavers (16–18)', 'Undergraduates', 'Graduates', 'Postgraduates', 'Career changers',
+        'School leavers (16-18)', 'Undergraduates', 'Graduates', 'Postgraduates', 'Career changers',
       ],
     },
     {
@@ -624,7 +625,7 @@ const DEFAULT_STEPS: StepDef[] = [
   {
     key: 'strategic_priorities', label: 'Priorities',
     question: "What are the top strategic priorities for this engagement?",
-    hint: 'Select all that apply — these will anchor the AI output',
+    hint: 'Select all that apply; these will anchor the AI output',
     type: 'multi', options: STRATEGIC_PRIORITIES,
   },
   {
@@ -645,6 +646,132 @@ const DEFAULT_STEPS: StepDef[] = [
   },
 ]
 
+// ─── Brief → Wizard prefill mappers ───────────────────────────────────────────
+// The brief stores canonical enum values (e.g. industry: 'oil-gas'). The wizard
+// asks the question with human-readable label options (e.g. 'Energy & Utilities').
+// These mappers translate so we can pre-fill from the brief.
+
+const BRIEF_INDUSTRY_TO_LABEL: Record<string, string> = {
+  'banking-finance': 'Financial Services',
+  insurance: 'Financial Services',
+  'energy-utilities': 'Energy & Utilities',
+  'oil-gas': 'Energy & Utilities',
+  telecom: 'Telecommunications',
+  'healthcare-pharma': 'Healthcare & Life Sciences',
+  'retail-consumer': 'Retail & Consumer',
+  manufacturing: 'Manufacturing',
+  'transportation-logistics': 'Manufacturing',
+  'construction-real-estate': 'Real Estate',
+  'technology-software': 'Technology',
+  'professional-services': 'Professional Services',
+  'public-sector': 'Government & Public Sector',
+  education: 'Education',
+  hospitality: 'Retail & Consumer',
+}
+
+const BRIEF_REGION_TO_LABEL: Record<string, string> = {
+  gcc: 'Middle East & Africa',
+  mena: 'Middle East & Africa',
+  africa: 'Middle East & Africa',
+  europe: 'Europe',
+  'north-america': 'North America',
+  'south-america': 'Latin America',
+  'asia-pacific': 'Asia Pacific',
+  global: 'Global / Multi-region',
+}
+
+const BRIEF_SIZE_TO_HEADCOUNT: Record<string, string> = {
+  small: '51-200',
+  mid: '201-1,000',
+  large: '1,001-5,000',
+  enterprise: '20,000+',
+}
+
+const BRIEF_MATURITY_TO_LIFECYCLE: Record<string, string> = {
+  startup: 'Start-up',
+  growth: 'Growth / Scale-up',
+  scaling: 'Growth / Scale-up',
+  mature: 'Mature / Optimising',
+  transformation: 'Transformation / Restructure',
+  turnaround: 'Transformation / Restructure',
+}
+
+const BRIEF_MATURITY_TO_LEVEL: Record<string, string> = {
+  startup: 'Nascent: minimal processes in place',
+  growth: 'Developing: some processes, inconsistent',
+  scaling: 'Advanced: structured and measurable',
+  mature: 'Advanced: structured and measurable',
+  transformation: 'Developing: some processes, inconsistent',
+  turnaround: 'Developing: some processes, inconsistent',
+}
+
+const BRIEF_HC_AREA_TO_PRIORITY: Record<string, string> = {
+  'talent-acquisition': 'Talent Attraction & Retention',
+  leadership: 'Leadership Development',
+  'culture-change-readiness': 'Culture Transformation',
+  'ai-digital-transformation': 'Digital & AI Capability',
+  'workforce-planning': 'Workforce Planning',
+  'organization-design': 'Org Restructuring',
+  succession: 'Succession Planning',
+  'learning-training': 'Learning & Development',
+  rewards: 'Compensation & Benefits',
+  'employee-experience': 'Employee Experience',
+  performance: 'Performance Management',
+  'analytics-productivity': 'HR Technology & Analytics',
+  'capability-skills': 'Learning & Development',
+}
+
+const BRIEF_HC_AREA_TO_DOMAIN: Record<string, string> = {
+  'talent-acquisition': 'Talent Acquisition',
+  'learning-training': 'Learning & Development',
+  performance: 'Performance Management',
+  'culture-change-readiness': 'Culture & Engagement',
+  leadership: 'Leadership Development',
+  'workforce-planning': 'Workforce Planning',
+  'analytics-productivity': 'Analytics & Reporting',
+  rewards: 'Total Rewards',
+  succession: 'Succession Planning',
+  'employee-experience': 'Employee Experience',
+}
+
+function uniq<T>(xs: T[]): T[] { return Array.from(new Set(xs)) }
+
+/**
+ * Build a partial WizardContext from a brief, keyed by the step `key` strings
+ * used in this file. Only includes keys we have confident mappings for.
+ */
+function briefToCtx(brief: WorkspaceBrief): WizardContext {
+  const ctx: WizardContext = {}
+  if (brief.organizationName) ctx.org_name = brief.organizationName
+  const ind = BRIEF_INDUSTRY_TO_LABEL[brief.industry]
+  if (ind) ctx.industry = ind
+  const hc = BRIEF_SIZE_TO_HEADCOUNT[brief.organizationSize]
+  if (hc) ctx.headcount = hc
+  const lc = BRIEF_MATURITY_TO_LIFECYCLE[brief.maturityStage]
+  if (lc) ctx.lifecycle = lc
+  const reg = BRIEF_REGION_TO_LABEL[brief.region]
+  if (reg) ctx.region = reg
+  const lv = BRIEF_MATURITY_TO_LEVEL[brief.maturityStage]
+  if (lv) ctx.maturity_level = lv
+  if (Array.isArray(brief.hcAreas) && brief.hcAreas.length) {
+    const prio = uniq(brief.hcAreas.map(a => BRIEF_HC_AREA_TO_PRIORITY[a]).filter(Boolean) as string[])
+    const dom = uniq(brief.hcAreas.map(a => BRIEF_HC_AREA_TO_DOMAIN[a]).filter(Boolean) as string[])
+    if (prio.length) ctx.strategic_priorities = prio
+    if (dom.length) ctx.focus_areas = dom
+  }
+  return ctx
+}
+
+// Pick most-recent brief saved in the store
+function pickLatestBrief(briefs: Record<string, WorkspaceBrief>): WorkspaceBrief | null {
+  const entries = Object.values(briefs)
+  if (entries.length === 0) return null
+  return entries.reduce<WorkspaceBrief | null>((latest, b) => {
+    if (!latest) return b
+    return new Date(b.completedAt).getTime() > new Date(latest.completedAt).getTime() ? b : latest
+  }, null)
+}
+
 // ─── Context normalisation ────────────────────────────────────────────────────
 
 function normaliseContext(slug: string, ctx: WizardContext): WizardContext {
@@ -656,7 +783,7 @@ function normaliseContext(slug: string, ctx: WizardContext): WizardContext {
     strategic_priorities: join('strategic_priorities') || join('focus_areas'),
     focus_areas:          join('focus_areas') || join('strategic_priorities'),
     business_goals:       str('business_goals') || join('current_challenges'),
-    maturity_level:       str('maturity_level').split('—')[0].trim().toLowerCase() || 'developing',
+    maturity_level:       str('maturity_level').split(':')[0].trim().toLowerCase() || 'developing',
     horizon_years:        str('horizon_years').replace(/\D+$/, '') || str('planning_horizon').replace(/\D+$/, '') || '3',
     dimensions:           join('dimensions') || join('focus_areas'),
     current_scores:       str('current_scores') || 'not provided',
@@ -725,10 +852,24 @@ function ProgressDots({ total, current, completed }: { total: number; current: n
 export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }: ManualWizardProps) {
   const steps = SKILL_STEPS[skillSlug] ?? DEFAULT_STEPS
 
+  // Pre-fill intake from the user's most-recent brief so they don't re-answer
+  // questions the brief already covered.
+  const briefs = useBriefStore(s => s.briefs)
+  const { prefillCtx, prefilledKeys } = useMemo(() => {
+    const latest = pickLatestBrief(briefs)
+    if (!latest) return { prefillCtx: {} as WizardContext, prefilledKeys: new Set<string>() }
+    const c = briefToCtx(latest)
+    return { prefillCtx: c, prefilledKeys: new Set(Object.keys(c)) }
+  }, [briefs])
+
   const [step, setStep]           = useState(1)
   const [direction, setDirection] = useState<1 | -1>(1)
   const [completed, setCompleted] = useState<number[]>([])
-  const [ctx, setCtx]             = useState<WizardContext>({})
+  const [ctx, setCtx]             = useState<WizardContext>(prefillCtx)
+  // Track which keys the user has touched — once touched, we stop labelling
+  // that field as "pre-filled from your brief".
+  const [touchedKeys, setTouchedKeys] = useState<Set<string>>(new Set())
+  const markTouched = (key: string) => setTouchedKeys(s => s.has(key) ? s : new Set(s).add(key))
 
   const markDone = (s: number) => setCompleted(c => c.includes(s) ? c : [...c, s])
 
@@ -747,11 +888,15 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
   const val      = ctx[current.key]
   const arrVal   = Array.isArray(val) ? (val as string[]) : ((val as string) ? [(val as string)] : [])
 
-  const updateSingle = (v: string) => setCtx(c => ({ ...c, [current.key]: v }))
-  const toggleMulti  = (v: string) => setCtx(c => ({
-    ...c,
-    [current.key]: arrVal.includes(v) ? arrVal.filter(x => x !== v) : [...arrVal, v],
-  }))
+  const updateSingle = (v: string) => { markTouched(current.key); setCtx(c => ({ ...c, [current.key]: v })) }
+  const toggleMulti  = (v: string) => {
+    markTouched(current.key)
+    setCtx(c => ({
+      ...c,
+      [current.key]: arrVal.includes(v) ? arrVal.filter(x => x !== v) : [...arrVal, v],
+    }))
+  }
+  const showPrefillHint = prefilledKeys.has(current.key) && !touchedKeys.has(current.key)
 
   const handleGenerate = () => {
     markDone(step)
@@ -795,7 +940,7 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
                 <input
                   type="text"
                   value={(val as string) ?? ''}
-                  onChange={e => setCtx(c => ({ ...c, [current.key]: e.target.value }))}
+                  onChange={e => { markTouched(current.key); setCtx(c => ({ ...c, [current.key]: e.target.value })) }}
                   placeholder={current.placeholder}
                   autoFocus
                   className="w-full px-4 py-3 rounded-xl border border-[#1e2433] bg-[#131720] text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors"
@@ -805,7 +950,7 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
               {current.type === 'textarea' && (
                 <textarea
                   value={(val as string) ?? ''}
-                  onChange={e => setCtx(c => ({ ...c, [current.key]: e.target.value }))}
+                  onChange={e => { markTouched(current.key); setCtx(c => ({ ...c, [current.key]: e.target.value })) }}
                   placeholder={current.placeholder}
                   rows={4}
                   autoFocus
@@ -833,6 +978,13 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
               {current.type === 'multi' && arrVal.length > 0 && (
                 <p className="text-xs text-slate-600">
                   <span className="text-[#3b82f6] font-semibold">{arrVal.length}</span> selected
+                </p>
+              )}
+
+              {/* Pre-filled-from-brief hint */}
+              {showPrefillHint && (
+                <p className="text-[11px] text-[#60a5fa]/80 mt-1">
+                  Pre-filled from your brief - edit if needed
                 </p>
               )}
             </motion.div>
