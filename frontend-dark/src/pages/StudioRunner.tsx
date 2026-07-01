@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   ArrowLeft, AlertTriangle, RefreshCw, Download, ChevronDown, FileText, Presentation,
-  Linkedin, X, Image as ImageIcon, Sheet,
+  Image as ImageIcon, Sheet,
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
-import { api, linkedinAPI } from '../lib/api'
+import { api } from '../lib/api'
 import { Button } from '../components/ui/Button'
 import { toast } from '../components/ui/Toast'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
@@ -93,10 +93,6 @@ export default function StudioRunner() {
   const [error, setError] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
-  const [shareCaption, setShareCaption] = useState('')
-  const [shareVisibility, setShareVisibility] = useState<'PUBLIC' | 'CONNECTIONS'>('PUBLIC')
-  const [sharing, setSharing] = useState(false)
 
   const runStudio = useCallback(async () => {
     if (!studioId) return
@@ -224,86 +220,6 @@ export default function StudioRunner() {
     }
   }
 
-  const openShareModal = useCallback(async () => {
-    // Step (a) - check LinkedIn connection first.
-    try {
-      const res = await linkedinAPI.getStatus()
-      if (!res.data.connected) {
-        toast.error('Connect LinkedIn in Settings first')
-        // Best-effort secondary nudge to the settings page.
-        setTimeout(() => navigate('/settings'), 1200)
-        return
-      }
-    } catch {
-      toast.error('Could not check LinkedIn status')
-      return
-    }
-    const autoCaption = `${doc?.title ?? studioName} - Aivora HC advisory deliverable`
-    const quickPost = localStorage.getItem('linkedin_quick_post') === 'true'
-    const visibility = (localStorage.getItem('linkedin_quick_post_visibility') as 'PUBLIC' | 'CONNECTIONS') || 'PUBLIC'
-    setShareCaption(autoCaption)
-    setShareVisibility(visibility)
-    if (quickPost) {
-      // Skip the modal and post immediately. performShare reads the latest
-      // shareCaption / shareVisibility from its closure, so we pass them via
-      // a tiny inline override.
-      setSharing(true)
-      // We need the state to flush before performShare runs - use a microtask.
-      Promise.resolve().then(() => performShareNow(autoCaption, visibility))
-      return
-    }
-    setShareOpen(true)
-  }, [doc, studioName, navigate])
-
-  const performShareNow = useCallback(async (caption: string, visibility: 'PUBLIC' | 'CONNECTIONS') => {
-    const node = document.getElementById('studio-output-capture')
-    if (!node) {
-      toast.error('Nothing to share yet')
-      setSharing(false)
-      return
-    }
-    setSharing(true)
-    try {
-      const canvas = await html2canvas(node as HTMLElement, {
-        backgroundColor: '#0c0e14',
-        scale: Math.min(2, window.devicePixelRatio || 1) * 2,
-        useCORS: true,
-        logging: false,
-      })
-      const dataUrl = canvas.toDataURL('image/png')
-      const res = await linkedinAPI.share({
-        caption,
-        image_base64: dataUrl,
-        visibility,
-      })
-      const shareUrl = res.data.share_url
-      setShareOpen(false)
-      toast.success('Posted to LinkedIn')
-      if (shareUrl) {
-        window.open(shareUrl, '_blank', 'noopener,noreferrer')
-      }
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: { detail?: string } } })?.response?.status
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? ''
-      if (status === 412) {
-        toast.error('Connect LinkedIn in Settings first')
-        setShareOpen(false)
-        setTimeout(() => navigate('/settings'), 1200)
-      } else if (status === 502) {
-        toast.error(`LinkedIn rejected the post${detail ? `: ${detail}` : ''}`)
-      } else {
-        toast.error('Could not reach LinkedIn')
-      }
-    } finally {
-      setSharing(false)
-    }
-  }, [navigate])
-
-  const performShare = useCallback(async () => {
-    await performShareNow(shareCaption, shareVisibility)
-  }, [performShareNow, shareCaption, shareVisibility])
-
   if (!studio) {
     return (
       <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4">
@@ -376,16 +292,6 @@ export default function StudioRunner() {
               {exporting ? 'Generating…' : 'Download PDF'}
             </Button>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<Linkedin className="w-4 h-4 text-[#0a66c2]" />}
-              onClick={openShareModal}
-              disabled={sharing}
-            >
-              {sharing ? 'Posting…' : 'Share to LinkedIn'}
-            </Button>
-
             <div className="relative">
               <Button
                 variant="secondary"
@@ -441,96 +347,6 @@ export default function StudioRunner() {
         <StudioOutput document={doc} />
       </div>
 
-      <AnimatePresence>
-        {shareOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => !sharing && setShareOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ duration: 0.18 }}
-              className="w-full max-w-lg rounded-2xl border border-[#1a1e2e] bg-[#131720] shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1e2e]">
-                <div className="flex items-center gap-2">
-                  <Linkedin className="w-5 h-5 text-[#0a66c2]" />
-                  <h3 className="text-sm font-semibold text-white">Share to LinkedIn</h3>
-                </div>
-                <button
-                  onClick={() => !sharing && setShareOpen(false)}
-                  className="text-slate-500 hover:text-slate-200"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="px-5 py-4 space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                    Caption
-                  </label>
-                  <textarea
-                    value={shareCaption}
-                    onChange={e => setShareCaption(e.target.value)}
-                    rows={4}
-                    className="w-full rounded-lg bg-[#0c0e14] border border-[#1e2433] focus:border-[#3b82f6] focus:outline-none text-sm text-white px-3 py-2 resize-none"
-                    placeholder="Write a caption for your post…"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                    Visibility
-                  </label>
-                  <div className="flex gap-2">
-                    {(['PUBLIC', 'CONNECTIONS'] as const).map(v => (
-                      <button
-                        key={v}
-                        onClick={() => setShareVisibility(v)}
-                        className={
-                          'px-3 py-1.5 rounded-lg text-xs border transition-colors ' +
-                          (shareVisibility === v
-                            ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
-                            : 'bg-[#0c0e14] text-slate-300 border-[#1e2433] hover:border-[#252d3f]')
-                        }
-                      >
-                        {v === 'PUBLIC' ? 'Public' : 'Connections only'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  The current studio output will be captured as an image and attached to the post.
-                </p>
-              </div>
-              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[#1a1e2e] bg-[#0f131c]">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShareOpen(false)}
-                  disabled={sharing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={performShare}
-                  isLoading={sharing}
-                  leftIcon={<Linkedin className="w-4 h-4" />}
-                >
-                  Post
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

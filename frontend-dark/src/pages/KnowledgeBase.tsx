@@ -7,6 +7,7 @@ import { FRAMEWORK, STUDIOS } from '../lib/advisory/types'
 import { Chip } from '../components/ui/Chip'
 import { kbAPI, type KbArticle, type KbArticleWrite } from '../lib/api'
 import { useAuthStore } from '../store/auth'
+import { isAdminUser } from '../lib/adminAccess'
 
 type Article = KbArticle
 
@@ -26,7 +27,7 @@ const EMPTY_DRAFT: KbArticleWrite = {
 
 export default function KnowledgeBase() {
   const { user } = useAuthStore()
-  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
+  const isAdmin = isAdminUser(user)
 
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)

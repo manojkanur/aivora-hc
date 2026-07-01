@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { type ReactNode } from 'react'
 import { useAuthStore } from '../store/auth'
 import { ProtectedRoute } from './ProtectedRoute'
+import { isAdminUser } from '../lib/adminAccess'
 
 interface AdminRouteProps {
   children?: ReactNode
@@ -12,7 +13,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
 
   return (
     <ProtectedRoute>
-      {user && (user.role === 'admin' || user.role === 'owner') ? (
+      {isAdminUser(user) ? (
         children ? <>{children}</> : <Outlet />
       ) : (
         <Navigate to="/dashboard" replace />

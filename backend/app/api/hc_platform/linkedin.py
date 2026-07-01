@@ -27,7 +27,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 
-from app.api.deps import CurrentUser, DBDep
+from app.api.deps import AdminUser, CurrentUser, DBDep
 from app.models.hc_platform.linkedin import LinkedInConnection
 
 # ---------------------------------------------------------------------------
@@ -119,6 +119,20 @@ class ShareIn(BaseModel):
     caption: str = Field(..., min_length=1)
     image_base64: str = Field(..., min_length=1)
     visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
+
+
+class CarouselShareIn(BaseModel):
+    caption: str = Field(..., min_length=1)
+    images_base64: list[str] = Field(..., min_length=1, max_length=20)
+    visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
+    title: str = "Aivora HC carousel"
+
+
+class PdfShareIn(BaseModel):
+    caption: str = Field(..., min_length=1)
+    pdf_base64: str = Field(..., min_length=1)
+    visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
+    title: str = "Aivora HC document"
 
 
 class ShareOut(BaseModel):
@@ -312,12 +326,143 @@ async def linkedin_disconnect(current_user: CurrentUser, db: DBDep) -> Disconnec
 router = APIRouter()
 
 
+async def _upload_image(client: httpx.AsyncClient, token: str, person_urn: str, image_bytes: bytes) -> str:
+    """Register an upload with LinkedIn, PUT the bytes, return the asset URN."""
+    register_resp = await client.post(
+        LINKEDIN_REGISTER_UPLOAD_URL,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0",
+        },
+        json={
+            "registerUploadRequest": {
+                "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+                "owner": person_urn,
+                "serviceRelationships": [
+                    {
+                        "relationshipType": "OWNER",
+                        "identifier": "urn:li:userGeneratedContent",
+                    }
+                ],
+            }
+        },
+    )
+    if register_resp.status_code >= 300:
+        raise _bad_gateway(register_resp, "register_upload")
+
+    reg = register_resp.json().get("value") or {}
+    asset_urn = reg.get("asset")
+    mech = (reg.get("uploadMechanism") or {}).get(
+        "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
+    )
+    upload_url = (mech or {}).get("uploadUrl")
+    if not asset_urn or not upload_url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"step": "register_upload", "linkedin": register_resp.json()},
+        )
+
+    upload_resp = await client.put(
+        upload_url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/octet-stream",
+        },
+        content=image_bytes,
+    )
+    if upload_resp.status_code >= 300:
+        raise _bad_gateway(upload_resp, "upload_bytes")
+
+    return asset_urn
+
+
+async def _create_ugc_post(
+    client: httpx.AsyncClient,
+    token: str,
+    person_urn: str,
+    caption: str,
+    assets: list[str],
+    visibility: str,
+    title: str,
+) -> str:
+    """Create a UGC post with 1+ image assets. Returns the post id."""
+    media = [
+        {
+            "status": "READY",
+            "description": {"text": ""},
+            "media": asset,
+            "title": {"text": title},
+        }
+        for asset in assets
+    ]
+    ugc_body = {
+        "author": person_urn,
+        "lifecycleState": "PUBLISHED",
+        "specificContent": {
+            "com.linkedin.ugc.ShareContent": {
+                "shareCommentary": {"text": caption},
+                "shareMediaCategory": "IMAGE",
+                "media": media,
+            }
+        },
+        "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": visibility},
+    }
+    ugc_resp = await client.post(
+        LINKEDIN_UGC_POSTS_URL,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0",
+        },
+        json=ugc_body,
+    )
+    if ugc_resp.status_code >= 300:
+        raise _bad_gateway(ugc_resp, "ugc_post")
+
+    ugc_data = ugc_resp.json() if ugc_resp.content else {}
+    post_id = ugc_data.get("id") or ugc_resp.headers.get("x-restli-id") or ""
+    if not post_id:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"step": "ugc_post", "linkedin": ugc_data},
+        )
+    return post_id
+
+
+def _pdf_to_images(pdf_bytes: bytes, max_pages: int = 20) -> list[bytes]:
+    """Rasterize each PDF page to a PNG. Requires PyMuPDF (fitz)."""
+    try:
+        import fitz  # type: ignore
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PDF carousel requires PyMuPDF - install `pymupdf` on the server",
+        ) from exc
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    images: list[bytes] = []
+    page_count = min(doc.page_count, max_pages)
+    for i in range(page_count):
+        page = doc.load_page(i)
+        pix = page.get_pixmap(dpi=150)
+        images.append(pix.tobytes("png"))
+    doc.close()
+    if not images:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PDF contained no pages",
+        )
+    return images
+
+
 @router.post("/share", response_model=ShareOut)
 async def linkedin_share(
     payload: ShareIn,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     db: DBDep,
 ) -> ShareOut:
+    """Post a single image to LinkedIn (admin only)."""
     conn = await _get_connection(db, current_user.tenant_id, current_user.id)
     if conn is None:
         raise HTTPException(
@@ -335,96 +480,92 @@ async def linkedin_share(
     person_urn = f"urn:li:person:{conn.linkedin_user_id}"
     token = conn.access_token
 
-    async with httpx.AsyncClient(timeout=20) as client:
-        # 1. Register upload
-        register_resp = await client.post(
-            LINKEDIN_REGISTER_UPLOAD_URL,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "X-Restli-Protocol-Version": "2.0.0",
-            },
-            json={
-                "registerUploadRequest": {
-                    "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
-                    "owner": person_urn,
-                    "serviceRelationships": [
-                        {
-                            "relationshipType": "OWNER",
-                            "identifier": "urn:li:userGeneratedContent",
-                        }
-                    ],
-                }
-            },
+    async with httpx.AsyncClient(timeout=30) as client:
+        asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+        post_id = await _create_ugc_post(
+            client, token, person_urn, payload.caption, [asset_urn], payload.visibility, "Aivora HC Deliverable"
         )
-        if register_resp.status_code >= 300:
-            raise _bad_gateway(register_resp, "register_upload")
 
-        reg = register_resp.json().get("value") or {}
-        asset_urn = reg.get("asset")
-        mech = (reg.get("uploadMechanism") or {}).get(
-            "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+    )
+
+
+@router.post("/share-carousel", response_model=ShareOut)
+async def linkedin_share_carousel(
+    payload: CarouselShareIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """Post multiple images as a single carousel post (admin only)."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
         )
-        upload_url = (mech or {}).get("uploadUrl")
-        if not asset_urn or not upload_url:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"step": "register_upload", "linkedin": register_resp.json()},
-            )
 
-        # 2. Upload bytes
-        upload_resp = await client.put(
-            upload_url,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/octet-stream",
-            },
-            content=image_bytes,
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        assets: list[str] = []
+        for idx, image_b64 in enumerate(payload.images_base64):
+            image_bytes = _decode_image(image_b64)
+            if not image_bytes:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Empty image at index {idx}",
+                )
+            asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+            assets.append(asset_urn)
+
+        post_id = await _create_ugc_post(
+            client, token, person_urn, payload.caption, assets, payload.visibility, payload.title
         )
-        if upload_resp.status_code >= 300:
-            raise _bad_gateway(upload_resp, "upload_bytes")
 
-        # 3. Create UGC post
-        ugc_body = {
-            "author": person_urn,
-            "lifecycleState": "PUBLISHED",
-            "specificContent": {
-                "com.linkedin.ugc.ShareContent": {
-                    "shareCommentary": {"text": payload.caption},
-                    "shareMediaCategory": "IMAGE",
-                    "media": [
-                        {
-                            "status": "READY",
-                            "description": {"text": ""},
-                            "media": asset_urn,
-                            "title": {"text": "Aivora HC Deliverable"},
-                        }
-                    ],
-                }
-            },
-            "visibility": {
-                "com.linkedin.ugc.MemberNetworkVisibility": payload.visibility
-            },
-        }
-        ugc_resp = await client.post(
-            LINKEDIN_UGC_POSTS_URL,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "X-Restli-Protocol-Version": "2.0.0",
-            },
-            json=ugc_body,
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+    )
+
+
+@router.post("/share-pdf", response_model=ShareOut)
+async def linkedin_share_pdf(
+    payload: PdfShareIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """Convert a PDF to a per-page carousel and post it (admin only)."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
         )
-        if ugc_resp.status_code >= 300:
-            raise _bad_gateway(ugc_resp, "ugc_post")
 
-        ugc_data = ugc_resp.json() if ugc_resp.content else {}
-        post_id = ugc_data.get("id") or ugc_resp.headers.get("x-restli-id") or ""
-        if not post_id:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"step": "ugc_post", "linkedin": ugc_data},
-            )
+    pdf_bytes = _decode_image(payload.pdf_base64)  # same base64/data-url handling
+    if not pdf_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty PDF payload",
+        )
+
+    images = _pdf_to_images(pdf_bytes)
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        assets: list[str] = []
+        for image_bytes in images:
+            asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+            assets.append(asset_urn)
+
+        post_id = await _create_ugc_post(
+            client, token, person_urn, payload.caption, assets, payload.visibility, payload.title
+        )
 
     return ShareOut(
         post_id=post_id,

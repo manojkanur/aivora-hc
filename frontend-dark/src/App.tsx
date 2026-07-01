@@ -94,7 +94,7 @@ const Engage            = lazyPage(() => import('./pages/Engage'))
 const HipoStudioV2      = lazyPage(() => import('./pages/HipoStudio').then(m => ({ default: m.HipoStudioV2 })))
 const DraftInbox        = lazyPage(() => import('./pages/DraftInbox'))
 const ExportsPage       = lazyPage(() => import('./pages/ExportsPage'))
-const PublishPage       = lazyPage(() => import('./pages/PublishPage'))
+const AdminPublish      = lazyPage(() => import('./pages/AdminPublish'))
 const SkillsMarketplace = lazyPage(() => import('./pages/SkillsMarketplace'))
 const Gamification      = lazyPage(() => import('./pages/Gamification'))
 const Billing           = lazyPage(() => import('./pages/Billing'))
@@ -150,7 +150,7 @@ function AppRoutes() {
           <Route path="/brief-results/:reviewId" element={<BriefResults />} />
           <Route path="/inbox" element={<DraftInbox />} />
           <Route path="/exports" element={<ExportsPage />} />
-          <Route path="/publish" element={<PublishPage />} />
+          <Route path="/publish" element={<AdminRoute><AdminPublish /></AdminRoute>} />
           <Route path="/skills" element={<SkillsMarketplace />} />
           <Route path="/gamification" element={<Gamification />} />
           <Route path="/billing" element={<Billing />} />

@@ -222,12 +222,30 @@ export interface LinkedInShareResponse {
   post_id?: string
 }
 
+export interface LinkedInCarouselRequest {
+  caption: string
+  images_base64: string[]
+  visibility?: 'PUBLIC' | 'CONNECTIONS'
+  title?: string
+}
+
+export interface LinkedInPdfRequest {
+  caption: string
+  pdf_base64: string
+  visibility?: 'PUBLIC' | 'CONNECTIONS'
+  title?: string
+}
+
 export const linkedinAPI = {
   getStatus: () => api.get<LinkedInStatus>('/auth/linkedin/status'),
   getConnectUrl: () => api.get<{ url: string }>('/auth/linkedin/connect'),
   disconnect: () => api.post<{ status: string }>('/auth/linkedin/disconnect'),
   share: (body: LinkedInShareRequest) =>
     api.post<LinkedInShareResponse>('/hc-platform/linkedin/share', body),
+  shareCarousel: (body: LinkedInCarouselRequest) =>
+    api.post<LinkedInShareResponse>('/hc-platform/linkedin/share-carousel', body),
+  sharePdf: (body: LinkedInPdfRequest) =>
+    api.post<LinkedInShareResponse>('/hc-platform/linkedin/share-pdf', body),
 }
 
 // Admin

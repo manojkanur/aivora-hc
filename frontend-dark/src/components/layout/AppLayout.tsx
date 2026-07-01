@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { AivoraLogo } from '../brand/AivoraLogo'
 import { useAuthStore } from '../../store/auth'
+import { isAdminUser } from '../../lib/adminAccess'
 import { getInitials } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { TopBar } from './TopBar'
@@ -34,7 +35,7 @@ const platformNav: NavItem[] = [
 const toolsNav: NavItem[] = [
   { label: 'Draft Inbox', href: '/inbox',    icon: Inbox,    desc: 'Review and approve AI-generated drafts'         },
   { label: 'Exports',     href: '/exports',  icon: Download, desc: 'Download approved drafts as PPTX, PDF or Word'  },
-  { label: 'Publish',     href: '/publish',  icon: Share2,   desc: 'Schedule LinkedIn posts from your deliverables'  },
+  { label: 'Publish',     href: '/publish',  icon: Share2,   desc: 'Post images, carousels and PDF carousels to LinkedIn'  },
 ]
 
 const accountNav: NavItem[] = [
@@ -339,9 +340,9 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
         <NavSection
           title="Platform"
           items={platformNav.filter(item => {
-            // Knowledge Base is admin-only
+            // Knowledge Base is admin-only (Kriem + Manoj)
             if (item.href === '/knowledge') {
-              return user?.role === 'admin' || user?.role === 'owner'
+              return isAdminUser(user)
             }
             return true
           })}
@@ -381,10 +382,19 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
             </motion.div>
           )}
         </AnimatePresence>
-        <NavSection title="Tools"    items={toolsNav}    onLinkClick={onClose} collapsed={collapsed} />
+        <NavSection
+          title="Tools"
+          items={toolsNav.filter(item => {
+            // Publish (LinkedIn) is admin-only
+            if (item.href === '/publish') return isAdminUser(user)
+            return true
+          })}
+          onLinkClick={onClose}
+          collapsed={collapsed}
+        />
         <NavSection title="Account"  items={accountNav}  onLinkClick={onClose} collapsed={collapsed} />
 
-        {(user?.role === 'admin' || user?.role === 'owner') && (
+        {isAdminUser(user) && (
           <div>
             {!collapsed && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-1.5">Admin</p>}
             {collapsed && <div className="w-full h-px bg-[#1a1e2e] my-2" />}
