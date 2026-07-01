@@ -262,6 +262,22 @@ export const adminAPI = {
 }
 
 // Knowledge Base
+export interface KbArticle {
+  id: string
+  slug: string
+  title: string
+  category: string
+  dimensions: string[]
+  readMinutes: number
+  author: string
+  date: string
+  summary: string
+  tags: string[]
+  sections: { heading: string; body: string }[]
+}
+
+export type KbArticleWrite = Omit<KbArticle, 'id' | 'slug'> & { slug?: string }
+
 export const kbAPI = {
   scrape: (url: string) => api.post('/kb/scrape', { url }),
   upload: (file: File) => {
@@ -269,6 +285,11 @@ export const kbAPI = {
     form.append('file', file)
     return api.post('/kb/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
+  listArticles: () => api.get<KbArticle[]>('/kb/articles'),
+  getArticle: (id: string) => api.get<KbArticle>(`/kb/articles/${id}`),
+  createArticle: (data: KbArticleWrite) => api.post<KbArticle>('/kb/articles', data),
+  updateArticle: (id: string, data: KbArticleWrite) => api.patch<KbArticle>(`/kb/articles/${id}`, data),
+  deleteArticle: (id: string) => api.delete(`/kb/articles/${id}`),
 }
 
 // AI jobs

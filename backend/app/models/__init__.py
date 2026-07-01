@@ -38,6 +38,7 @@ from app.models.connector import (  # noqa: F401
     SyncStatus,
 )
 from app.models.challenge import ChallengeBrief, BriefOutput, BriefStatus  # noqa: F401
+from app.models.knowledge import KnowledgeArticle  # noqa: F401
 
 # --- HC platform port (Phase 1 foundations) ---------------------------------
 from app.models.hc_platform.modules import Module  # noqa: F401

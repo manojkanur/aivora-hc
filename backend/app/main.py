@@ -195,6 +195,49 @@ async def _seed_quests_badges(db) -> None:
             db.add(quest)
 
 
+async def _seed_knowledge(db) -> None:
+    """Load the KB seed from frontend/src/lib/seeds/knowledgeBase.json when the
+    knowledge_articles table is empty. Uses a mounted or vendored path — we
+    check a few candidates so this works locally and in the container.
+    """
+    import json
+    from pathlib import Path
+    from app.models.knowledge import KnowledgeArticle
+
+    existing = (await db.execute(select(KnowledgeArticle).limit(1))).scalar_one_or_none()
+    if existing is not None:
+        return
+
+    candidates = [
+        Path("/app/seeds/knowledgeBase.json"),
+        Path(__file__).resolve().parents[2] / "frontend-dark" / "src" / "lib" / "seeds" / "knowledgeBase.json",
+        Path(__file__).resolve().parents[1] / "seeds" / "knowledgeBase.json",
+    ]
+    seed_path = next((p for p in candidates if p.exists()), None)
+    if seed_path is None:
+        logger.warning("KB seed file not found; knowledge_articles left empty")
+        return
+
+    with seed_path.open("r", encoding="utf-8") as f:
+        seed = json.load(f)
+
+    for item in seed.get("articles", []):
+        article = KnowledgeArticle(
+            slug=item["id"],
+            title=item["title"],
+            category=item["category"],
+            dimensions=item.get("dimensions", []),
+            read_minutes=int(item.get("readMinutes", 5)),
+            author=item.get("author", "Aivora Editorial"),
+            date=item.get("date", ""),
+            summary=item.get("summary", ""),
+            tags=item.get("tags", []),
+            sections=item.get("sections", []),
+        )
+        db.add(article)
+    logger.info(f"Seeded {len(seed.get('articles', []))} knowledge articles")
+
+
 async def _seed_connectors(db) -> None:
     for item in CONNECTOR_SEED:
         existing = await db.execute(
@@ -248,8 +291,9 @@ async def lifespan(app: FastAPI):
         await _seed_plans(db)
         await _seed_quests_badges(db)
         await _seed_connectors(db)
+        await _seed_knowledge(db)
         await db.commit()
-    logger.info("Seed data applied (27 skills, plans, quests, badges, connectors)")
+    logger.info("Seed data applied (27 skills, plans, quests, badges, connectors, kb)")
 
     # Redis check
     redis_ok = await _test_redis()
