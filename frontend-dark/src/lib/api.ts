@@ -241,6 +241,26 @@ export interface LinkedInPromptRequest {
   visibility?: 'PUBLIC' | 'CONNECTIONS'
 }
 
+export type LinkedInFormat = 'single' | 'carousel' | 'text'
+
+export interface LinkedInGenerateRequest {
+  prompt: string
+  format: LinkedInFormat
+}
+
+export interface LinkedInGenerateResponse {
+  caption: string
+  format: LinkedInFormat
+  images_base64: string[]
+}
+
+export interface LinkedInPublishRequest {
+  caption: string
+  images_base64: string[]
+  visibility?: 'PUBLIC' | 'CONNECTIONS'
+  title?: string
+}
+
 export const linkedinAPI = {
   getStatus: () => api.get<LinkedInStatus>('/auth/linkedin/status'),
   getConnectUrl: () => api.get<{ url: string }>('/auth/linkedin/connect'),
@@ -253,6 +273,10 @@ export const linkedinAPI = {
     api.post<LinkedInShareResponse>('/hc-platform/linkedin/share-pdf', body),
   sharePrompt: (body: LinkedInPromptRequest) =>
     api.post<LinkedInShareResponse & { caption?: string }>('/hc-platform/linkedin/share-prompt', body),
+  generate: (body: LinkedInGenerateRequest) =>
+    api.post<LinkedInGenerateResponse>('/hc-platform/linkedin/generate', body),
+  publish: (body: LinkedInPublishRequest) =>
+    api.post<LinkedInShareResponse & { caption?: string }>('/hc-platform/linkedin/publish', body),
 }
 
 // Admin

@@ -140,6 +140,24 @@ class PromptShareIn(BaseModel):
     visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
 
 
+class GenerateIn(BaseModel):
+    prompt: str = Field(..., min_length=3, max_length=2000)
+    format: Literal["single", "carousel", "text"] = "single"
+
+
+class GenerateOut(BaseModel):
+    caption: str
+    format: Literal["single", "carousel", "text"]
+    images_base64: list[str] = Field(default_factory=list)
+
+
+class PublishIn(BaseModel):
+    caption: str = Field(..., min_length=1)
+    images_base64: list[str] = Field(default_factory=list, max_length=20)
+    visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
+    title: str = "Aivora HC Insight"
+
+
 class ShareOut(BaseModel):
     post_id: str
     share_url: str
@@ -715,6 +733,391 @@ async def linkedin_share_prompt(
     )
 
 
+# ---------------------------------------------------------------------------
+# Two-step Publish flow: /generate (LLM + Pillow, no post) then /publish
+# ---------------------------------------------------------------------------
+
+def _render_infographic(headline: str, subhead: str, bullets: list[str], stat: dict | None) -> bytes:
+    """Render a 1200x1200 infographic card with headline, subhead, 4 bullets and a stat panel."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    pad = 60
+    draw.rounded_rectangle((pad, pad, W - pad, H - pad), radius=48, fill=_BRAND_CARD)
+    draw.rounded_rectangle((pad + 60, pad + 60, pad + 80, pad + 200), radius=8, fill=_BRAND_ACCENT)
+
+    # Brand mark top-right
+    mark_x0, mark_y0 = W - pad - 160, pad + 60
+    mark_x1, mark_y1 = W - pad - 60, pad + 160
+    draw.rounded_rectangle((mark_x0, mark_y0, mark_x1, mark_y1), radius=20, fill=_BRAND_ACCENT_2)
+    mark_font = _load_font(64, bold=True)
+    bbox = draw.textbbox((0, 0), "A", font=mark_font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(
+        (mark_x0 + (mark_x1 - mark_x0 - tw) / 2 - bbox[0],
+         mark_y0 + (mark_y1 - mark_y0 - th) / 2 - bbox[1]),
+        "A", font=mark_font, fill=_BRAND_TEXT,
+    )
+
+    kicker_font = _load_font(24, bold=True)
+    draw.text((pad + 100, pad + 240), "AIVORA HC · INSIGHT", font=kicker_font, fill=_BRAND_ACCENT)
+
+    # Headline
+    headline_font = _load_font(60, bold=True)
+    max_w = W - 2 * pad - 200
+    y = pad + 290
+    for line in _wrap_text(draw, headline, headline_font, max_w)[:4]:
+        draw.text((pad + 100, y), line, font=headline_font, fill=_BRAND_TEXT)
+        y += 78
+
+    # Subhead
+    subhead_font = _load_font(30)
+    y += 10
+    for line in _wrap_text(draw, subhead, subhead_font, max_w)[:2]:
+        draw.text((pad + 100, y), line, font=subhead_font, fill=_BRAND_MUTED)
+        y += 44
+
+    # Bullets — colored dot + text
+    y += 40
+    bullet_font = _load_font(28, bold=True)
+    for i, b in enumerate(bullets[:4]):
+        cx, cy = pad + 108, y + 18
+        draw.ellipse((cx - 8, cy - 8, cx + 8, cy + 8), fill=_BRAND_ACCENT)
+        for j, line in enumerate(_wrap_text(draw, b, bullet_font, max_w - 40)[:2]):
+            draw.text((pad + 138, y + j * 36), line, font=bullet_font, fill=_BRAND_TEXT)
+        y += 72
+
+    # Stat pill (bottom-right of the card) if provided
+    if stat and stat.get("value"):
+        stat_pad = 32
+        stat_h = 140
+        stat_w = 380
+        sx0 = W - pad - stat_w - 40
+        sy0 = H - pad - stat_h - 40
+        sx1 = sx0 + stat_w
+        sy1 = sy0 + stat_h
+        draw.rounded_rectangle((sx0, sy0, sx1, sy1), radius=20, fill=(24, 30, 44))
+        val_font = _load_font(56, bold=True)
+        lbl_font = _load_font(20)
+        val = str(stat.get("value") or "")
+        lbl = str(stat.get("label") or "")
+        draw.text((sx0 + stat_pad, sy0 + 20), val, font=val_font, fill=_BRAND_ACCENT)
+        # Wrap the label into two lines max
+        wrapped = _wrap_text(draw, lbl, lbl_font, stat_w - 2 * stat_pad)[:2]
+        for i, line in enumerate(wrapped):
+            draw.text((sx0 + stat_pad, sy0 + 90 + i * 24), line, font=lbl_font, fill=_BRAND_MUTED)
+
+    # Footer
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(24, bold=True)
+    draw.text((pad + 100, footer_y + 22), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    tag_font = _load_font(20)
+    tag = "Human Capital, elevated."
+    bbox = draw.textbbox((0, 0), tag, font=tag_font)
+    draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 26), tag, font=tag_font, fill=_BRAND_MUTED)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _render_carousel_slide(index: int, total: int, title: str, body: str) -> bytes:
+    """Render one 1200x1200 carousel slide."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    pad = 60
+    draw.rounded_rectangle((pad, pad, W - pad, H - pad), radius=48, fill=_BRAND_CARD)
+    draw.rounded_rectangle((pad + 60, pad + 60, pad + 80, pad + 200), radius=8, fill=_BRAND_ACCENT)
+
+    # Slide counter top-right pill
+    counter_font = _load_font(22, bold=True)
+    counter = f"{index + 1} / {total}"
+    bbox = draw.textbbox((0, 0), counter, font=counter_font)
+    cw, ch = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    cx1 = W - pad - 60
+    cy0 = pad + 60
+    cx0 = cx1 - cw - 32
+    cy1 = cy0 + ch + 20
+    draw.rounded_rectangle((cx0, cy0, cx1, cy1), radius=14, fill=(24, 30, 44))
+    draw.text((cx0 + 16, cy0 + 10), counter, font=counter_font, fill=_BRAND_ACCENT)
+
+    kicker_font = _load_font(22, bold=True)
+    draw.text((pad + 100, pad + 240), "AIVORA HC · CAROUSEL", font=kicker_font, fill=_BRAND_ACCENT)
+
+    max_w = W - 2 * pad - 200
+    title_font = _load_font(70, bold=True)
+    y = pad + 290
+    for line in _wrap_text(draw, title, title_font, max_w)[:4]:
+        draw.text((pad + 100, y), line, font=title_font, fill=_BRAND_TEXT)
+        y += 88
+
+    y += 24
+    body_font = _load_font(32)
+    for line in _wrap_text(draw, body, body_font, max_w)[:8]:
+        draw.text((pad + 100, y), line, font=body_font, fill=_BRAND_MUTED)
+        y += 46
+
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(24, bold=True)
+    draw.text((pad + 100, footer_y + 22), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    if index == total - 1:
+        cta_font = _load_font(22, bold=True)
+        cta = "Follow for more insights →"
+        bbox = draw.textbbox((0, 0), cta, font=cta_font)
+        draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 22), cta, font=cta_font, fill=_BRAND_ACCENT)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+async def _generate_single(prompt: str) -> tuple[str, list[bytes]]:
+    """LLM -> caption + one infographic image."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_caption = prompt.strip()
+    fallback_head = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+
+    if not settings.OPENAI_API_KEY:
+        img = _render_infographic(
+            fallback_head, "Aivora HC advisory.",
+            ["Data-driven decisions", "Board-ready framing", "Clear next steps", "HC as strategy"],
+            {"value": "6", "label": "capability dimensions we assess"},
+        )
+        return fallback_caption, [img]
+
+    system = (
+        "You are Aivora HC's LinkedIn author. Output STRICT JSON only. "
+        "Keys: caption (string, 400-900 chars, 2-4 paragraphs, at most 3 focused "
+        "hashtags at the end, no em-dashes), headline (string, max 70 chars, "
+        "punchy, no trailing period), subhead (string, max 110 chars), bullets "
+        "(array of 4 short strings, each max 55 chars), stat (object with "
+        "keys value (max 6 chars, e.g. '87%' or '3x') and label (max 40 chars))."
+    )
+    user = f"Draft a LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        headline = str(data.get("headline") or "").strip()
+        subhead = str(data.get("subhead") or "").strip()
+        bullets = [str(b).strip() for b in (data.get("bullets") or []) if str(b).strip()][:4]
+        stat = data.get("stat") or {}
+        if not caption or not headline:
+            raise ValueError("empty llm output")
+        while len(bullets) < 4:
+            bullets.append("")
+        img = _render_infographic(headline, subhead or "Aivora HC advisory.", bullets, stat if isinstance(stat, dict) else None)
+        return caption, [img]
+    except Exception:
+        img = _render_infographic(
+            fallback_head, "Aivora HC advisory.",
+            ["Data-driven decisions", "Board-ready framing", "Clear next steps", "HC as strategy"],
+            None,
+        )
+        return fallback_caption, [img]
+
+
+async def _generate_carousel(prompt: str, slide_count: int = 5) -> tuple[str, list[bytes]]:
+    """LLM -> caption + N carousel slides."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_caption = prompt.strip()
+
+    if not settings.OPENAI_API_KEY:
+        slides = [
+            _render_carousel_slide(0, slide_count, "Aivora HC Insight", prompt.strip()[:400])
+        ]
+        for i in range(1, slide_count):
+            slides.append(_render_carousel_slide(i, slide_count, f"Point {i}", ""))
+        return fallback_caption, slides
+
+    system = (
+        f"You are Aivora HC's LinkedIn carousel author. Output STRICT JSON. "
+        f"Keys: caption (string, 300-700 chars, 2-3 paragraphs, at most 3 "
+        f"hashtags at end, no em-dashes), slides (array of exactly {slide_count} "
+        f"objects). Each slide: {{title (max 55 chars, punchy, no trailing "
+        f"period), body (max 220 chars, 1-3 short sentences)}}. Slide 1 is a "
+        f"cover with the big idea, slide {slide_count} is the takeaway/CTA."
+    )
+    user = f"Draft a {slide_count}-slide LinkedIn carousel about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=1400,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        slides_data = data.get("slides") or []
+        if not caption or not slides_data:
+            raise ValueError("empty llm output")
+        slides: list[bytes] = []
+        for i, s in enumerate(slides_data[:slide_count]):
+            title = str(s.get("title") or f"Slide {i + 1}").strip()
+            body = str(s.get("body") or "").strip()
+            slides.append(_render_carousel_slide(i, min(slide_count, len(slides_data)), title, body))
+        return caption, slides
+    except Exception:
+        slides = [_render_carousel_slide(i, slide_count, f"Slide {i + 1}", "") for i in range(slide_count)]
+        return fallback_caption, slides
+
+
+async def _generate_text_only(prompt: str) -> tuple[str, list[bytes]]:
+    """LLM -> caption only."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback = prompt.strip()
+    if not settings.OPENAI_API_KEY:
+        return fallback, []
+
+    system = (
+        "You are Aivora HC's LinkedIn author. Output STRICT JSON. "
+        "Key: caption (string, 400-1100 chars, 3-5 short paragraphs, at most "
+        "3 focused hashtags at the end, no em-dashes, no filler)."
+    )
+    user = f"Draft a text-only LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        return (caption or fallback), []
+    except Exception:
+        return fallback, []
+
+
+def _to_data_url(png_bytes: bytes) -> str:
+    return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+
+
+@router.post("/generate", response_model=GenerateOut)
+async def linkedin_generate(
+    payload: GenerateIn,
+    _current_user: AdminUser,
+) -> GenerateOut:
+    """LLM-drafts the caption + renders images. Does NOT post to LinkedIn."""
+    if payload.format == "single":
+        caption, images = await _generate_single(payload.prompt)
+    elif payload.format == "carousel":
+        caption, images = await _generate_carousel(payload.prompt)
+    else:
+        caption, images = await _generate_text_only(payload.prompt)
+
+    return GenerateOut(
+        caption=caption,
+        format=payload.format,
+        images_base64=[_to_data_url(b) for b in images],
+    )
+
+
+@router.post("/publish", response_model=ShareOut)
+async def linkedin_publish(
+    payload: PublishIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """Post caption + (optional) images to LinkedIn. Used after /generate."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
+        )
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        if payload.images_base64:
+            assets: list[str] = []
+            for idx, img_b64 in enumerate(payload.images_base64):
+                image_bytes = _decode_image(img_b64)
+                if not image_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Empty image at index {idx}",
+                    )
+                asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+                assets.append(asset_urn)
+            post_id = await _create_ugc_post(
+                client, token, person_urn, payload.caption, assets, payload.visibility, payload.title
+            )
+        else:
+            # Text-only post
+            ugc_body = {
+                "author": person_urn,
+                "lifecycleState": "PUBLISHED",
+                "specificContent": {
+                    "com.linkedin.ugc.ShareContent": {
+                        "shareCommentary": {"text": payload.caption},
+                        "shareMediaCategory": "NONE",
+                    }
+                },
+                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": payload.visibility},
+            }
+            ugc_resp = await client.post(
+                LINKEDIN_UGC_POSTS_URL,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+                json=ugc_body,
+            )
+            if ugc_resp.status_code >= 300:
+                raise _bad_gateway(ugc_resp, "ugc_post")
+            ugc_data = ugc_resp.json() if ugc_resp.content else {}
+            post_id = ugc_data.get("id") or ugc_resp.headers.get("x-restli-id") or ""
+            if not post_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"step": "ugc_post", "linkedin": ugc_data},
+                )
+
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+        caption=payload.caption,
+    )
+
+
 @router.post("/share-carousel", response_model=ShareOut)
 async def linkedin_share_carousel(
     payload: CarouselShareIn,
@@ -968,6 +1371,391 @@ async def linkedin_share_prompt(
         post_id=post_id,
         share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
         caption=caption,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Two-step Publish flow: /generate (LLM + Pillow, no post) then /publish
+# ---------------------------------------------------------------------------
+
+def _render_infographic(headline: str, subhead: str, bullets: list[str], stat: dict | None) -> bytes:
+    """Render a 1200x1200 infographic card with headline, subhead, 4 bullets and a stat panel."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    pad = 60
+    draw.rounded_rectangle((pad, pad, W - pad, H - pad), radius=48, fill=_BRAND_CARD)
+    draw.rounded_rectangle((pad + 60, pad + 60, pad + 80, pad + 200), radius=8, fill=_BRAND_ACCENT)
+
+    # Brand mark top-right
+    mark_x0, mark_y0 = W - pad - 160, pad + 60
+    mark_x1, mark_y1 = W - pad - 60, pad + 160
+    draw.rounded_rectangle((mark_x0, mark_y0, mark_x1, mark_y1), radius=20, fill=_BRAND_ACCENT_2)
+    mark_font = _load_font(64, bold=True)
+    bbox = draw.textbbox((0, 0), "A", font=mark_font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(
+        (mark_x0 + (mark_x1 - mark_x0 - tw) / 2 - bbox[0],
+         mark_y0 + (mark_y1 - mark_y0 - th) / 2 - bbox[1]),
+        "A", font=mark_font, fill=_BRAND_TEXT,
+    )
+
+    kicker_font = _load_font(24, bold=True)
+    draw.text((pad + 100, pad + 240), "AIVORA HC · INSIGHT", font=kicker_font, fill=_BRAND_ACCENT)
+
+    # Headline
+    headline_font = _load_font(60, bold=True)
+    max_w = W - 2 * pad - 200
+    y = pad + 290
+    for line in _wrap_text(draw, headline, headline_font, max_w)[:4]:
+        draw.text((pad + 100, y), line, font=headline_font, fill=_BRAND_TEXT)
+        y += 78
+
+    # Subhead
+    subhead_font = _load_font(30)
+    y += 10
+    for line in _wrap_text(draw, subhead, subhead_font, max_w)[:2]:
+        draw.text((pad + 100, y), line, font=subhead_font, fill=_BRAND_MUTED)
+        y += 44
+
+    # Bullets — colored dot + text
+    y += 40
+    bullet_font = _load_font(28, bold=True)
+    for i, b in enumerate(bullets[:4]):
+        cx, cy = pad + 108, y + 18
+        draw.ellipse((cx - 8, cy - 8, cx + 8, cy + 8), fill=_BRAND_ACCENT)
+        for j, line in enumerate(_wrap_text(draw, b, bullet_font, max_w - 40)[:2]):
+            draw.text((pad + 138, y + j * 36), line, font=bullet_font, fill=_BRAND_TEXT)
+        y += 72
+
+    # Stat pill (bottom-right of the card) if provided
+    if stat and stat.get("value"):
+        stat_pad = 32
+        stat_h = 140
+        stat_w = 380
+        sx0 = W - pad - stat_w - 40
+        sy0 = H - pad - stat_h - 40
+        sx1 = sx0 + stat_w
+        sy1 = sy0 + stat_h
+        draw.rounded_rectangle((sx0, sy0, sx1, sy1), radius=20, fill=(24, 30, 44))
+        val_font = _load_font(56, bold=True)
+        lbl_font = _load_font(20)
+        val = str(stat.get("value") or "")
+        lbl = str(stat.get("label") or "")
+        draw.text((sx0 + stat_pad, sy0 + 20), val, font=val_font, fill=_BRAND_ACCENT)
+        # Wrap the label into two lines max
+        wrapped = _wrap_text(draw, lbl, lbl_font, stat_w - 2 * stat_pad)[:2]
+        for i, line in enumerate(wrapped):
+            draw.text((sx0 + stat_pad, sy0 + 90 + i * 24), line, font=lbl_font, fill=_BRAND_MUTED)
+
+    # Footer
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(24, bold=True)
+    draw.text((pad + 100, footer_y + 22), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    tag_font = _load_font(20)
+    tag = "Human Capital, elevated."
+    bbox = draw.textbbox((0, 0), tag, font=tag_font)
+    draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 26), tag, font=tag_font, fill=_BRAND_MUTED)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _render_carousel_slide(index: int, total: int, title: str, body: str) -> bytes:
+    """Render one 1200x1200 carousel slide."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    pad = 60
+    draw.rounded_rectangle((pad, pad, W - pad, H - pad), radius=48, fill=_BRAND_CARD)
+    draw.rounded_rectangle((pad + 60, pad + 60, pad + 80, pad + 200), radius=8, fill=_BRAND_ACCENT)
+
+    # Slide counter top-right pill
+    counter_font = _load_font(22, bold=True)
+    counter = f"{index + 1} / {total}"
+    bbox = draw.textbbox((0, 0), counter, font=counter_font)
+    cw, ch = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    cx1 = W - pad - 60
+    cy0 = pad + 60
+    cx0 = cx1 - cw - 32
+    cy1 = cy0 + ch + 20
+    draw.rounded_rectangle((cx0, cy0, cx1, cy1), radius=14, fill=(24, 30, 44))
+    draw.text((cx0 + 16, cy0 + 10), counter, font=counter_font, fill=_BRAND_ACCENT)
+
+    kicker_font = _load_font(22, bold=True)
+    draw.text((pad + 100, pad + 240), "AIVORA HC · CAROUSEL", font=kicker_font, fill=_BRAND_ACCENT)
+
+    max_w = W - 2 * pad - 200
+    title_font = _load_font(70, bold=True)
+    y = pad + 290
+    for line in _wrap_text(draw, title, title_font, max_w)[:4]:
+        draw.text((pad + 100, y), line, font=title_font, fill=_BRAND_TEXT)
+        y += 88
+
+    y += 24
+    body_font = _load_font(32)
+    for line in _wrap_text(draw, body, body_font, max_w)[:8]:
+        draw.text((pad + 100, y), line, font=body_font, fill=_BRAND_MUTED)
+        y += 46
+
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(24, bold=True)
+    draw.text((pad + 100, footer_y + 22), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    if index == total - 1:
+        cta_font = _load_font(22, bold=True)
+        cta = "Follow for more insights →"
+        bbox = draw.textbbox((0, 0), cta, font=cta_font)
+        draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 22), cta, font=cta_font, fill=_BRAND_ACCENT)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+async def _generate_single(prompt: str) -> tuple[str, list[bytes]]:
+    """LLM -> caption + one infographic image."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_caption = prompt.strip()
+    fallback_head = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+
+    if not settings.OPENAI_API_KEY:
+        img = _render_infographic(
+            fallback_head, "Aivora HC advisory.",
+            ["Data-driven decisions", "Board-ready framing", "Clear next steps", "HC as strategy"],
+            {"value": "6", "label": "capability dimensions we assess"},
+        )
+        return fallback_caption, [img]
+
+    system = (
+        "You are Aivora HC's LinkedIn author. Output STRICT JSON only. "
+        "Keys: caption (string, 400-900 chars, 2-4 paragraphs, at most 3 focused "
+        "hashtags at the end, no em-dashes), headline (string, max 70 chars, "
+        "punchy, no trailing period), subhead (string, max 110 chars), bullets "
+        "(array of 4 short strings, each max 55 chars), stat (object with "
+        "keys value (max 6 chars, e.g. '87%' or '3x') and label (max 40 chars))."
+    )
+    user = f"Draft a LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        headline = str(data.get("headline") or "").strip()
+        subhead = str(data.get("subhead") or "").strip()
+        bullets = [str(b).strip() for b in (data.get("bullets") or []) if str(b).strip()][:4]
+        stat = data.get("stat") or {}
+        if not caption or not headline:
+            raise ValueError("empty llm output")
+        while len(bullets) < 4:
+            bullets.append("")
+        img = _render_infographic(headline, subhead or "Aivora HC advisory.", bullets, stat if isinstance(stat, dict) else None)
+        return caption, [img]
+    except Exception:
+        img = _render_infographic(
+            fallback_head, "Aivora HC advisory.",
+            ["Data-driven decisions", "Board-ready framing", "Clear next steps", "HC as strategy"],
+            None,
+        )
+        return fallback_caption, [img]
+
+
+async def _generate_carousel(prompt: str, slide_count: int = 5) -> tuple[str, list[bytes]]:
+    """LLM -> caption + N carousel slides."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_caption = prompt.strip()
+
+    if not settings.OPENAI_API_KEY:
+        slides = [
+            _render_carousel_slide(0, slide_count, "Aivora HC Insight", prompt.strip()[:400])
+        ]
+        for i in range(1, slide_count):
+            slides.append(_render_carousel_slide(i, slide_count, f"Point {i}", ""))
+        return fallback_caption, slides
+
+    system = (
+        f"You are Aivora HC's LinkedIn carousel author. Output STRICT JSON. "
+        f"Keys: caption (string, 300-700 chars, 2-3 paragraphs, at most 3 "
+        f"hashtags at end, no em-dashes), slides (array of exactly {slide_count} "
+        f"objects). Each slide: {{title (max 55 chars, punchy, no trailing "
+        f"period), body (max 220 chars, 1-3 short sentences)}}. Slide 1 is a "
+        f"cover with the big idea, slide {slide_count} is the takeaway/CTA."
+    )
+    user = f"Draft a {slide_count}-slide LinkedIn carousel about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=1400,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        slides_data = data.get("slides") or []
+        if not caption or not slides_data:
+            raise ValueError("empty llm output")
+        slides: list[bytes] = []
+        for i, s in enumerate(slides_data[:slide_count]):
+            title = str(s.get("title") or f"Slide {i + 1}").strip()
+            body = str(s.get("body") or "").strip()
+            slides.append(_render_carousel_slide(i, min(slide_count, len(slides_data)), title, body))
+        return caption, slides
+    except Exception:
+        slides = [_render_carousel_slide(i, slide_count, f"Slide {i + 1}", "") for i in range(slide_count)]
+        return fallback_caption, slides
+
+
+async def _generate_text_only(prompt: str) -> tuple[str, list[bytes]]:
+    """LLM -> caption only."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback = prompt.strip()
+    if not settings.OPENAI_API_KEY:
+        return fallback, []
+
+    system = (
+        "You are Aivora HC's LinkedIn author. Output STRICT JSON. "
+        "Key: caption (string, 400-1100 chars, 3-5 short paragraphs, at most "
+        "3 focused hashtags at the end, no em-dashes, no filler)."
+    )
+    user = f"Draft a text-only LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        return (caption or fallback), []
+    except Exception:
+        return fallback, []
+
+
+def _to_data_url(png_bytes: bytes) -> str:
+    return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+
+
+@router.post("/generate", response_model=GenerateOut)
+async def linkedin_generate(
+    payload: GenerateIn,
+    _current_user: AdminUser,
+) -> GenerateOut:
+    """LLM-drafts the caption + renders images. Does NOT post to LinkedIn."""
+    if payload.format == "single":
+        caption, images = await _generate_single(payload.prompt)
+    elif payload.format == "carousel":
+        caption, images = await _generate_carousel(payload.prompt)
+    else:
+        caption, images = await _generate_text_only(payload.prompt)
+
+    return GenerateOut(
+        caption=caption,
+        format=payload.format,
+        images_base64=[_to_data_url(b) for b in images],
+    )
+
+
+@router.post("/publish", response_model=ShareOut)
+async def linkedin_publish(
+    payload: PublishIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """Post caption + (optional) images to LinkedIn. Used after /generate."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
+        )
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        if payload.images_base64:
+            assets: list[str] = []
+            for idx, img_b64 in enumerate(payload.images_base64):
+                image_bytes = _decode_image(img_b64)
+                if not image_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Empty image at index {idx}",
+                    )
+                asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+                assets.append(asset_urn)
+            post_id = await _create_ugc_post(
+                client, token, person_urn, payload.caption, assets, payload.visibility, payload.title
+            )
+        else:
+            # Text-only post
+            ugc_body = {
+                "author": person_urn,
+                "lifecycleState": "PUBLISHED",
+                "specificContent": {
+                    "com.linkedin.ugc.ShareContent": {
+                        "shareCommentary": {"text": payload.caption},
+                        "shareMediaCategory": "NONE",
+                    }
+                },
+                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": payload.visibility},
+            }
+            ugc_resp = await client.post(
+                LINKEDIN_UGC_POSTS_URL,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+                json=ugc_body,
+            )
+            if ugc_resp.status_code >= 300:
+                raise _bad_gateway(ugc_resp, "ugc_post")
+            ugc_data = ugc_resp.json() if ugc_resp.content else {}
+            post_id = ugc_data.get("id") or ugc_resp.headers.get("x-restli-id") or ""
+            if not post_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"step": "ugc_post", "linkedin": ugc_data},
+                )
+
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+        caption=payload.caption,
     )
 
 
@@ -1227,4 +2015,389 @@ async def linkedin_share_prompt(
         post_id=post_id,
         share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
         caption=caption,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Two-step Publish flow: /generate (LLM + Pillow, no post) then /publish
+# ---------------------------------------------------------------------------
+
+def _render_infographic(headline: str, subhead: str, bullets: list[str], stat: dict | None) -> bytes:
+    """Render a 1200x1200 infographic card with headline, subhead, 4 bullets and a stat panel."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    pad = 60
+    draw.rounded_rectangle((pad, pad, W - pad, H - pad), radius=48, fill=_BRAND_CARD)
+    draw.rounded_rectangle((pad + 60, pad + 60, pad + 80, pad + 200), radius=8, fill=_BRAND_ACCENT)
+
+    # Brand mark top-right
+    mark_x0, mark_y0 = W - pad - 160, pad + 60
+    mark_x1, mark_y1 = W - pad - 60, pad + 160
+    draw.rounded_rectangle((mark_x0, mark_y0, mark_x1, mark_y1), radius=20, fill=_BRAND_ACCENT_2)
+    mark_font = _load_font(64, bold=True)
+    bbox = draw.textbbox((0, 0), "A", font=mark_font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(
+        (mark_x0 + (mark_x1 - mark_x0 - tw) / 2 - bbox[0],
+         mark_y0 + (mark_y1 - mark_y0 - th) / 2 - bbox[1]),
+        "A", font=mark_font, fill=_BRAND_TEXT,
+    )
+
+    kicker_font = _load_font(24, bold=True)
+    draw.text((pad + 100, pad + 240), "AIVORA HC · INSIGHT", font=kicker_font, fill=_BRAND_ACCENT)
+
+    # Headline
+    headline_font = _load_font(60, bold=True)
+    max_w = W - 2 * pad - 200
+    y = pad + 290
+    for line in _wrap_text(draw, headline, headline_font, max_w)[:4]:
+        draw.text((pad + 100, y), line, font=headline_font, fill=_BRAND_TEXT)
+        y += 78
+
+    # Subhead
+    subhead_font = _load_font(30)
+    y += 10
+    for line in _wrap_text(draw, subhead, subhead_font, max_w)[:2]:
+        draw.text((pad + 100, y), line, font=subhead_font, fill=_BRAND_MUTED)
+        y += 44
+
+    # Bullets — colored dot + text
+    y += 40
+    bullet_font = _load_font(28, bold=True)
+    for i, b in enumerate(bullets[:4]):
+        cx, cy = pad + 108, y + 18
+        draw.ellipse((cx - 8, cy - 8, cx + 8, cy + 8), fill=_BRAND_ACCENT)
+        for j, line in enumerate(_wrap_text(draw, b, bullet_font, max_w - 40)[:2]):
+            draw.text((pad + 138, y + j * 36), line, font=bullet_font, fill=_BRAND_TEXT)
+        y += 72
+
+    # Stat pill (bottom-right of the card) if provided
+    if stat and stat.get("value"):
+        stat_pad = 32
+        stat_h = 140
+        stat_w = 380
+        sx0 = W - pad - stat_w - 40
+        sy0 = H - pad - stat_h - 40
+        sx1 = sx0 + stat_w
+        sy1 = sy0 + stat_h
+        draw.rounded_rectangle((sx0, sy0, sx1, sy1), radius=20, fill=(24, 30, 44))
+        val_font = _load_font(56, bold=True)
+        lbl_font = _load_font(20)
+        val = str(stat.get("value") or "")
+        lbl = str(stat.get("label") or "")
+        draw.text((sx0 + stat_pad, sy0 + 20), val, font=val_font, fill=_BRAND_ACCENT)
+        # Wrap the label into two lines max
+        wrapped = _wrap_text(draw, lbl, lbl_font, stat_w - 2 * stat_pad)[:2]
+        for i, line in enumerate(wrapped):
+            draw.text((sx0 + stat_pad, sy0 + 90 + i * 24), line, font=lbl_font, fill=_BRAND_MUTED)
+
+    # Footer
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(24, bold=True)
+    draw.text((pad + 100, footer_y + 22), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    tag_font = _load_font(20)
+    tag = "Human Capital, elevated."
+    bbox = draw.textbbox((0, 0), tag, font=tag_font)
+    draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 26), tag, font=tag_font, fill=_BRAND_MUTED)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _render_carousel_slide(index: int, total: int, title: str, body: str) -> bytes:
+    """Render one 1200x1200 carousel slide."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    pad = 60
+    draw.rounded_rectangle((pad, pad, W - pad, H - pad), radius=48, fill=_BRAND_CARD)
+    draw.rounded_rectangle((pad + 60, pad + 60, pad + 80, pad + 200), radius=8, fill=_BRAND_ACCENT)
+
+    # Slide counter top-right pill
+    counter_font = _load_font(22, bold=True)
+    counter = f"{index + 1} / {total}"
+    bbox = draw.textbbox((0, 0), counter, font=counter_font)
+    cw, ch = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    cx1 = W - pad - 60
+    cy0 = pad + 60
+    cx0 = cx1 - cw - 32
+    cy1 = cy0 + ch + 20
+    draw.rounded_rectangle((cx0, cy0, cx1, cy1), radius=14, fill=(24, 30, 44))
+    draw.text((cx0 + 16, cy0 + 10), counter, font=counter_font, fill=_BRAND_ACCENT)
+
+    kicker_font = _load_font(22, bold=True)
+    draw.text((pad + 100, pad + 240), "AIVORA HC · CAROUSEL", font=kicker_font, fill=_BRAND_ACCENT)
+
+    max_w = W - 2 * pad - 200
+    title_font = _load_font(70, bold=True)
+    y = pad + 290
+    for line in _wrap_text(draw, title, title_font, max_w)[:4]:
+        draw.text((pad + 100, y), line, font=title_font, fill=_BRAND_TEXT)
+        y += 88
+
+    y += 24
+    body_font = _load_font(32)
+    for line in _wrap_text(draw, body, body_font, max_w)[:8]:
+        draw.text((pad + 100, y), line, font=body_font, fill=_BRAND_MUTED)
+        y += 46
+
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(24, bold=True)
+    draw.text((pad + 100, footer_y + 22), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    if index == total - 1:
+        cta_font = _load_font(22, bold=True)
+        cta = "Follow for more insights →"
+        bbox = draw.textbbox((0, 0), cta, font=cta_font)
+        draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 22), cta, font=cta_font, fill=_BRAND_ACCENT)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+async def _generate_single(prompt: str) -> tuple[str, list[bytes]]:
+    """LLM -> caption + one infographic image."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_caption = prompt.strip()
+    fallback_head = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+
+    if not settings.OPENAI_API_KEY:
+        img = _render_infographic(
+            fallback_head, "Aivora HC advisory.",
+            ["Data-driven decisions", "Board-ready framing", "Clear next steps", "HC as strategy"],
+            {"value": "6", "label": "capability dimensions we assess"},
+        )
+        return fallback_caption, [img]
+
+    system = (
+        "You are Aivora HC's LinkedIn author. Output STRICT JSON only. "
+        "Keys: caption (string, 400-900 chars, 2-4 paragraphs, at most 3 focused "
+        "hashtags at the end, no em-dashes), headline (string, max 70 chars, "
+        "punchy, no trailing period), subhead (string, max 110 chars), bullets "
+        "(array of 4 short strings, each max 55 chars), stat (object with "
+        "keys value (max 6 chars, e.g. '87%' or '3x') and label (max 40 chars))."
+    )
+    user = f"Draft a LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        headline = str(data.get("headline") or "").strip()
+        subhead = str(data.get("subhead") or "").strip()
+        bullets = [str(b).strip() for b in (data.get("bullets") or []) if str(b).strip()][:4]
+        stat = data.get("stat") or {}
+        if not caption or not headline:
+            raise ValueError("empty llm output")
+        while len(bullets) < 4:
+            bullets.append("")
+        img = _render_infographic(headline, subhead or "Aivora HC advisory.", bullets, stat if isinstance(stat, dict) else None)
+        return caption, [img]
+    except Exception:
+        img = _render_infographic(
+            fallback_head, "Aivora HC advisory.",
+            ["Data-driven decisions", "Board-ready framing", "Clear next steps", "HC as strategy"],
+            None,
+        )
+        return fallback_caption, [img]
+
+
+async def _generate_carousel(prompt: str, slide_count: int = 5) -> tuple[str, list[bytes]]:
+    """LLM -> caption + N carousel slides."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_caption = prompt.strip()
+
+    if not settings.OPENAI_API_KEY:
+        slides = [
+            _render_carousel_slide(0, slide_count, "Aivora HC Insight", prompt.strip()[:400])
+        ]
+        for i in range(1, slide_count):
+            slides.append(_render_carousel_slide(i, slide_count, f"Point {i}", ""))
+        return fallback_caption, slides
+
+    system = (
+        f"You are Aivora HC's LinkedIn carousel author. Output STRICT JSON. "
+        f"Keys: caption (string, 300-700 chars, 2-3 paragraphs, at most 3 "
+        f"hashtags at end, no em-dashes), slides (array of exactly {slide_count} "
+        f"objects). Each slide: {{title (max 55 chars, punchy, no trailing "
+        f"period), body (max 220 chars, 1-3 short sentences)}}. Slide 1 is a "
+        f"cover with the big idea, slide {slide_count} is the takeaway/CTA."
+    )
+    user = f"Draft a {slide_count}-slide LinkedIn carousel about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=1400,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        slides_data = data.get("slides") or []
+        if not caption or not slides_data:
+            raise ValueError("empty llm output")
+        slides: list[bytes] = []
+        for i, s in enumerate(slides_data[:slide_count]):
+            title = str(s.get("title") or f"Slide {i + 1}").strip()
+            body = str(s.get("body") or "").strip()
+            slides.append(_render_carousel_slide(i, min(slide_count, len(slides_data)), title, body))
+        return caption, slides
+    except Exception:
+        slides = [_render_carousel_slide(i, slide_count, f"Slide {i + 1}", "") for i in range(slide_count)]
+        return fallback_caption, slides
+
+
+async def _generate_text_only(prompt: str) -> tuple[str, list[bytes]]:
+    """LLM -> caption only."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback = prompt.strip()
+    if not settings.OPENAI_API_KEY:
+        return fallback, []
+
+    system = (
+        "You are Aivora HC's LinkedIn author. Output STRICT JSON. "
+        "Key: caption (string, 400-1100 chars, 3-5 short paragraphs, at most "
+        "3 focused hashtags at the end, no em-dashes, no filler)."
+    )
+    user = f"Draft a text-only LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = str(data.get("caption") or "").strip()
+        return (caption or fallback), []
+    except Exception:
+        return fallback, []
+
+
+def _to_data_url(png_bytes: bytes) -> str:
+    return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+
+
+@router.post("/generate", response_model=GenerateOut)
+async def linkedin_generate(
+    payload: GenerateIn,
+    _current_user: AdminUser,
+) -> GenerateOut:
+    """LLM-drafts the caption + renders images. Does NOT post to LinkedIn."""
+    if payload.format == "single":
+        caption, images = await _generate_single(payload.prompt)
+    elif payload.format == "carousel":
+        caption, images = await _generate_carousel(payload.prompt)
+    else:
+        caption, images = await _generate_text_only(payload.prompt)
+
+    return GenerateOut(
+        caption=caption,
+        format=payload.format,
+        images_base64=[_to_data_url(b) for b in images],
+    )
+
+
+@router.post("/publish", response_model=ShareOut)
+async def linkedin_publish(
+    payload: PublishIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """Post caption + (optional) images to LinkedIn. Used after /generate."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
+        )
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        if payload.images_base64:
+            assets: list[str] = []
+            for idx, img_b64 in enumerate(payload.images_base64):
+                image_bytes = _decode_image(img_b64)
+                if not image_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Empty image at index {idx}",
+                    )
+                asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+                assets.append(asset_urn)
+            post_id = await _create_ugc_post(
+                client, token, person_urn, payload.caption, assets, payload.visibility, payload.title
+            )
+        else:
+            # Text-only post
+            ugc_body = {
+                "author": person_urn,
+                "lifecycleState": "PUBLISHED",
+                "specificContent": {
+                    "com.linkedin.ugc.ShareContent": {
+                        "shareCommentary": {"text": payload.caption},
+                        "shareMediaCategory": "NONE",
+                    }
+                },
+                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": payload.visibility},
+            }
+            ugc_resp = await client.post(
+                LINKEDIN_UGC_POSTS_URL,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+                json=ugc_body,
+            )
+            if ugc_resp.status_code >= 300:
+                raise _bad_gateway(ugc_resp, "ugc_post")
+            ugc_data = ugc_resp.json() if ugc_resp.content else {}
+            post_id = ugc_data.get("id") or ugc_resp.headers.get("x-restli-id") or ""
+            if not post_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"step": "ugc_post", "linkedin": ugc_data},
+                )
+
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+        caption=payload.caption,
     )
