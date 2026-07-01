@@ -171,6 +171,7 @@ export default function AdminPublish() {
           setCarouselIdx={setCarouselIdx}
           onBack={() => setStep('compose')}
           onRegenerate={generate}
+          regenerating={generating}
           onPublish={publish}
           publishing={publishing}
           canPublish={!!status?.connected}
@@ -284,7 +285,7 @@ function ComposeStep({
 
 function PreviewStep({
   draft, visibility, setVisibility, onCaptionChange, carouselIdx, setCarouselIdx,
-  onBack, onRegenerate, onPublish, publishing, canPublish,
+  onBack, onRegenerate, regenerating, onPublish, publishing, canPublish,
 }: {
   draft: { caption: string; images: string[]; format: LinkedInFormat }
   visibility: Visibility
@@ -294,6 +295,7 @@ function PreviewStep({
   setCarouselIdx: (i: number) => void
   onBack: () => void
   onRegenerate: () => void
+  regenerating: boolean
   onPublish: () => void
   publishing: boolean
   canPublish: boolean
@@ -310,15 +312,30 @@ function PreviewStep({
           <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500">Preview</p>
           <button
             onClick={onRegenerate}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-300 transition-colors"
+            disabled={regenerating || publishing}
+            className={cn(
+              'inline-flex items-center gap-1.5 text-xs transition-colors',
+              regenerating || publishing
+                ? 'text-slate-600 cursor-not-allowed'
+                : 'text-slate-400 hover:text-blue-300'
+            )}
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Regenerate
+            {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            {regenerating ? 'Regenerating…' : 'Regenerate'}
           </button>
         </div>
 
         {hasImages ? (
-          <div className="relative rounded-xl overflow-hidden border border-[#1e2433] bg-[#0c0e14]">
+          <div className={cn(
+            'relative rounded-xl overflow-hidden border border-[#1e2433] bg-[#0c0e14] transition-opacity',
+            regenerating && 'opacity-40'
+          )}>
             <img src={draft.images[carouselIdx]} alt="preview" className="w-full h-auto" />
+            {regenerating && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+              </div>
+            )}
             {showCarousel && (
               <>
                 <button

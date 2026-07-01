@@ -515,6 +515,37 @@ def _load_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
+_TYPO_MAP = str.maketrans({
+    "—": "-",  # em-dash
+    "–": "-",  # en-dash
+    "−": "-",  # minus sign
+    "‘": "'",  # left single quote
+    "’": "'",  # right single quote
+    "“": '"',  # left double quote
+    "”": '"',  # right double quote
+    "…": "...",  # ellipsis
+    " ": " ",  # non-breaking space
+})
+
+
+def _clean(text: str) -> str:
+    """Normalize LLM output: strip em/en dashes, smart quotes, ellipsis."""
+    if not text:
+        return ""
+    return str(text).translate(_TYPO_MAP).strip()
+
+
+def _clean_payload(obj):
+    """Recursively sanitize all string values in a nested LLM payload."""
+    if isinstance(obj, str):
+        return _clean(obj)
+    if isinstance(obj, list):
+        return [_clean_payload(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _clean_payload(v) for k, v in obj.items()}
+    return obj
+
+
 def _wrap_text(draw, text: str, font, max_width: int) -> list[str]:
     words = str(text).split()
     lines: list[str] = []
@@ -786,7 +817,8 @@ def _render_layout_compare(headline: str, subhead: str, compare: dict) -> bytes:
     rx0 = lx1 + 40
     rx1 = rx0 + col_w
     draw.rounded_rectangle((rx0, col_y, rx1, col_y + col_h), radius=24, fill=(21, 43, 78))
-    draw.rectangle((rx0, col_y, rx0 + 3, col_y + col_h), fill=_BRAND_ACCENT)
+    # Wider accent stripe on the "after" column (5px, blends into rounded corner)
+    draw.rectangle((rx0, col_y + 8, rx0 + 5, col_y + col_h - 8), fill=_BRAND_ACCENT)
 
     def _draw_col(x_start: int, x_end: int, block: dict, accent: bool):
         lbl_font = _load_font(22, bold=True)
@@ -966,14 +998,14 @@ async def _generate_single(prompt: str) -> tuple[str, list[bytes]]:
             response_format={"type": "json_object"},
         )
         data = json.loads(resp.choices[0].message.content or "{}")
-        caption = str(data.get("caption") or "").strip()
-        headline = str(data.get("headline") or "").strip()
-        subhead = str(data.get("subhead") or "").strip()
+        caption = _clean(data.get("caption") or "")
+        headline = _clean(data.get("headline") or "")
+        subhead = _clean(data.get("subhead") or "")
         layout = str(data.get("layout") or "kpi").strip().lower()
-        payload = data.get("data") or {}
+        payload = _clean_payload(data.get("data") or {})
         if not caption or not headline:
             raise ValueError("empty llm output")
-        img = _render_data_card(layout, headline, subhead or fallback_sub, payload if isinstance(payload, dict) else {})
+        img = _render_data_card(layout, headline, subhead or fallback_sub, payload)
         return caption, [img]
     except Exception:
         return fallback_caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
@@ -1014,15 +1046,15 @@ async def _generate_carousel(prompt: str, slide_count: int = 5) -> tuple[str, li
             response_format={"type": "json_object"},
         )
         data = json.loads(resp.choices[0].message.content or "{}")
-        caption = str(data.get("caption") or "").strip()
+        caption = _clean(data.get("caption") or "")
         slides_data = data.get("slides") or []
         if not caption or not slides_data:
             raise ValueError("empty llm output")
         n = min(slide_count, len(slides_data))
         slides: list[bytes] = []
         for i, s in enumerate(slides_data[:slide_count]):
-            title = str(s.get("title") or f"Slide {i + 1}").strip()
-            body = str(s.get("body") or "").strip()
+            title = _clean(s.get("title") or f"Slide {i + 1}")
+            body = _clean(s.get("body") or "")
             slides.append(_render_carousel_slide(i, n, title, body))
         return caption, slides
     except Exception:
@@ -1056,7 +1088,7 @@ async def _generate_text_only(prompt: str) -> tuple[str, list[bytes]]:
             response_format={"type": "json_object"},
         )
         data = json.loads(resp.choices[0].message.content or "{}")
-        caption = str(data.get("caption") or "").strip()
+        caption = _clean(data.get("caption") or "")
         return (caption or fallback), []
     except Exception:
         return fallback, []
