@@ -29,13 +29,17 @@ const platformNav: NavItem[] = [
   { label: 'AI Advisor',    href: '/advisor',        icon: MessageSquareText, desc: 'Conversational diagnostic across six maturity dimensions' },
   { label: 'Workspaces',    href: '/workspaces',     icon: Briefcase,         desc: 'Client projects, each holds studios and drafts'          },
   { label: 'Studios',       href: '/skills',         icon: Sparkles,          desc: '27 specialised HC advisory studios powered by AI'         },
-  { label: 'Knowledge',     href: '/knowledge',      icon: BookOpen,          desc: 'Frameworks, playbooks, research and case studies'         },
 ]
 
 const toolsNav: NavItem[] = [
   { label: 'Draft Inbox', href: '/inbox',    icon: Inbox,    desc: 'Review and approve AI-generated drafts'         },
   { label: 'Exports',     href: '/exports',  icon: Download, desc: 'Download approved drafts as PPTX, PDF or Word'  },
-  { label: 'Publish',     href: '/publish',  icon: Share2,   desc: 'Post images, carousels and PDF carousels to LinkedIn'  },
+]
+
+const adminNav: NavItem[] = [
+  { label: 'Admin Dashboard', href: '/admin',     icon: ShieldCheck, desc: 'Users, tenants, LLM config, audit log' },
+  { label: 'Knowledge',       href: '/knowledge', icon: BookOpen,    desc: 'Frameworks, playbooks, research and case studies' },
+  { label: 'Publish',         href: '/publish',   icon: Share2,      desc: 'Prompt-driven LinkedIn posts with the Aivora brand card' },
 ]
 
 const accountNav: NavItem[] = [
@@ -339,13 +343,7 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
       <nav className={cn('flex-1 overflow-y-auto py-5 space-y-6', collapsed ? 'px-2' : 'px-3')}>
         <NavSection
           title="Platform"
-          items={platformNav.filter(item => {
-            // Knowledge Base is admin-only (Kriem + Manoj)
-            if (item.href === '/knowledge') {
-              return isAdminUser(user)
-            }
-            return true
-          })}
+          items={platformNav}
           onLinkClick={onClose}
           collapsed={collapsed}
         />
@@ -382,48 +380,11 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
             </motion.div>
           )}
         </AnimatePresence>
-        <NavSection
-          title="Tools"
-          items={toolsNav.filter(item => {
-            // Publish (LinkedIn) is admin-only
-            if (item.href === '/publish') return isAdminUser(user)
-            return true
-          })}
-          onLinkClick={onClose}
-          collapsed={collapsed}
-        />
+        <NavSection title="Tools"    items={toolsNav}    onLinkClick={onClose} collapsed={collapsed} />
         <NavSection title="Account"  items={accountNav}  onLinkClick={onClose} collapsed={collapsed} />
 
         {isAdminUser(user) && (
-          <div>
-            {!collapsed && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-1.5">Admin</p>}
-            {collapsed && <div className="w-full h-px bg-[#1a1e2e] my-2" />}
-            <div className="relative group/nav">
-              <NavLink
-                to="/admin"
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2.5 rounded-lg text-sm font-medium transition-all duration-150 border',
-                    collapsed ? 'px-2 py-2 justify-center' : 'px-3 py-2',
-                    isActive
-                      ? 'bg-blue-600/15 text-blue-400 border-blue-500/30'
-                      : 'text-slate-500 hover:bg-white/5 hover:text-white border-transparent'
-                  )
-                }
-              >
-                <ShieldCheck className="w-4 h-4 flex-shrink-0" />
-                {!collapsed && 'Admin Dashboard'}
-              </NavLink>
-              {collapsed && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none opacity-0 group-hover/nav:opacity-100 transition-opacity hidden lg:block">
-                  <div className="bg-[#131720] border border-[#1e2433] text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
-                    <p className="font-semibold text-blue-400">Admin Dashboard</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <NavSection title="Admin" items={adminNav} onLinkClick={onClose} collapsed={collapsed} />
         )}
       </nav>
 

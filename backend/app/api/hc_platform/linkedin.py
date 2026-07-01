@@ -135,9 +135,15 @@ class PdfShareIn(BaseModel):
     title: str = "Aivora HC document"
 
 
+class PromptShareIn(BaseModel):
+    prompt: str = Field(..., min_length=3, max_length=2000)
+    visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
+
+
 class ShareOut(BaseModel):
     post_id: str
     share_url: str
+    caption: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -492,6 +498,223 @@ async def linkedin_share(
     )
 
 
+# ---------------------------------------------------------------------------
+# Prompt-driven share: LLM drafts the caption, we render a branded Aivora card
+# as the attached image. No file upload from the admin.
+# ---------------------------------------------------------------------------
+
+_BRAND_BG = (12, 14, 20)          # #0c0e14
+_BRAND_CARD = (19, 23, 32)        # #131720
+_BRAND_ACCENT = (59, 130, 246)    # #3b82f6
+_BRAND_ACCENT_2 = (37, 99, 235)   # #2563eb
+_BRAND_TEXT = (241, 245, 249)     # slate-100
+_BRAND_MUTED = (148, 163, 184)    # slate-400
+
+
+def _load_font(size: int, bold: bool = False):
+    from PIL import ImageFont
+
+    candidates_regular = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    candidates_bold = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    for path in (candidates_bold if bold else candidates_regular):
+        try:
+            return ImageFont.truetype(path, size)
+        except (OSError, IOError):
+            continue
+    return ImageFont.load_default()
+
+
+def _wrap_text(draw, text: str, font, max_width: int) -> list[str]:
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        bbox = draw.textbbox((0, 0), candidate, font=font)
+        if bbox[2] - bbox[0] <= max_width or not current:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _render_brand_card(headline: str, subhead: str) -> bytes:
+    """Render a 1200x1200 square branded Aivora card and return PNG bytes."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    # Card panel
+    pad = 60
+    draw.rounded_rectangle(
+        (pad, pad, W - pad, H - pad),
+        radius=48,
+        fill=_BRAND_CARD,
+    )
+
+    # Accent bar top-left
+    draw.rounded_rectangle(
+        (pad + 60, pad + 60, pad + 80, pad + 200),
+        radius=8,
+        fill=_BRAND_ACCENT,
+    )
+
+    # Brand mark: "A" tile with subtle glow
+    mark_x0, mark_y0 = W - pad - 200, pad + 60
+    mark_x1, mark_y1 = W - pad - 60, pad + 200
+    draw.rounded_rectangle(
+        (mark_x0, mark_y0, mark_x1, mark_y1),
+        radius=24,
+        fill=_BRAND_ACCENT_2,
+    )
+    mark_font = _load_font(96, bold=True)
+    letter = "A"
+    bbox = draw.textbbox((0, 0), letter, font=mark_font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(
+        (mark_x0 + (mark_x1 - mark_x0 - tw) / 2 - bbox[0],
+         mark_y0 + (mark_y1 - mark_y0 - th) / 2 - bbox[1]),
+        letter,
+        font=mark_font,
+        fill=_BRAND_TEXT,
+    )
+
+    # Kicker
+    kicker = "AIVORA HC · ADVISORY POST"
+    kicker_font = _load_font(28, bold=True)
+    draw.text((pad + 100, pad + 240), kicker, font=kicker_font, fill=_BRAND_ACCENT)
+
+    # Headline
+    headline_font = _load_font(72, bold=True)
+    max_width = W - 2 * pad - 200
+    headline_lines = _wrap_text(draw, headline, headline_font, max_width)[:5]
+    y = pad + 300
+    for line in headline_lines:
+        draw.text((pad + 100, y), line, font=headline_font, fill=_BRAND_TEXT)
+        y += 92
+
+    # Subhead
+    subhead_font = _load_font(36)
+    y += 20
+    for line in _wrap_text(draw, subhead, subhead_font, max_width)[:3]:
+        draw.text((pad + 100, y), line, font=subhead_font, fill=_BRAND_MUTED)
+        y += 52
+
+    # Footer bar
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(28, bold=True)
+    draw.text((pad + 100, footer_y + 24), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    tag_font = _load_font(24)
+    tag = "Human Capital, elevated."
+    bbox = draw.textbbox((0, 0), tag, font=tag_font)
+    draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 28), tag, font=tag_font, fill=_BRAND_MUTED)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+async def _draft_post(prompt: str) -> tuple[str, str, str]:
+    """Call the LLM to draft caption + card headline + card subhead.
+
+    Returns (caption, headline, subhead). Falls back to a safe default if the
+    LLM is unavailable so the endpoint never silently fails.
+    """
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+
+    if not settings.OPENAI_API_KEY:
+        headline = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+        subhead = "Aivora HC advisory · human capital, elevated."
+        caption = prompt.strip()
+        return caption, headline, subhead
+
+    system = (
+        "You draft short, sharp LinkedIn posts for Aivora HC, a human capital "
+        "advisory platform. Return STRICT JSON with keys: caption (string, max "
+        "900 chars, 2-4 short paragraphs, no hashtags spam, at most 3 focused "
+        "hashtags at the end), headline (string, max 80 chars, punchy, no "
+        "trailing period), subhead (string, max 120 chars, supporting line, "
+        "no exclamation marks). Use plain hyphens, never em-dashes."
+    )
+    user = f"Compose a LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.5,
+            max_tokens=600,
+            response_format={"type": "json_object"},
+        )
+        import json
+        content = resp.choices[0].message.content or "{}"
+        data = json.loads(content)
+        caption = str(data.get("caption") or "").strip()
+        headline = str(data.get("headline") or "").strip()
+        subhead = str(data.get("subhead") or "").strip()
+        if not caption or not headline:
+            raise ValueError("empty llm output")
+        return caption, headline, subhead or "Aivora HC advisory."
+    except Exception:
+        headline = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+        subhead = "Aivora HC advisory · human capital, elevated."
+        caption = prompt.strip()
+        return caption, headline, subhead
+
+
+@router.post("/share-prompt", response_model=ShareOut)
+async def linkedin_share_prompt(
+    payload: PromptShareIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """One-shot: prompt → LLM caption → branded card image → LinkedIn post."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
+        )
+
+    caption, headline, subhead = await _draft_post(payload.prompt)
+    image_bytes = _render_brand_card(headline, subhead)
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=45) as client:
+        asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+        post_id = await _create_ugc_post(
+            client, token, person_urn, caption, [asset_urn], payload.visibility, "Aivora HC Insight"
+        )
+
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+        caption=caption,
+    )
+
+
 @router.post("/share-carousel", response_model=ShareOut)
 async def linkedin_share_carousel(
     payload: CarouselShareIn,
@@ -528,6 +751,223 @@ async def linkedin_share_carousel(
     return ShareOut(
         post_id=post_id,
         share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Prompt-driven share: LLM drafts the caption, we render a branded Aivora card
+# as the attached image. No file upload from the admin.
+# ---------------------------------------------------------------------------
+
+_BRAND_BG = (12, 14, 20)          # #0c0e14
+_BRAND_CARD = (19, 23, 32)        # #131720
+_BRAND_ACCENT = (59, 130, 246)    # #3b82f6
+_BRAND_ACCENT_2 = (37, 99, 235)   # #2563eb
+_BRAND_TEXT = (241, 245, 249)     # slate-100
+_BRAND_MUTED = (148, 163, 184)    # slate-400
+
+
+def _load_font(size: int, bold: bool = False):
+    from PIL import ImageFont
+
+    candidates_regular = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    candidates_bold = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    for path in (candidates_bold if bold else candidates_regular):
+        try:
+            return ImageFont.truetype(path, size)
+        except (OSError, IOError):
+            continue
+    return ImageFont.load_default()
+
+
+def _wrap_text(draw, text: str, font, max_width: int) -> list[str]:
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        bbox = draw.textbbox((0, 0), candidate, font=font)
+        if bbox[2] - bbox[0] <= max_width or not current:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _render_brand_card(headline: str, subhead: str) -> bytes:
+    """Render a 1200x1200 square branded Aivora card and return PNG bytes."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    # Card panel
+    pad = 60
+    draw.rounded_rectangle(
+        (pad, pad, W - pad, H - pad),
+        radius=48,
+        fill=_BRAND_CARD,
+    )
+
+    # Accent bar top-left
+    draw.rounded_rectangle(
+        (pad + 60, pad + 60, pad + 80, pad + 200),
+        radius=8,
+        fill=_BRAND_ACCENT,
+    )
+
+    # Brand mark: "A" tile with subtle glow
+    mark_x0, mark_y0 = W - pad - 200, pad + 60
+    mark_x1, mark_y1 = W - pad - 60, pad + 200
+    draw.rounded_rectangle(
+        (mark_x0, mark_y0, mark_x1, mark_y1),
+        radius=24,
+        fill=_BRAND_ACCENT_2,
+    )
+    mark_font = _load_font(96, bold=True)
+    letter = "A"
+    bbox = draw.textbbox((0, 0), letter, font=mark_font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(
+        (mark_x0 + (mark_x1 - mark_x0 - tw) / 2 - bbox[0],
+         mark_y0 + (mark_y1 - mark_y0 - th) / 2 - bbox[1]),
+        letter,
+        font=mark_font,
+        fill=_BRAND_TEXT,
+    )
+
+    # Kicker
+    kicker = "AIVORA HC · ADVISORY POST"
+    kicker_font = _load_font(28, bold=True)
+    draw.text((pad + 100, pad + 240), kicker, font=kicker_font, fill=_BRAND_ACCENT)
+
+    # Headline
+    headline_font = _load_font(72, bold=True)
+    max_width = W - 2 * pad - 200
+    headline_lines = _wrap_text(draw, headline, headline_font, max_width)[:5]
+    y = pad + 300
+    for line in headline_lines:
+        draw.text((pad + 100, y), line, font=headline_font, fill=_BRAND_TEXT)
+        y += 92
+
+    # Subhead
+    subhead_font = _load_font(36)
+    y += 20
+    for line in _wrap_text(draw, subhead, subhead_font, max_width)[:3]:
+        draw.text((pad + 100, y), line, font=subhead_font, fill=_BRAND_MUTED)
+        y += 52
+
+    # Footer bar
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(28, bold=True)
+    draw.text((pad + 100, footer_y + 24), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    tag_font = _load_font(24)
+    tag = "Human Capital, elevated."
+    bbox = draw.textbbox((0, 0), tag, font=tag_font)
+    draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 28), tag, font=tag_font, fill=_BRAND_MUTED)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+async def _draft_post(prompt: str) -> tuple[str, str, str]:
+    """Call the LLM to draft caption + card headline + card subhead.
+
+    Returns (caption, headline, subhead). Falls back to a safe default if the
+    LLM is unavailable so the endpoint never silently fails.
+    """
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+
+    if not settings.OPENAI_API_KEY:
+        headline = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+        subhead = "Aivora HC advisory · human capital, elevated."
+        caption = prompt.strip()
+        return caption, headline, subhead
+
+    system = (
+        "You draft short, sharp LinkedIn posts for Aivora HC, a human capital "
+        "advisory platform. Return STRICT JSON with keys: caption (string, max "
+        "900 chars, 2-4 short paragraphs, no hashtags spam, at most 3 focused "
+        "hashtags at the end), headline (string, max 80 chars, punchy, no "
+        "trailing period), subhead (string, max 120 chars, supporting line, "
+        "no exclamation marks). Use plain hyphens, never em-dashes."
+    )
+    user = f"Compose a LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.5,
+            max_tokens=600,
+            response_format={"type": "json_object"},
+        )
+        import json
+        content = resp.choices[0].message.content or "{}"
+        data = json.loads(content)
+        caption = str(data.get("caption") or "").strip()
+        headline = str(data.get("headline") or "").strip()
+        subhead = str(data.get("subhead") or "").strip()
+        if not caption or not headline:
+            raise ValueError("empty llm output")
+        return caption, headline, subhead or "Aivora HC advisory."
+    except Exception:
+        headline = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+        subhead = "Aivora HC advisory · human capital, elevated."
+        caption = prompt.strip()
+        return caption, headline, subhead
+
+
+@router.post("/share-prompt", response_model=ShareOut)
+async def linkedin_share_prompt(
+    payload: PromptShareIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """One-shot: prompt → LLM caption → branded card image → LinkedIn post."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
+        )
+
+    caption, headline, subhead = await _draft_post(payload.prompt)
+    image_bytes = _render_brand_card(headline, subhead)
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=45) as client:
+        asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+        post_id = await _create_ugc_post(
+            client, token, person_urn, caption, [asset_urn], payload.visibility, "Aivora HC Insight"
+        )
+
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+        caption=caption,
     )
 
 
@@ -570,4 +1010,221 @@ async def linkedin_share_pdf(
     return ShareOut(
         post_id=post_id,
         share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Prompt-driven share: LLM drafts the caption, we render a branded Aivora card
+# as the attached image. No file upload from the admin.
+# ---------------------------------------------------------------------------
+
+_BRAND_BG = (12, 14, 20)          # #0c0e14
+_BRAND_CARD = (19, 23, 32)        # #131720
+_BRAND_ACCENT = (59, 130, 246)    # #3b82f6
+_BRAND_ACCENT_2 = (37, 99, 235)   # #2563eb
+_BRAND_TEXT = (241, 245, 249)     # slate-100
+_BRAND_MUTED = (148, 163, 184)    # slate-400
+
+
+def _load_font(size: int, bold: bool = False):
+    from PIL import ImageFont
+
+    candidates_regular = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    candidates_bold = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    for path in (candidates_bold if bold else candidates_regular):
+        try:
+            return ImageFont.truetype(path, size)
+        except (OSError, IOError):
+            continue
+    return ImageFont.load_default()
+
+
+def _wrap_text(draw, text: str, font, max_width: int) -> list[str]:
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        bbox = draw.textbbox((0, 0), candidate, font=font)
+        if bbox[2] - bbox[0] <= max_width or not current:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _render_brand_card(headline: str, subhead: str) -> bytes:
+    """Render a 1200x1200 square branded Aivora card and return PNG bytes."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W = H = 1200
+    img = Image.new("RGB", (W, H), _BRAND_BG)
+    draw = ImageDraw.Draw(img)
+
+    # Card panel
+    pad = 60
+    draw.rounded_rectangle(
+        (pad, pad, W - pad, H - pad),
+        radius=48,
+        fill=_BRAND_CARD,
+    )
+
+    # Accent bar top-left
+    draw.rounded_rectangle(
+        (pad + 60, pad + 60, pad + 80, pad + 200),
+        radius=8,
+        fill=_BRAND_ACCENT,
+    )
+
+    # Brand mark: "A" tile with subtle glow
+    mark_x0, mark_y0 = W - pad - 200, pad + 60
+    mark_x1, mark_y1 = W - pad - 60, pad + 200
+    draw.rounded_rectangle(
+        (mark_x0, mark_y0, mark_x1, mark_y1),
+        radius=24,
+        fill=_BRAND_ACCENT_2,
+    )
+    mark_font = _load_font(96, bold=True)
+    letter = "A"
+    bbox = draw.textbbox((0, 0), letter, font=mark_font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(
+        (mark_x0 + (mark_x1 - mark_x0 - tw) / 2 - bbox[0],
+         mark_y0 + (mark_y1 - mark_y0 - th) / 2 - bbox[1]),
+        letter,
+        font=mark_font,
+        fill=_BRAND_TEXT,
+    )
+
+    # Kicker
+    kicker = "AIVORA HC · ADVISORY POST"
+    kicker_font = _load_font(28, bold=True)
+    draw.text((pad + 100, pad + 240), kicker, font=kicker_font, fill=_BRAND_ACCENT)
+
+    # Headline
+    headline_font = _load_font(72, bold=True)
+    max_width = W - 2 * pad - 200
+    headline_lines = _wrap_text(draw, headline, headline_font, max_width)[:5]
+    y = pad + 300
+    for line in headline_lines:
+        draw.text((pad + 100, y), line, font=headline_font, fill=_BRAND_TEXT)
+        y += 92
+
+    # Subhead
+    subhead_font = _load_font(36)
+    y += 20
+    for line in _wrap_text(draw, subhead, subhead_font, max_width)[:3]:
+        draw.text((pad + 100, y), line, font=subhead_font, fill=_BRAND_MUTED)
+        y += 52
+
+    # Footer bar
+    footer_y = H - pad - 100
+    draw.rectangle((pad + 100, footer_y, W - pad - 100, footer_y + 2), fill=(30, 36, 51))
+    footer_font = _load_font(28, bold=True)
+    draw.text((pad + 100, footer_y + 24), "aivora.hc", font=footer_font, fill=_BRAND_TEXT)
+    tag_font = _load_font(24)
+    tag = "Human Capital, elevated."
+    bbox = draw.textbbox((0, 0), tag, font=tag_font)
+    draw.text((W - pad - 100 - (bbox[2] - bbox[0]), footer_y + 28), tag, font=tag_font, fill=_BRAND_MUTED)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+async def _draft_post(prompt: str) -> tuple[str, str, str]:
+    """Call the LLM to draft caption + card headline + card subhead.
+
+    Returns (caption, headline, subhead). Falls back to a safe default if the
+    LLM is unavailable so the endpoint never silently fails.
+    """
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+
+    if not settings.OPENAI_API_KEY:
+        headline = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+        subhead = "Aivora HC advisory · human capital, elevated."
+        caption = prompt.strip()
+        return caption, headline, subhead
+
+    system = (
+        "You draft short, sharp LinkedIn posts for Aivora HC, a human capital "
+        "advisory platform. Return STRICT JSON with keys: caption (string, max "
+        "900 chars, 2-4 short paragraphs, no hashtags spam, at most 3 focused "
+        "hashtags at the end), headline (string, max 80 chars, punchy, no "
+        "trailing period), subhead (string, max 120 chars, supporting line, "
+        "no exclamation marks). Use plain hyphens, never em-dashes."
+    )
+    user = f"Compose a LinkedIn post about:\n\n{prompt.strip()}"
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.5,
+            max_tokens=600,
+            response_format={"type": "json_object"},
+        )
+        import json
+        content = resp.choices[0].message.content or "{}"
+        data = json.loads(content)
+        caption = str(data.get("caption") or "").strip()
+        headline = str(data.get("headline") or "").strip()
+        subhead = str(data.get("subhead") or "").strip()
+        if not caption or not headline:
+            raise ValueError("empty llm output")
+        return caption, headline, subhead or "Aivora HC advisory."
+    except Exception:
+        headline = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+        subhead = "Aivora HC advisory · human capital, elevated."
+        caption = prompt.strip()
+        return caption, headline, subhead
+
+
+@router.post("/share-prompt", response_model=ShareOut)
+async def linkedin_share_prompt(
+    payload: PromptShareIn,
+    current_user: AdminUser,
+    db: DBDep,
+) -> ShareOut:
+    """One-shot: prompt → LLM caption → branded card image → LinkedIn post."""
+    conn = await _get_connection(db, current_user.tenant_id, current_user.id)
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="LinkedIn not connected",
+        )
+
+    caption, headline, subhead = await _draft_post(payload.prompt)
+    image_bytes = _render_brand_card(headline, subhead)
+
+    person_urn = f"urn:li:person:{conn.linkedin_user_id}"
+    token = conn.access_token
+
+    async with httpx.AsyncClient(timeout=45) as client:
+        asset_urn = await _upload_image(client, token, person_urn, image_bytes)
+        post_id = await _create_ugc_post(
+            client, token, person_urn, caption, [asset_urn], payload.visibility, "Aivora HC Insight"
+        )
+
+    return ShareOut(
+        post_id=post_id,
+        share_url=f"https://www.linkedin.com/feed/update/{post_id}/",
+        caption=caption,
     )

@@ -236,6 +236,11 @@ export interface LinkedInPdfRequest {
   title?: string
 }
 
+export interface LinkedInPromptRequest {
+  prompt: string
+  visibility?: 'PUBLIC' | 'CONNECTIONS'
+}
+
 export const linkedinAPI = {
   getStatus: () => api.get<LinkedInStatus>('/auth/linkedin/status'),
   getConnectUrl: () => api.get<{ url: string }>('/auth/linkedin/connect'),
@@ -246,6 +251,8 @@ export const linkedinAPI = {
     api.post<LinkedInShareResponse>('/hc-platform/linkedin/share-carousel', body),
   sharePdf: (body: LinkedInPdfRequest) =>
     api.post<LinkedInShareResponse>('/hc-platform/linkedin/share-pdf', body),
+  sharePrompt: (body: LinkedInPromptRequest) =>
+    api.post<LinkedInShareResponse & { caption?: string }>('/hc-platform/linkedin/share-prompt', body),
 }
 
 // Admin
