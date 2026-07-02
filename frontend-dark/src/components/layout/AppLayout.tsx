@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Inbox, Download,
   Share2, Settings, CreditCard, X, ShieldCheck, Sparkles,
   HelpCircle, ChevronRight, ChevronLeft, ArrowRight, Rocket,
-  PanelLeftClose, PanelLeftOpen, Brain, Sun, Moon, BookOpen, MessageSquareText,
+  PanelLeftClose, PanelLeftOpen, Brain, Sun, Moon, BookOpen,
 } from 'lucide-react'
 import { AivoraLogo } from '../brand/AivoraLogo'
 import { useAuthStore } from '../../store/auth'
@@ -13,6 +13,7 @@ import { isAdminUser } from '../../lib/adminAccess'
 import { getInitials } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { TopBar } from './TopBar'
+import { AdvisorBubble } from '../advisor/AdvisorBubble'
 import { ToastContainer, useInsufficientCreditsHandler } from '../ui/Toast'
 import { useConversationInsights } from '../../store/conversationInsights'
 import { useThemeStore } from '../../store/theme'
@@ -26,7 +27,6 @@ interface NavItem {
 
 const platformNav: NavItem[] = [
   { label: 'Dashboard',     href: '/dashboard',      icon: LayoutDashboard,   desc: 'Overview of your workspaces, credits and activity'        },
-  { label: 'AI Advisor',    href: '/advisor',        icon: MessageSquareText, desc: 'Conversational diagnostic across six maturity dimensions' },
   { label: 'Workspaces',    href: '/workspaces',     icon: Briefcase,         desc: 'Client projects, each holds studios and drafts'          },
   { label: 'Studios',       href: '/skills',         icon: Sparkles,          desc: '27 specialised HC advisory studios powered by AI'         },
 ]
@@ -493,6 +493,8 @@ export function AppLayout() {
       <AnimatePresence>
         {learningOpen && <LearningCenterPanel onClose={() => setLearningOpen(false)} />}
       </AnimatePresence>
+
+      <AdvisorBubble />
 
       <ToastContainer />
     </div>

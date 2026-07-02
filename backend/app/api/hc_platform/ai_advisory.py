@@ -225,9 +225,23 @@ class ChatMessage(BaseModel):
     content: str
 
 
+class ChatContext(BaseModel):
+    """Where the user is right now on the platform.
+
+    Sent from the frontend so the assistant can give route-aware guidance
+    ("you are on the Talent Mobility Studio - here is what to focus on...").
+    """
+    path: str | None = None                # current route, e.g. /studio/mobility
+    workspace_name: str | None = None      # active workspace label
+    workspace_id: str | None = None
+    studio_id: str | None = None           # current studio if any
+    studio_name: str | None = None
+
+
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     brief: dict[str, Any] | None = None
+    context: ChatContext | None = None
 
 
 class ChatResponse(BaseModel):
@@ -235,21 +249,52 @@ class ChatResponse(BaseModel):
     followup_questions: list[str] = []
 
 
-_ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
+_ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant embedded inside the Aivora HC platform, advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
+
+You have TWO jobs:
+1. **Advise on Human Capital** — read the situation, ask sharp clarifying questions when needed, and give a real point of view with specific next moves.
+2. **Guide them around the platform** — help them pick the right Studio, understand the output of the one they just ran, or troubleshoot the flow. You know the platform.
+
+The platform has 27 Studios organised roughly as:
+- Strategy: HC Strategy Charter, Business Plan, Workforce Planning, Scenario Modelling
+- Talent: Talent Mobility, HIPO Development, Succession Planning, Early Career, Talent Acquisition
+- Leadership: Leadership Development, Coaching & Mentoring, Executive Alignment
+- Capability: Capability Assessment, Skills Development, Learning & Training, Maturity Assessment
+- Culture: Employee Experience, Engagement, DEI Strategy, Culture Program
+- Rewards: Total Rewards, Compensation Framework, Performance Management
+- Ops: Org Design, HR Operating Model, Growth Automation, Change Management, Process Excellence
+
+The user also has: Workspaces (one per client engagement), Draft Inbox (AI-generated deliverables to approve), Exports (PDF/PPTX/XLSX), and a Challenge Brief per workspace that grounds every Studio.
 
 How you converse:
 - Treat this as a real dialogue. Read what the user actually said and respond to it. Do not deliver a lecture.
 - When the user's request is ambiguous, ask ONE focused clarifying question before recommending anything. Never ask more than one clarifying question in the same turn.
 - Never dump ten bullet points on the first turn. Start with a short, direct read of the situation (two or three sentences), then ask what would be most useful to explore next.
-- When the user asks for concrete recommendations, deliver three to five specific moves — each with the reason it fits their context, not generic advice.
+- When the user asks for concrete recommendations, deliver three to five specific moves - each with the reason it fits their context, not generic advice.
 - Reference the brief context when relevant ("given you flagged leadership as the priority..."). Never repeat the full brief back at them.
+- When they are inside a specific Studio or Workspace, tailor your guidance to that context. If they are on the Talent Mobility Studio, do not ask what studio they want to run - help them get the most out of that one.
 - Use plain hyphens, never em-dashes. No filler ("great question", "certainly"). Get to the point.
 - Keep any single reply under 220 words unless the user explicitly asks for depth.
-- When a Studio in this platform is a natural next step (Talent Mobility, HIPO Development, Succession Planning, HC Strategy Charter, Leadership Development, Workforce Planning, etc.) name it as a suggestion, in one line.
+- When suggesting a Studio, name it exactly and say why in one line.
 - End most replies with a short question or a suggested next step so the conversation stays alive.
 
 You have opinions. If the user is heading in a bad direction, tell them politely and say why.
 """
+
+
+def _context_block(ctx: "ChatContext | None") -> str:
+    if not ctx:
+        return ""
+    parts: list[str] = []
+    if ctx.path:
+        parts.append(f"Current page: {ctx.path}")
+    if ctx.workspace_name:
+        parts.append(f"Active workspace: {ctx.workspace_name}")
+    if ctx.studio_name or ctx.studio_id:
+        parts.append(f"Currently viewing Studio: {ctx.studio_name or ctx.studio_id}")
+    if not parts:
+        return ""
+    return "Where the user is right now:\n" + "\n".join(f"- {p}" for p in parts)
 
 
 def _brief_context_block(brief: dict[str, Any] | None) -> str:
@@ -312,7 +357,11 @@ async def advisor_chat(
         )
 
     brief_ctx = _brief_context_block(payload.brief)
-    system = _ADVISOR_SYSTEM_PROMPT + "\n\n" + brief_ctx
+    where_ctx = _context_block(payload.context)
+    system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
+    if where_ctx:
+        system_parts.append(where_ctx)
+    system = "\n\n".join(system_parts)
 
     # Trim to the last 20 messages so long conversations do not blow the token budget.
     trimmed = payload.messages[-20:]

@@ -1203,8 +1203,17 @@ export const hcAiAdvisoryAPI = {
     get<AiGeneratedInsight[]>(`${HC_BASE}/ai-advisory/insights${qs(params)}`),
   listPromptTemplates: (params?: { insight_type?: string; is_active?: boolean }) =>
     get<AiPromptTemplate[]>(`${HC_BASE}/ai-advisory/prompt-templates${qs(params)}`),
-  chat: (body: { messages: { role: 'user' | 'assistant'; content: string }[]; brief?: Record<string, unknown> | null }) =>
-    post<{ reply: string; followup_questions?: string[] }>(`${HC_BASE}/ai-advisory/chat`, body),
+  chat: (body: {
+    messages: { role: 'user' | 'assistant'; content: string }[]
+    brief?: Record<string, unknown> | null
+    context?: {
+      path?: string
+      workspace_name?: string
+      workspace_id?: string
+      studio_id?: string
+      studio_name?: string
+    } | null
+  }) => post<{ reply: string; followup_questions?: string[] }>(`${HC_BASE}/ai-advisory/chat`, body),
 }
 
 // ---------------------------------------------------------------------------
