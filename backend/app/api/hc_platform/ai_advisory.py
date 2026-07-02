@@ -214,3 +214,124 @@ async def list_prompt_templates(
     stmt = select(AiPromptTemplate).order_by(AiPromptTemplate.key, AiPromptTemplate.version.desc())
     rows = (await db.execute(stmt)).scalars().all()
     return [PromptTemplateRead.model_validate(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Conversational advisor: multi-turn chat with a senior HC consultant persona
+# ---------------------------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str  # 'user' | 'assistant'
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    brief: dict[str, Any] | None = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    followup_questions: list[str] = []
+
+
+_ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
+
+How you converse:
+- Treat this as a real dialogue. Read what the user actually said and respond to it. Do not deliver a lecture.
+- When the user's request is ambiguous, ask ONE focused clarifying question before recommending anything. Never ask more than one clarifying question in the same turn.
+- Never dump ten bullet points on the first turn. Start with a short, direct read of the situation (two or three sentences), then ask what would be most useful to explore next.
+- When the user asks for concrete recommendations, deliver three to five specific moves — each with the reason it fits their context, not generic advice.
+- Reference the brief context when relevant ("given you flagged leadership as the priority..."). Never repeat the full brief back at them.
+- Use plain hyphens, never em-dashes. No filler ("great question", "certainly"). Get to the point.
+- Keep any single reply under 220 words unless the user explicitly asks for depth.
+- When a Studio in this platform is a natural next step (Talent Mobility, HIPO Development, Succession Planning, HC Strategy Charter, Leadership Development, Workforce Planning, etc.) name it as a suggestion, in one line.
+- End most replies with a short question or a suggested next step so the conversation stays alive.
+
+You have opinions. If the user is heading in a bad direction, tell them politely and say why.
+"""
+
+
+def _brief_context_block(brief: dict[str, Any] | None) -> str:
+    if not brief:
+        return "The user has not filled in a brief yet. If it becomes relevant, ask a few grounding questions early."
+    parts: list[str] = []
+    org = brief.get("organizationName") or brief.get("organization_name")
+    industry = brief.get("industry")
+    size = brief.get("organizationSize") or brief.get("organization_size")
+    region = brief.get("region")
+    maturity = brief.get("maturityStage") or brief.get("maturity_stage")
+    drivers = brief.get("strategicDrivers") or brief.get("strategic_drivers") or []
+    areas = brief.get("hcAreas") or brief.get("hc_areas") or []
+
+    if org:      parts.append(f"Organisation: {org}")
+    if industry: parts.append(f"Industry: {industry}")
+    if size:     parts.append(f"Size: {size}")
+    if region:   parts.append(f"Region: {region}")
+    if maturity: parts.append(f"Maturity stage: {maturity}")
+    if isinstance(drivers, list) and drivers:
+        parts.append("Strategic drivers: " + ", ".join(str(d) for d in drivers[:5]))
+    if isinstance(areas, list) and areas:
+        parts.append("HC priorities they flagged: " + ", ".join(str(a) for a in areas[:6]))
+
+    if not parts:
+        return "The user has not filled in a brief yet. If it becomes relevant, ask a few grounding questions early."
+    return "Context on the user's organisation:\n" + "\n".join(f"- {p}" for p in parts)
+
+
+_TYPO_MAP = str.maketrans({"—": "-", "–": "-", "−": "-", "‘": "'", "’": "'", "“": '"', "”": '"', "…": "...", " ": " "})
+
+
+def _clean(text: str) -> str:
+    return (text or "").translate(_TYPO_MAP).strip()
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def advisor_chat(
+    payload: ChatRequest,
+    current_user: CurrentUser,
+) -> ChatResponse:
+    """Multi-turn chat with the AI HC advisor. The client sends the full
+    conversation history each turn (small enough to be cheap). We prepend a
+    system prompt with brief context and return the next reply.
+    """
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+
+    if not payload.messages:
+        raise HTTPException(400, "messages must not be empty")
+
+    if not settings.OPENAI_API_KEY:
+        return ChatResponse(
+            reply=(
+                "I can chat once the OpenAI key is configured on this environment. "
+                "In the meantime, tell me a bit about the challenge you are working through "
+                "and I will point you at the studio that fits best."
+            ),
+            followup_questions=[],
+        )
+
+    brief_ctx = _brief_context_block(payload.brief)
+    system = _ADVISOR_SYSTEM_PROMPT + "\n\n" + brief_ctx
+
+    # Trim to the last 20 messages so long conversations do not blow the token budget.
+    trimmed = payload.messages[-20:]
+    messages = [{"role": "system", "content": system}]
+    for m in trimmed:
+        role = m.role if m.role in ("user", "assistant") else "user"
+        messages.append({"role": role, "content": m.content})
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.55,
+            max_tokens=600,
+        )
+        reply = _clean(resp.choices[0].message.content or "")
+        if not reply:
+            reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
+        return ChatResponse(reply=reply, followup_questions=[])
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Advisor unavailable: {exc}")
