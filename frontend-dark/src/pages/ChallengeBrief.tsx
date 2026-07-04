@@ -940,7 +940,10 @@ export default function ChallengeBrief() {
         workspace_id: workspaceId ?? null,
       })
       const diagnosis = res.data as { review_id: string }
-      navigate(`/brief-results/${diagnosis.review_id}`, { state: { diagnosis } })
+      try { localStorage.setItem('aivora-active-review-id', diagnosis.review_id) } catch { /* ignore */ }
+      // Brief complete: go straight to the AI Advisory for this workspace.
+      if (workspaceId) navigate(`/advisor/${workspaceId}`)
+      else navigate(`/brief-results/${diagnosis.review_id}`, { state: { diagnosis } })
     } catch (err: any) {
       setLaunchError(err?.response?.data?.detail || 'Could not generate diagnosis. Try again.')
       setLaunching(false)
