@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from .ai_advisory import router as ai_advisory_router
 from .benchmarks import router as benchmarks_router
+from .brief_chat import router as brief_chat_router
 from .brief_diagnostic import router as brief_diagnostic_router
 from .capability import router as capability_router
 from .documents import router as documents_router
@@ -32,6 +33,7 @@ api_router.include_router(mobility_router, prefix="/mobility", tags=["hc-platfor
 api_router.include_router(documents_router, prefix="/documents", tags=["hc-platform:documents"])
 api_router.include_router(exports_router, prefix="/exports", tags=["hc-platform:exports"])
 api_router.include_router(ai_advisory_router, prefix="/ai-advisory", tags=["hc-platform:ai-advisory"])
+api_router.include_router(brief_chat_router, prefix="/brief-chat", tags=["hc-platform:brief-chat"])
 api_router.include_router(modules_router, prefix="/modules", tags=["hc-platform:modules"])
 api_router.include_router(brief_diagnostic_router, tags=["hc-platform:brief-diagnostic"])
 api_router.include_router(studios_router, prefix="/studios", tags=["hc-platform:studios"])

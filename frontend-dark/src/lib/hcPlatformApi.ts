@@ -1242,6 +1242,30 @@ export const hcAiAdvisoryAPI = {
 }
 
 // ---------------------------------------------------------------------------
+// Conversational Challenge Brief intake
+// ---------------------------------------------------------------------------
+
+export type BriefSectionKey = 'organization' | 'situation' | 'challenges' | 'outputs'
+export type BriefSectionStatus = 'pending' | 'partial' | 'complete'
+
+export interface BriefChatResponse {
+  reply: string
+  suggestions: string[]
+  brief_patch: Record<string, unknown>
+  sections: Record<BriefSectionKey, BriefSectionStatus>
+  done: boolean
+}
+
+export const hcBriefChatAPI = {
+  chat: (body: {
+    messages: { role: 'user' | 'assistant'; content: string }[]
+    brief_state?: Record<string, unknown> | null
+    onboarding_profile?: Record<string, unknown> | null
+    workspace_name?: string | null
+  }) => post<BriefChatResponse>(`${HC_BASE}/brief-chat/chat`, body),
+}
+
+// ---------------------------------------------------------------------------
 // Modules
 // ---------------------------------------------------------------------------
 

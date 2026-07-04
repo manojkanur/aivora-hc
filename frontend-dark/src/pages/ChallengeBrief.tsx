@@ -94,7 +94,7 @@ interface DesiredOutputs {
   expectedDeliveryWindow: TimeHorizon
 }
 
-interface ChallengeBriefData {
+export interface ChallengeBriefData {
   organization: OrganizationContext
   businessSituation: BusinessSituation
   hcChallenges: HcChallenges
@@ -169,7 +169,7 @@ const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
 
 // ── Defaults ───────────────────────────────────────────────────────────────
 
-function defaultBrief(): ChallengeBriefData {
+export function defaultBrief(): ChallengeBriefData {
   return {
     organization: { organizationName: '', industry: 'other', region: 'gcc', organizationSize: 'large', maturityStage: 'mature', operatingModel: 'single-entity', employeeCountBand: 'unknown', geographicScope: 'unknown', notes: '' },
     businessSituation: { situationSummary: '', strategicDrivers: [], timeHorizon: 'medium-term', budgetEnvelope: 'not-defined', executiveSponsor: 'none', boardVisibility: false, recentChangesNote: '' },

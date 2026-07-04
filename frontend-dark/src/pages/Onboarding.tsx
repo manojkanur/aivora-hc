@@ -398,7 +398,7 @@ export default function Onboarding() {
     markCompleted()
     if (workspaceId) markWsCompleted(workspaceId)
     const dest = workspaceId
-      ? `/challenge-brief?workspaceId=${workspaceId}`
+      ? `/brief-chat?workspaceId=${workspaceId}`
       : '/challenge-brief'
     navigate(dest)
   }

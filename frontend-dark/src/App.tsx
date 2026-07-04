@@ -89,6 +89,7 @@ const Workspaces        = lazyPage(() => import('./pages/Workspaces'))
 const WorkspaceDetail   = lazyPage(() => import('./pages/WorkspaceDetail'))
 const SkillStudio       = lazyPage(() => import('./pages/SkillStudio'))
 const ChallengeBrief    = lazyPage(() => import('./pages/ChallengeBrief'))
+const BriefChat         = lazyPage(() => import('./pages/BriefChat'))
 const BriefResults      = lazyPage(() => import('./pages/BriefResults'))
 const Engage            = lazyPage(() => import('./pages/Engage'))
 const HipoStudioV2      = lazyPage(() => import('./pages/HipoStudio').then(m => ({ default: m.HipoStudioV2 })))
@@ -147,6 +148,7 @@ function AppRoutes() {
           <Route path="/hipo-studio" element={<HipoStudioV2 />} />
           <Route path="/hipo-studio-v2" element={<HipoStudioV2 />} />
           <Route path="/challenge-brief" element={<ChallengeBrief />} />
+          <Route path="/brief-chat" element={<BriefChat />} />
           <Route path="/brief-results/:reviewId" element={<BriefResults />} />
           <Route path="/inbox" element={<DraftInbox />} />
           <Route path="/exports" element={<ExportsPage />} />

@@ -326,7 +326,7 @@ export default function WorkspaceDetail() {
                   Build your advisory brief to unlock the suggested studios and start running AI-powered analyses.
                 </p>
               </div>
-              <Button onClick={() => navigate(`/challenge-brief?workspaceId=${id}`)} rightIcon={<ArrowRight className="w-4 h-4" />} className="flex-shrink-0">
+              <Button onClick={() => navigate(`/brief-chat?workspaceId=${id}`)} rightIcon={<ArrowRight className="w-4 h-4" />} className="flex-shrink-0">
                 Start Brief
               </Button>
             </div>
@@ -343,7 +343,7 @@ export default function WorkspaceDetail() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    onClick={() => navigate(`/challenge-brief?workspaceId=${id}`)}
+                    onClick={() => navigate(`/brief-chat?workspaceId=${id}`)}
                     className={cn('group text-left p-4 rounded-xl border transition-all hover:scale-[1.01]', c.card)}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
