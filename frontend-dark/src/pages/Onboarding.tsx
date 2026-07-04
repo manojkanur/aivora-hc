@@ -516,7 +516,7 @@ export default function Onboarding() {
         navigate(`/workspaces/${workspaceId}`, { replace: true })
       }
     } else if (isCompleted) {
-      navigate('/dashboard', { replace: true })
+      navigate('/advisor', { replace: true })
     }
   }, [isCompleted, workspaceId, navigate]) // eslint-disable-line
 

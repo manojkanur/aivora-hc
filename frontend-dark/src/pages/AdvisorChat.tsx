@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
-  MessageSquare, Loader2, Send, ClipboardList,
+  MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { QuestionCard } from '../components/advisory/QuestionCard'
 import { useAdvisoryStore } from '../store/advisory'
 import { getDiagnosticQuestions } from '../lib/advisory/questionRouter'
@@ -13,7 +15,7 @@ import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
-import { hcAiAdvisoryAPI } from '../lib/hcPlatformApi'
+import { hcAiAdvisoryAPI, type AdvisoryProfile } from '../lib/hcPlatformApi'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
 const DELIVERABLE_TOPICS: Array<{ key: string; label: string }> = [
@@ -56,20 +58,165 @@ function readActiveReviewId(): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Advisory profile (first-run intake)
+// ---------------------------------------------------------------------------
+
+const PROFILE_STORAGE_KEY = 'aivora-advisory-profile-v1'
+
+const PERSONAS = [
+  'CHRO', 'HRBP', 'Consultant', 'Talent Management', 'Organization Development',
+  'Learning', 'Workforce Planning', 'HR Operations', 'Business Leader',
+] as const
+
+function loadStoredProfile(): AdvisoryProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object' && typeof parsed.persona === 'string') return parsed as AdvisoryProfile
+  } catch { /* ignore */ }
+  return null
+}
+
+function saveStoredProfile(profile: AdvisoryProfile): void {
+  try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile)) } catch { /* ignore */ }
+}
+
+function IntakeCard({ initial, onStart }: { initial: AdvisoryProfile | null; onStart: (p: AdvisoryProfile) => void }) {
+  const [persona, setPersona] = useState<string>(initial?.persona ?? '')
+  const [org, setOrg] = useState(initial?.organization_name ?? '')
+  const [industry, setIndustry] = useState(initial?.industry ?? '')
+  const [region, setRegion] = useState(initial?.region ?? '')
+  const [companySize, setCompanySize] = useState(initial?.company_size ?? '')
+  const [objective, setObjective] = useState(initial?.objective ?? '')
+
+  const start = () => {
+    if (!persona) return
+    onStart({
+      persona,
+      organization_name: org.trim() || undefined,
+      industry: industry.trim() || undefined,
+      region: region.trim() || undefined,
+      company_size: companySize.trim() || undefined,
+      objective: objective.trim() || undefined,
+    })
+  }
+
+  const inputCls = 'w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors'
+
+  return (
+    <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] p-7 sm:p-8 space-y-6"
+      >
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Set up your advisory session</h1>
+            <p className="text-sm text-slate-400 mt-1.5">Thirty seconds. It shapes every answer you get.</p>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[11px] uppercase tracking-widest font-bold text-slate-500 block mb-2">I work as a <span className="text-blue-400">*</span></label>
+          <div className="flex flex-wrap gap-2">
+            {PERSONAS.map(p => (
+              <button
+                key={p}
+                onClick={() => setPersona(p)}
+                className={
+                  persona === p
+                    ? 'px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.35)] transition-colors'
+                    : 'px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 hover:text-white transition-colors'
+                }
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input value={org} onChange={e => setOrg(e.target.value)} placeholder="Organization (optional)" className={inputCls} />
+          <input value={industry} onChange={e => setIndustry(e.target.value)} placeholder="Industry (optional)" className={inputCls} />
+          <input value={region} onChange={e => setRegion(e.target.value)} placeholder="Region (optional)" className={inputCls} />
+          <input value={companySize} onChange={e => setCompanySize(e.target.value)} placeholder="Company size (optional)" className={inputCls} />
+        </div>
+        <input value={objective} onChange={e => setObjective(e.target.value)} placeholder="What are you trying to achieve? (optional)" className={inputCls} />
+
+        <button
+          onClick={start}
+          disabled={!persona}
+          className={
+            persona
+              ? 'w-full inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] ring-1 ring-blue-500/40 transition-colors'
+              : 'w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 text-slate-500 px-5 py-3 text-sm font-semibold cursor-not-allowed'
+          }
+        >
+          Start advisory session <ArrowRight className="w-4 h-4" />
+        </button>
+      </motion.div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Markdown rendering for assistant replies
+// ---------------------------------------------------------------------------
+
+function AssistantMarkdown({ content }: { content: string }) {
+  return (
+    <div className="text-sm text-slate-200 leading-relaxed space-y-3 [&_strong]:text-white [&_code]:text-blue-300 [&_code]:bg-[#0c0e14] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[0.85em]">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => <h3 className="text-base font-semibold text-white mt-1">{children}</h3>,
+          h2: ({ children }) => <h3 className="text-base font-semibold text-white mt-1">{children}</h3>,
+          h3: ({ children }) => <h4 className="text-sm font-semibold text-white mt-1">{children}</h4>,
+          ul: ({ children }) => <ul className="list-disc pl-5 space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1">{children}</ol>,
+          a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 underline">{children}</a>,
+          table: ({ children }) => (
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs border-collapse">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="text-slate-300">{children}</thead>,
+          th: ({ children }) => <th className="text-left font-semibold border border-[#1e2433] bg-[#0c0e14] px-2.5 py-1.5">{children}</th>,
+          td: ({ children }) => <td className="border border-[#1e2433] px-2.5 py-1.5 align-top">{children}</td>,
+          blockquote: ({ children }) => <blockquote className="border-l-2 border-blue-500/40 pl-3 text-slate-400 italic">{children}</blockquote>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Real conversational chat — the primary tab
 // ---------------------------------------------------------------------------
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string; id: string }
+type Attachment = { evidence_id: string; filename: string }
 
 const CHAT_STORAGE_KEY = 'aivora-advisor-chat-v2'
 
-const SUGGESTION_PROMPTS: string[] = [
-  "We doubled headcount from 400 to 900 in 18 months. Everyone says we have a leadership problem but nobody agrees what it is. Where do I start?",
-  "Our internal mobility is stuck. High performers leave because they cannot see the next move. What should I look at first?",
-  "The board wants a succession pipeline for the top 40 roles by end of quarter. Realistic scope?",
-  "How do I make the case for a proper skills taxonomy without turning it into a two-year consulting project?",
-  "We are considering a big org redesign. What are the risks I should stress-test before we commit?",
+const ADVISORY_PATHS: string[] = [
+  'Assess our HC maturity',
+  'Build a talent mobility strategy',
+  'Design a HIPO program',
+  'Draft a workforce plan',
 ]
+
+const FORMAT_HINTS: string[] = ['Framework', 'Roadmap', 'RACI', 'KPI scorecard', 'Executive brief', 'SWOT']
+
+const EVIDENCE_ACCEPT = '.pdf,.docx,.txt,.md,.pptx'
 
 function loadStoredChat(): ChatMessage[] {
   try {
@@ -85,15 +232,18 @@ function saveStoredChat(messages: ChatMessage[]): void {
   try { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-40))) } catch { /* ignore */ }
 }
 
-function ConversationPanel() {
+function ConversationPanel({ profile }: { profile: AdvisoryProfile }) {
   const briefs = useBriefStore(s => s.briefs)
   const brief = pickLatestBrief(briefs)
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadStoredChat())
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [uploading, setUploading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { saveStoredChat(messages) }, [messages])
   useEffect(() => {
@@ -121,6 +271,8 @@ function ConversationPanel() {
       const payload = {
         messages: next.map(m => ({ role: m.role, content: m.content })),
         brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+        profile,
+        evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
       }
       const res = await hcAiAdvisoryAPI.chat(payload)
       const reply = res.data.reply
@@ -136,6 +288,7 @@ function ConversationPanel() {
 
   const clear = () => {
     setMessages([])
+    setAttachments([])
     localStorage.removeItem(CHAT_STORAGE_KEY)
   }
 
@@ -144,6 +297,36 @@ function ConversationPanel() {
       e.preventDefault()
       sendMessage(draft)
     }
+  }
+
+  const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || uploading) return
+    setError(null)
+    setUploading(true)
+    try {
+      const res = await hcAiAdvisoryAPI.uploadEvidence(file)
+      setAttachments(prev => [...prev, { evidence_id: res.data.evidence_id, filename: res.data.filename }])
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : 'Could not read that file. Try a pdf, docx, txt, md or pptx.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.evidence_id !== id))
+  }
+
+  const appendFormatHint = (fmt: string) => {
+    setDraft(prev => {
+      const base = prev.trimEnd()
+      const hint = `Format the answer as a ${fmt}.`
+      return base ? `${base}\n${hint}` : hint
+    })
+    textareaRef.current?.focus()
   }
 
   return (
@@ -161,17 +344,19 @@ function ConversationPanel() {
                 Twenty years of consulting experience, on demand. Ask anything about your workforce, capability, leadership pipeline, or strategy. I will ask clarifying questions and give you a real point of view.
               </p>
             </div>
-            <div className="space-y-2 text-left">
-              <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">Try one of these</p>
-              {SUGGESTION_PROMPTS.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(p)}
-                  className="w-full text-left rounded-xl border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-4 py-3 text-sm text-slate-200 transition-colors"
-                >
-                  {p}
-                </button>
-              ))}
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">Where do you want to start?</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {ADVISORY_PATHS.map(p => (
+                  <button
+                    key={p}
+                    onClick={() => sendMessage(p)}
+                    className="rounded-full border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-4 py-2 text-sm text-slate-200 transition-colors"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -189,8 +374,8 @@ function ConversationPanel() {
                   <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-4 h-4 text-blue-400" />
                   </div>
-                  <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                    {m.content}
+                  <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3">
+                    <AssistantMarkdown content={m.content} />
                   </div>
                 </div>
               ) : (
@@ -226,7 +411,45 @@ function ConversationPanel() {
 
       {/* Composer */}
       <div className="border-t border-[#1e2433] bg-[#0f1117] px-4 sm:px-6 py-4">
+        {/* Output-format hints */}
+        <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-0.5">
+          <span className="text-[11px] text-slate-600 flex-shrink-0">Format as</span>
+          {FORMAT_HINTS.map(f => (
+            <button
+              key={f}
+              onClick={() => appendFormatHint(f)}
+              className="flex-shrink-0 rounded-full border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 hover:text-white px-3 py-1 text-[11px] text-slate-400 transition-colors"
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {/* Attached evidence pills */}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {attachments.map(a => (
+              <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
+                <Paperclip className="w-3 h-3" />
+                <span className="max-w-[180px] truncate">{a.filename}</span>
+                <button onClick={() => removeAttachment(a.evidence_id)} className="hover:text-white transition-colors" aria-label={`Remove ${a.filename}`}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-end gap-3">
+          <input ref={fileInputRef} type="file" accept={EVIDENCE_ACCEPT} className="hidden" onChange={handleFilePicked} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || sending}
+            title="Attach evidence (pdf, docx, txt, md, pptx)"
+            className="flex-shrink-0 w-11 h-11 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 text-slate-400 hover:text-blue-400 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+          </button>
           <div className="flex-1 rounded-xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors">
             <textarea
               ref={textareaRef}
@@ -552,28 +775,56 @@ type Tab = 'chat' | 'deliverable' | 'assessment'
 
 export default function AdvisorChat() {
   const [activeTab, setActiveTab] = useState<Tab>('chat')
+  const [profile, setProfile] = useState<AdvisoryProfile | null>(() => loadStoredProfile())
+  const [editingProfile, setEditingProfile] = useState(false)
+
+  const handleStart = (p: AdvisoryProfile) => {
+    saveStoredProfile(p)
+    setProfile(p)
+    setEditingProfile(false)
+  }
+
+  if (!profile || editingProfile) {
+    return <IntakeCard initial={profile} onStart={handleStart} />
+  }
+
+  const orgLine = [profile.organization_name, profile.industry].filter(Boolean).join(' · ')
 
   return (
-    <div className="p-5 sm:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+    <div className="p-5 sm:p-8 max-w-7xl mx-auto space-y-5">
+      {/* Slim profile strip */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-5 h-5 text-blue-400" />
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">AI Advisor</h1>
-            <p className="text-sm text-slate-400 mt-1">Your senior Human Capital consultant, on demand.</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-bold text-white">Advisory Command Centre</h1>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-full px-2.5 py-0.5">
+                {profile.persona}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              {orgLine && <span className="text-xs text-slate-400 truncate">{orgLine}</span>}
+              <button
+                onClick={() => setEditingProfile(true)}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"
+              >
+                <Pencil className="w-3 h-3" /> Edit
+              </button>
+            </div>
           </div>
+        </div>
+
+        <div className="flex gap-1 p-1 rounded-xl bg-[#0c0e14] border border-[#1e2433] w-fit">
+          <TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} icon={MessageSquare} label="Conversation" />
+          <TabButton active={activeTab === 'deliverable'} onClick={() => setActiveTab('deliverable')} icon={LayoutGrid} label="Deliverables" />
+          <TabButton active={activeTab === 'assessment'} onClick={() => setActiveTab('assessment')} icon={ClipboardList} label="Guided assessment" />
         </div>
       </div>
 
-      <div className="flex gap-1 p-1 rounded-xl bg-[#0c0e14] border border-[#1e2433] w-fit">
-        <TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} icon={MessageSquare} label="Conversation" />
-        <TabButton active={activeTab === 'deliverable'} onClick={() => setActiveTab('deliverable')} icon={LayoutGrid} label="Deliverables" />
-        <TabButton active={activeTab === 'assessment'} onClick={() => setActiveTab('assessment')} icon={ClipboardList} label="Guided assessment" />
-      </div>
-
-      {activeTab === 'chat' && <ConversationPanel />}
+      {activeTab === 'chat' && <ConversationPanel profile={profile} />}
       {activeTab === 'deliverable' && <DeliverablePanel />}
       {activeTab === 'assessment' && <GuidedDiagnostic />}
     </div>

@@ -114,6 +114,112 @@ def derive_dimensions(brief: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+TARGET_MATURITY = 4.0
+
+
+def _area_label(area: str | None) -> str:
+    return (area or "unknown area").replace("-", " ").title()
+
+
+def _business_meaning(score: float, band: str) -> str:
+    gap = round(TARGET_MATURITY - score, 2)
+    if gap >= 2.0:
+        return (
+            f"At {score:.2f}/5 this dimension sits {gap:.2f} points below the 4.0 target. "
+            "In practice that means it is likely constraining day-to-day execution and should be a first-wave investment."
+        )
+    if gap >= 1.0:
+        return (
+            f"This dimension is {gap:.2f} points below the 4.0 target. "
+            "The gap is meaningful but closable with a structured 12-18 month improvement plan."
+        )
+    if gap > 0.0:
+        return (
+            f"This dimension is {gap:.2f} points below the 4.0 target - a moderate gap. "
+            "Targeted improvements in specific practices should close it without a major programme."
+        )
+    return (
+        f"This dimension is at or above the 4.0 target maturity ({band}). "
+        "The priority is to sustain current practices rather than invest in new ones."
+    )
+
+
+def build_scoring_explanations(
+    brief: dict[str, Any], dim_results: list["DimensionResult"]
+) -> None:
+    """Attach an honest per-dimension scoring_explanation derived from the brief.
+
+    The brief-to-diagnosis pipeline is fully deterministic: selected challenge
+    areas map to dimensions, severity maps to a score, lowest score wins, and
+    untouched dimensions sit at a neutral 3.5 baseline. No LLM inference and no
+    uploaded evidence are involved, and the explanation says so.
+    """
+    selected = (brief.get("hcChallenges") or {}).get("selectedAreas") or []
+    per_dim: dict[str, list[tuple[str, str, float]]] = {}
+    for sel in selected:
+        if not isinstance(sel, dict):
+            continue
+        area = sel.get("area")
+        sev = str(sel.get("severity", "moderate"))
+        score = SEVERITY_SCORE.get(sev, BASELINE_SCORE)
+        for dim_key in AREA_TO_DIMS.get(area, []):
+            per_dim.setdefault(dim_key, []).append((_area_label(area), sev, score))
+
+    for d in dim_results:
+        contributions = per_dim.get(d.code, [])
+        band = d.band or "this"
+        missing: list[str] = [
+            "Supporting documents or HR data - no evidence files were used in this assessment"
+        ]
+        if contributions:
+            driver = min(contributions, key=lambda c: c[2])
+            inputs_used = [
+                f"Challenge area '{label}' rated {sev} severity in your brief"
+                for label, sev, _ in contributions
+            ]
+            basis = "user_answers"
+            methodology = (
+                "Each challenge area selected in your brief maps to one or more dimensions, and its severity "
+                "sets a score (critical 1.6, high 2.4, moderate 3.0, watch 3.6 out of 5). The lowest score among "
+                "contributing areas becomes the dimension score - no AI inference is used."
+            )
+            rating_rationale = (
+                f"Rated {band} because '{driver[0]}' was flagged at {driver[1]} severity, mapping to "
+                f"{driver[2]}/5 - the most severe of {len(contributions)} contributing challenge area(s)."
+            )
+            confidence = "high" if len(contributions) >= 3 else "medium"
+            missing.append(
+                "Independent validation - severity ratings are self-reported in the brief"
+            )
+        else:
+            inputs_used = [
+                "Neutral baseline assumption of 3.5/5 (no brief inputs touch this dimension)"
+            ]
+            basis = "benchmark_assumption"
+            methodology = (
+                "None of the challenge areas selected in your brief map to this dimension, so it was held at a "
+                "neutral baseline of 3.5/5 rather than assessed from your answers."
+            )
+            rating_rationale = (
+                f"Rated {band} by default: this dimension was not covered by your selected challenge areas, "
+                "so the score reflects a neutral assumption rather than an assessment."
+            )
+            confidence = "low"
+            missing.append(
+                "Your input on this dimension - add a related challenge area to the brief to score it from your answers"
+            )
+        d.scoring_explanation = ScoringExplanation(
+            inputs_used=inputs_used,
+            basis=basis,
+            methodology=methodology,
+            evidence_used=[],
+            missing_information=missing,
+            confidence=confidence,
+            rating_rationale=rating_rationale,
+            business_meaning=_business_meaning(d.score, band),
+        )
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -125,6 +231,17 @@ class DiagnoseFromBriefRequest(BaseModel):
     workspace_id: str | None = None
 
 
+class ScoringExplanation(BaseModel):
+    inputs_used: list[str] = []
+    basis: str  # user_answers | evidence | benchmark_assumption | ai_inference | mixed
+    methodology: str
+    evidence_used: list[str] = []
+    missing_information: list[str] = []
+    confidence: str  # high | medium | low
+    rating_rationale: str
+    business_meaning: str
+
+
 class DimensionResult(BaseModel):
     code: str
     name: str
@@ -133,6 +250,7 @@ class DimensionResult(BaseModel):
     criticality: str | None = None
     gap_size: float | None = None
     interpretation: str | None = None
+    scoring_explanation: ScoringExplanation | None = None
 
 
 class RiskFlag(BaseModel):
@@ -360,6 +478,7 @@ async def diagnose_from_brief(
         )
         for d in dim_rows
     ]
+    build_scoring_explanations(brief, dim_results)
 
     risk_flags_raw = (assessment.meta or {}).get("risk_flags") or []
     risk_flags = [
@@ -492,6 +611,14 @@ async def get_diagnosis(
         )
         for d in dim_rows
     ]
+    # Rebuild explanations from the stored brief snapshot; skip for reviews that
+    # were not driven by a challenge brief (old payloads keep the field absent).
+    intake = review.intake_data or {}
+    brief_snapshot = intake.get("brief_snapshot") if isinstance(intake, dict) else None
+    diag = review.diagnostic_results or {}
+    if isinstance(brief_snapshot, dict) and isinstance(diag, dict) and diag.get("source") == "challenge_brief":
+        build_scoring_explanations(brief_snapshot, dim_results)
+
     risk_flags_raw = (assessment.meta or {}).get("risk_flags") or []
     risk_flags = [
         RiskFlag(

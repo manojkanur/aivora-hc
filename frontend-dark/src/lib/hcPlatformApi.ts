@@ -1192,6 +1192,22 @@ export interface AiAdvisoryRegenerateSectionResponse {
   }
 }
 
+export interface AdvisoryProfile {
+  persona?: string
+  organization_name?: string
+  industry?: string
+  region?: string
+  company_size?: string
+  objective?: string
+}
+
+export interface EvidenceUploadResponse {
+  evidence_id: string
+  filename: string
+  chars: number
+  preview: string
+}
+
 export const hcAiAdvisoryAPI = {
   generate: (body: AiAdvisoryGenerateRequest) =>
     post<AiGeneratedInsight>(`${HC_BASE}/ai-advisory/generate`, body),
@@ -1213,7 +1229,16 @@ export const hcAiAdvisoryAPI = {
       studio_id?: string
       studio_name?: string
     } | null
+    profile?: AdvisoryProfile | null
+    evidence_ids?: string[]
   }) => post<{ reply: string; followup_questions?: string[] }>(`${HC_BASE}/ai-advisory/chat`, body),
+  uploadEvidence: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return post<EvidenceUploadResponse>(`${HC_BASE}/ai-advisory/evidence`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 // ---------------------------------------------------------------------------

@@ -27,6 +27,7 @@ interface NavItem {
 }
 
 const platformNav: NavItem[] = [
+  { label: 'AI Advisory',   href: '/advisor',        icon: Brain,             desc: 'Your senior HC advisor - chat, deliverables and assessments' },
   { label: 'Dashboard',     href: '/dashboard',      icon: LayoutDashboard,   desc: 'Overview of your workspaces, credits and activity'        },
   { label: 'Workspaces',    href: '/workspaces',     icon: Briefcase,         desc: 'Client projects, each holds studios and drafts'          },
   { label: 'Studios',       href: '/skills',         icon: Sparkles,          desc: '27 specialised HC advisory studios powered by AI'         },

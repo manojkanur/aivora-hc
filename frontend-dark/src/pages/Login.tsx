@@ -23,7 +23,8 @@ export default function Login() {
 
   const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname
   // Never redirect back to /onboarding on login — onboarding is a one-time post-signup flow
-  const from = (!rawFrom || rawFrom === '/onboarding') ? '/dashboard' : rawFrom
+  // Default landing after login is the Advisory Command Centre
+  const from = (!rawFrom || rawFrom === '/onboarding') ? '/advisor' : rawFrom
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

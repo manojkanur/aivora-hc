@@ -41,7 +41,7 @@ export default function Signup() {
         const stored = localStorage.getItem('aivora-client-profile')
         const parsed = stored ? JSON.parse(stored) : null
         const alreadyCompleted = parsed?.state?.isCompleted === true
-        navigate(alreadyCompleted ? '/dashboard' : '/onboarding', { replace: true })
+        navigate(alreadyCompleted ? '/advisor' : '/onboarding', { replace: true })
       } catch {
         navigate('/onboarding', { replace: true })
       }

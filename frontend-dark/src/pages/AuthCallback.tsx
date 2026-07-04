@@ -23,7 +23,7 @@ export default function AuthCallback() {
       .then(res => {
         setUser(res.data)
         if (res.data.tenant) setTenant(res.data.tenant)
-        navigate('/dashboard', { replace: true })
+        navigate('/advisor', { replace: true })
       })
       .catch(() => {
         setError('Failed to load your profile. Please try again.')
