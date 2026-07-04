@@ -13,7 +13,8 @@ import { isAdminUser } from '../../lib/adminAccess'
 import { getInitials } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { TopBar } from './TopBar'
-import { AdvisorBubble } from '../advisor/AdvisorBubble'
+// AdvisorBubble hidden per client request (2026-07-04) — re-enable by restoring the import and mount below
+// import { AdvisorBubble } from '../advisor/AdvisorBubble'
 import { ToastContainer, useInsufficientCreditsHandler } from '../ui/Toast'
 import { useConversationInsights } from '../../store/conversationInsights'
 import { useThemeStore } from '../../store/theme'
@@ -494,7 +495,7 @@ export function AppLayout() {
         {learningOpen && <LearningCenterPanel onClose={() => setLearningOpen(false)} />}
       </AnimatePresence>
 
-      <AdvisorBubble />
+      {/* <AdvisorBubble /> */}
 
       <ToastContainer />
     </div>
