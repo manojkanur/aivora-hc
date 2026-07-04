@@ -262,11 +262,25 @@ class ChatRequest(BaseModel):
     context: ChatContext | None = None
     profile: AdvisoryProfile | None = None
     evidence_ids: list[str] = []
+    client_profile: dict[str, Any] | None = None  # onboarding profile for the workspace
+    plan_state: dict[str, Any] | None = None      # current co-work plan, if one is running
+
+
+class PlanStep(BaseModel):
+    title: str
+    status: str = "pending"  # pending | in_progress | done
+    note: str | None = None
+
+
+class ChatPlan(BaseModel):
+    title: str
+    steps: list[PlanStep] = []
 
 
 class ChatResponse(BaseModel):
     reply: str
     followup_questions: list[str] = []
+    plan: ChatPlan | None = None
 
 
 _ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant embedded inside the Aivora HC platform, advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
@@ -324,7 +338,68 @@ Evidence honesty:
 - When evidence documents are provided, ground your answers in them and cite which document informed which point.
 
 You have opinions. If the user is heading in a bad direction, tell them politely and say why.
+
+Co-work plans:
+- When the user asks for something that is genuinely multi-step work (design a program, build a strategy, run an assessment, prepare a board pack), propose a short PLAN: a title and 3-6 concrete steps. Work through it collaboratively across turns - one or two steps per reply, updating each step's status (pending, in_progress, done) as the conversation progresses.
+- The user sees the plan as a checklist beside the chat. Keep step titles short (max 8 words). Use the note field for a one-line result summary once a step is done.
+- If the user changes direction, update the plan (add, remove, rename steps) rather than abandoning it silently. When all steps are done, say so and summarise the outcome.
+- Simple questions do not need a plan. Never invent a plan for a one-off question.
+
+OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
+{"reply": "<your full markdown reply>", "plan": {"title": "...", "steps": [{"title": "...", "status": "pending|in_progress|done", "note": "..."}]} or null}
+Send the FULL updated plan every turn while one is active; send null when no plan is running.
 """
+
+
+def _kb_block_rows(rows: list) -> str:
+    lines = []
+    for a in rows:
+        summary = (a.summary or "")[:220]
+        lines.append(f"- {a.title} [{a.category}]: {summary}")
+    return (
+        "KNOWLEDGE BASE (Aivora frameworks and playbooks available to this workspace - draw on them "
+        "and reference them by title when they support your advice):\n" + "\n".join(lines)
+    )
+
+
+async def _kb_block(db) -> str:
+    """Titles + summaries of knowledge base articles, for grounding."""
+    try:
+        from sqlalchemy import select
+        from app.models.knowledge import KnowledgeArticle
+
+        rows = (await db.execute(select(KnowledgeArticle).limit(12))).scalars().all()
+        if not rows:
+            return ""
+        return _kb_block_rows(rows)
+    except Exception:  # noqa: BLE001 - grounding is best-effort
+        return ""
+
+
+def _onboarding_block(client_profile: dict[str, Any] | None) -> str:
+    if not client_profile:
+        return ""
+    try:
+        import json as _json
+        return (
+            "ONBOARDING PROFILE (captured during client onboarding - treat as established fact):\n"
+            + _json.dumps(client_profile, ensure_ascii=True)[:4000]
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _plan_state_block(plan_state: dict[str, Any] | None) -> str:
+    if not plan_state:
+        return ""
+    try:
+        import json as _json
+        return (
+            "ACTIVE CO-WORK PLAN (continue working through it, update statuses as steps progress):\n"
+            + _json.dumps(plan_state, ensure_ascii=True)[:2000]
+        )
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def _context_block(ctx: "ChatContext | None") -> str:
@@ -586,13 +661,13 @@ async def advisor_chat(
     where_ctx = _context_block(payload.context)
     profile_ctx = _profile_block(payload.profile)
     evidence_ctx = await _evidence_block(db, payload.evidence_ids, current_tenant.id)
+    onboarding_ctx = _onboarding_block(payload.client_profile)
+    kb_ctx = await _kb_block(db)
+    plan_ctx = _plan_state_block(payload.plan_state)
     system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
-    if profile_ctx:
-        system_parts.append(profile_ctx)
-    if where_ctx:
-        system_parts.append(where_ctx)
-    if evidence_ctx:
-        system_parts.append(evidence_ctx)
+    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx):
+        if part:
+            system_parts.append(part)
     system = "\n\n".join(system_parts)
 
     # Trim to the last 20 messages so long conversations do not blow the token budget.
@@ -608,11 +683,35 @@ async def advisor_chat(
             model="gpt-4o-mini",
             messages=messages,
             temperature=0.55,
-            max_tokens=1600,
+            max_tokens=2000,
+            response_format={"type": "json_object"},
         )
-        reply = _clean(resp.choices[0].message.content or "")
-        if not reply:
-            reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
-        return ChatResponse(reply=reply, followup_questions=[])
+        raw = resp.choices[0].message.content or ""
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Advisor unavailable: {exc}")
+
+    reply = ""
+    plan: ChatPlan | None = None
+    try:
+        import json as _json
+        data = _json.loads(raw)
+        reply = _clean(str(data.get("reply") or ""))
+        raw_plan = data.get("plan")
+        if isinstance(raw_plan, dict) and raw_plan.get("title"):
+            steps = [
+                PlanStep(
+                    title=_clean(str(s.get("title") or ""))[:120],
+                    status=s.get("status") if s.get("status") in ("pending", "in_progress", "done") else "pending",
+                    note=_clean(str(s.get("note"))) if s.get("note") else None,
+                )
+                for s in (raw_plan.get("steps") or [])
+                if isinstance(s, dict) and s.get("title")
+            ][:8]
+            plan = ChatPlan(title=_clean(str(raw_plan["title"]))[:160], steps=steps)
+    except (ValueError, TypeError):
+        # Model ignored the JSON contract - treat the whole payload as the reply.
+        reply = _clean(raw)
+
+    if not reply:
+        reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
+    return ChatResponse(reply=reply, followup_questions=[], plan=plan)

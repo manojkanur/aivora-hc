@@ -1208,6 +1208,17 @@ export interface EvidenceUploadResponse {
   preview: string
 }
 
+export interface ChatPlanStep {
+  title: string
+  status: 'pending' | 'in_progress' | 'done'
+  note?: string | null
+}
+
+export interface ChatPlan {
+  title: string
+  steps: ChatPlanStep[]
+}
+
 export const hcAiAdvisoryAPI = {
   generate: (body: AiAdvisoryGenerateRequest) =>
     post<AiGeneratedInsight>(`${HC_BASE}/ai-advisory/generate`, body),
@@ -1231,7 +1242,9 @@ export const hcAiAdvisoryAPI = {
     } | null
     profile?: AdvisoryProfile | null
     evidence_ids?: string[]
-  }) => post<{ reply: string; followup_questions?: string[] }>(`${HC_BASE}/ai-advisory/chat`, body),
+    client_profile?: Record<string, unknown> | null
+    plan_state?: ChatPlan | null
+  }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null }>(`${HC_BASE}/ai-advisory/chat`, body),
   uploadEvidence: (file: File) => {
     const form = new FormData()
     form.append('file', file)

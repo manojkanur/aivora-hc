@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
   MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
+  Check, Circle, CircleDot, ListChecks,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -15,7 +16,8 @@ import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
-import { hcAiAdvisoryAPI, type AdvisoryProfile } from '../lib/hcPlatformApi'
+import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan } from '../lib/hcPlatformApi'
+import { useClientProfileStore } from '../store/clientProfile'
 import { workspacesAPI } from '../lib/api'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -247,6 +249,55 @@ function saveStoredChat(workspaceId: string, messages: ChatMessage[]): void {
   try { localStorage.setItem(`${CHAT_STORAGE_KEY}:${workspaceId}`, JSON.stringify(messages.slice(-40))) } catch { /* ignore */ }
 }
 
+const PLAN_STORAGE_KEY = 'aivora-advisor-plan-v1'
+
+function loadStoredPlan(workspaceId: string): ChatPlan | null {
+  try {
+    const raw = localStorage.getItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed.title === 'string' && Array.isArray(parsed.steps)) return parsed as ChatPlan
+  } catch { /* ignore */ }
+  return null
+}
+
+function PlanRail({ plan }: { plan: ChatPlan }) {
+  const doneCount = plan.steps.filter(st => st.status === 'done').length
+  return (
+    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4 space-y-3 lg:sticky lg:top-4">
+      <div className="flex items-center gap-2">
+        <ListChecks className="w-4 h-4 text-blue-400 flex-shrink-0" />
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 flex-1 truncate">{plan.title}</p>
+        <span className="text-xs font-bold text-blue-400">{doneCount}/{plan.steps.length}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+        <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
+          animate={{ width: `${plan.steps.length ? (doneCount / plan.steps.length) * 100 : 0}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }} />
+      </div>
+      <div className="space-y-2">
+        {plan.steps.map((st, i) => (
+          <div key={i} className={
+            st.status === 'done' ? 'rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3.5 py-2.5'
+              : st.status === 'in_progress' ? 'rounded-xl border border-blue-500/30 bg-blue-500/5 px-3.5 py-2.5'
+              : 'rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-2.5'
+          }>
+            <div className="flex items-center gap-2.5">
+              {st.status === 'done'
+                ? <span className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0"><Check className="w-3 h-3 text-emerald-400" /></span>
+                : st.status === 'in_progress'
+                  ? <CircleDot className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  : <Circle className="w-5 h-5 text-slate-700 flex-shrink-0" />}
+              <span className={st.status === 'pending' ? 'text-sm font-medium text-slate-500' : 'text-sm font-medium text-white'}>{st.title}</span>
+            </div>
+            {st.note && <p className="text-[11px] text-slate-500 mt-1.5 pl-7">{st.note}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: AdvisoryProfile; workspaceId: string; workspaceName: string | null }) {
   const briefs = useBriefStore(s => s.briefs)
   const brief = briefs[workspaceId] ?? null
@@ -255,6 +306,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [plan, setPlan] = useState<ChatPlan | null>(() => loadStoredPlan(workspaceId))
+  const getProfileFor = useClientProfileStore(st => st.getProfileFor)
   const [uploading, setUploading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -289,10 +342,18 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
         profile,
         evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
+        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+        plan_state: plan,
       }
       const res = await hcAiAdvisoryAPI.chat(payload)
       const reply = res.data.reply
       setMessages(prev => [...prev, { role: 'assistant', content: reply, id: `a-${Date.now()}` }])
+      const nextPlan = res.data.plan ?? null
+      setPlan(nextPlan)
+      try {
+        if (nextPlan) localStorage.setItem(`${PLAN_STORAGE_KEY}:${workspaceId}`, JSON.stringify(nextPlan))
+        else localStorage.removeItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
+      } catch { /* ignore */ }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'The advisor is unavailable right now.'
       setError(msg)
@@ -305,7 +366,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const clear = () => {
     setMessages([])
     setAttachments([])
+    setPlan(null)
     localStorage.removeItem(`${CHAT_STORAGE_KEY}:${workspaceId}`)
+    localStorage.removeItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -346,6 +409,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   return (
+    <div className={plan ? 'grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start' : ''}>
     <div className="flex flex-col h-[calc(100vh-14rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
@@ -509,6 +573,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           </div>
         )}
       </div>
+    </div>
+    {plan && <PlanRail plan={plan} />}
     </div>
   )
 }
