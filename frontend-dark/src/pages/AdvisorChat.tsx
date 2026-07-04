@@ -945,6 +945,18 @@ export default function AdvisorChat() {
                 <Pencil className="w-3 h-3" /> Edit
               </button>
               <Link
+                to={`/onboarding?workspaceId=${workspaceId}`}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"
+              >
+                <ClipboardList className="w-3 h-3" /> Edit onboarding
+              </Link>
+              <Link
+                to={`/challenge-brief?workspaceId=${workspaceId}`}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"
+              >
+                <FileText className="w-3 h-3" /> Edit brief
+              </Link>
+              <Link
                 to="/advisor"
                 className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"
               >
