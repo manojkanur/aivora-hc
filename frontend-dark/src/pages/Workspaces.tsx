@@ -111,8 +111,8 @@ export default function Workspaces() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [formData, setFormData] = useState({
-    name: '', client_name: '', description: '',
-    industry: '' as ClientIndustry | '',
+    name: '', description: '',
+    industries: [] as ClientIndustry[],
     region: '' as ClientRegion | '',
     organizationSize: '' as ClientOrganizationSize | '',
     maturityStage: '' as ClientMaturityStage | '',
@@ -148,15 +148,16 @@ export default function Workspaces() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name || !formData.client_name) {
-      toast.error('Workspace name and client name are required')
+    if (!formData.name) {
+      toast.error('Workspace name is required')
       return
     }
     setCreating(true)
     try {
+      // Workspace name doubles as the organization/client name.
       const ws = await createWorkspace({
         name: formData.name,
-        client_name: formData.client_name,
+        client_name: formData.name,
         description: formData.description,
       })
 
@@ -172,8 +173,9 @@ export default function Workspaces() {
         ...defaultProfile(),
         organization: {
           ...defaultProfile().organization,
-          name: formData.client_name,
-          industry: (formData.industry || 'other') as ClientIndustry,
+          name: formData.name,
+          industry: (formData.industries[0] || 'other') as ClientIndustry,
+          industries: formData.industries,
           region: (formData.region || 'gcc') as ClientRegion,
           organizationSize: (formData.organizationSize || 'mid') as ClientOrganizationSize,
           maturityStage: (formData.maturityStage || 'mature') as ClientMaturityStage,
@@ -183,7 +185,7 @@ export default function Workspaces() {
       })
 
       setShowCreateModal(false)
-      setFormData({ name: '', client_name: '', description: '', industry: '', region: '', organizationSize: '', maturityStage: '', operatingModel: '' })
+      setFormData({ name: '', description: '', industries: [], region: '', organizationSize: '', maturityStage: '', operatingModel: '' })
       toast.success('Workspace created. Let us walk through onboarding.')
       // Force onboarding before the user can do anything else.
       navigate(`/onboarding?workspaceId=${ws.id}`)
@@ -264,7 +266,9 @@ export default function Workspaces() {
                     )}
                   </div>
                   <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">{ws.name}</h3>
-                  <p className="text-sm text-slate-600 mt-0.5">{ws.client_name}</p>
+                  {ws.client_name && ws.client_name !== ws.name && (
+                    <p className="text-sm text-slate-600 mt-0.5">{ws.client_name}</p>
+                  )}
                   <div className="flex items-center gap-4 mt-4 pt-4 border-t border-[#1e2433]">
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-slate-600" />
@@ -310,29 +314,38 @@ export default function Workspaces() {
       {/* Create Modal */}
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="New Workspace" size="md">
         <form onSubmit={handleCreate} className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Workspace Name"
-              placeholder="Q4 HC Transformation"
-              value={formData.name}
-              onChange={e => setFormData(d => ({ ...d, name: e.target.value }))}
-            />
-            <Input
-              label="Organization Name"
-              placeholder="Acme Corp"
-              value={formData.client_name}
-              onChange={e => setFormData(d => ({ ...d, client_name: e.target.value }))}
-            />
+          <Input
+            label="Workspace Name"
+            placeholder="Acme Corp"
+            value={formData.name}
+            onChange={e => setFormData(d => ({ ...d, name: e.target.value }))}
+          />
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white block">Industries</label>
+            <div className="flex flex-wrap gap-1.5">
+              {INDUSTRY_OPTIONS.map(opt => {
+                const selected = formData.industries.includes(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData(d => ({
+                      ...d,
+                      industries: selected ? d.industries.filter(v => v !== opt.value) : [...d.industries, opt.value],
+                    }))}
+                    className={selected
+                      ? 'px-3 py-1.5 rounded-lg text-xs font-medium border bg-blue-600/20 border-blue-500/50 text-blue-300 transition-all'
+                      : 'px-3 py-1.5 rounded-lg text-xs font-medium border bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 transition-all'}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <OrgSelect
-              label="Industry"
-              value={formData.industry}
-              onChange={v => setFormData(d => ({ ...d, industry: v }))}
-              options={INDUSTRY_OPTIONS}
-              placeholder="Select industry..."
-            />
             <OrgSelect
               label="Region"
               value={formData.region}

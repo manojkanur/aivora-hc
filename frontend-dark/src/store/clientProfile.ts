@@ -74,6 +74,8 @@ export interface ClientProfile {
   organization: {
     name?: string
     industry: ClientIndustry
+    /** Multi-select; `industry` keeps the first selection for backwards compatibility. */
+    industries?: ClientIndustry[]
     subSector?: string
     region: ClientRegion
     country?: string

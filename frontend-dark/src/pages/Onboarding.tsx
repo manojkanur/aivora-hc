@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Target, Users, FileSearch, Sparkles,
+  Target, Users, FileSearch,
   ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
@@ -129,91 +129,6 @@ const CONFIDENTIALITY_LABELS: Record<ConfidentialityLevel, string> = {
 const URGENCY_LABELS: Record<UrgencyBand, string> = {
   exploratory: 'Exploratory', 'this-quarter': 'This quarter', 'this-month': 'This month',
   'this-week': 'This week', immediate: 'Immediate',
-}
-
-// ── Journey recommendation engine ─────────────────────────────────────────
-
-interface JourneyRec {
-  id: string
-  title: string
-  subtitle: string
-  description: string
-  modules: string[]
-  href: string
-}
-
-function computeRecommendations(profile: ClientProfile): JourneyRec[] {
-  const hp = profile.agenda.hcPriorities
-  const tc = profile.workforceContext.talentChallenges
-  const lc = profile.workforceContext.leadershipChallenges
-  const wc = profile.workforceContext.workforceChallenges
-
-  const journeys: Array<JourneyRec & { triggers: string[] }> = [
-    {
-      id: 'hipo-pipeline', title: 'HiPo & Succession Pipeline',
-      subtitle: 'Build the next generation of leaders',
-      description: 'Identify high-potential talent, build succession depth, and create structured development plans for your critical roles.',
-      modules: ['HiPo Studio', 'Leadership Pipeline', 'Succession Planning'],
-      href: '/hipo-studio',
-      triggers: ['leadership-development', 'succession-planning', 'hipo-gap', 'succession-risk', 'limited-bench', 'leadership-bench-thin'],
-    },
-    {
-      id: 'workforce-strategy', title: 'Workforce Strategy & Planning',
-      subtitle: 'Align workforce to business strategy',
-      description: 'Develop a forward-looking workforce plan that maps capabilities, gaps, and talent supply to your strategic objectives.',
-      modules: ['HC Strategy Charter', 'Workforce Planning', 'Capability Assessment'],
-      href: '/challenge-brief',
-      triggers: ['workforce-planning', 'skills-capability', 'skill-mismatch', 'scarcity', 'talent-capability'],
-    },
-    {
-      id: 'talent-acquisition', title: 'Talent Acquisition & Onboarding',
-      subtitle: 'Build the right talent pipeline',
-      description: 'Redesign your talent acquisition strategy with targeted sourcing, structured selection, and effective onboarding programs.',
-      modules: ['Talent Acquisition Studio', 'Early Career', 'Graduate Pipeline'],
-      href: '/challenge-brief',
-      triggers: ['talent-acquisition', 'graduate-pipeline', 'external-hire-dependency', 'scarcity'],
-    },
-    {
-      id: 'employee-experience', title: 'Employee Experience & Rewards',
-      subtitle: 'Create a compelling employee value proposition',
-      description: 'Improve engagement, wellbeing, and retention through a redesigned EX journey and competitive rewards framework.',
-      modules: ['Employee Experience', 'Total Rewards', 'Engagement Studio'],
-      href: '/challenge-brief',
-      triggers: ['employee-experience', 'rewards-strategy', 'engagement-decline', 'pay-equity', 'benefits-competitiveness', 'high-attrition', 'retention-of-critical-talent'],
-    },
-    {
-      id: 'org-design', title: 'Organization Design & Effectiveness',
-      subtitle: 'Redesign for agility and performance',
-      description: 'Assess and redesign your operating model, spans of control, and governance structures to enable strategic agility.',
-      modules: ['Org Design Blueprint', 'Process Excellence', 'HR Operating Model'],
-      href: '/challenge-brief',
-      triggers: ['organization-design', 'hr-operating-model', 'change-management', 'operating-model'],
-    },
-    {
-      id: 'performance-learning', title: 'Performance & Learning Ecosystem',
-      subtitle: 'Drive capability and accountability',
-      description: 'Build a connected performance management and learning system that closes skill gaps and drives high performance culture.',
-      modules: ['Performance Management', 'Learning & Training', 'Skills Development'],
-      href: '/challenge-brief',
-      triggers: ['performance-management', 'learning-development', 'skills-capability', 'skill-mismatch', 'productivity-decline'],
-    },
-    {
-      id: 'nationalization', title: 'Nationalization Acceleration',
-      subtitle: 'Deliver on your nationalization commitments',
-      description: 'Develop a structured program to meet nationalization targets through targeted recruitment, development, and retention.',
-      modules: ['Nationalization Studio', 'Workforce Planning', 'Capability Assessment'],
-      href: '/challenge-brief',
-      triggers: ['nationalization'],
-    },
-  ]
-
-  const all = [...hp, ...tc, ...lc, ...wc] as string[]
-  const scored = journeys.map(j => ({ journey: j, score: j.triggers.filter(t => all.includes(t)).length }))
-  scored.sort((a, b) => b.score - a.score)
-
-  const filtered = scored.filter(x => x.score > 0)
-  if (filtered.length === 0) return journeys.slice(0, 3)
-  return filtered.slice(0, 5).map(x => x.journey)
 }
 
 // ── Shared UI components ───────────────────────────────────────────────────
@@ -403,89 +318,12 @@ function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputP
   )
 }
 
-// ── Step 5: Recommendations ────────────────────────────────────────────────
-
-function StepRecommendations({ profile, onFinish }: { profile: ClientProfile; onFinish: () => void }) {
-  const navigate = useNavigate()
-  const recs = computeRecommendations(profile)
-
-  const completionPct = Math.min(100, [
-    profile.organization.industry !== 'other' ? 15 : 0,
-    profile.organization.region !== 'other' ? 10 : 0,
-    profile.agenda.businessPriorities.length > 0 ? 20 : 0,
-    profile.agenda.hcPriorities.length > 0 ? 20 : 0,
-    profile.workforceContext.workforceChallenges.filter(x => x !== 'none').length > 0 ? 10 : 0,
-    profile.outputPreferences.preferredOutputType.length > 0 ? 15 : 0,
-    profile.evidence.availableDocuments.length > 0 ? 10 : 0,
-  ].reduce((a, b) => a + b, 0))
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Recommended journeys</h2>
-        <p className="text-sm text-slate-400 mt-1">Based on what you've shared, here's where we think you'll get the most value first.</p>
-      </div>
-      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-300">Profile readiness</span>
-          <span className="text-xs font-bold text-blue-400">{completionPct}%</span>
-        </div>
-        <div className="h-2 rounded-full bg-[#1e2433] overflow-hidden">
-          <div className="h-full rounded-full bg-blue-600 transition-all duration-700" style={{ width: `${completionPct}%` }} />
-        </div>
-        <p className="text-[11px] text-slate-500 mt-2">
-          {completionPct < 50 ? 'Add more priorities and challenges to improve recommendations.' : completionPct < 80 ? 'Good coverage. Add evidence and output preferences to sharpen results.' : 'Strong profile. Recommendations below are well-targeted.'}
-        </p>
-      </div>
-      {recs.length > 0 ? (
-        <div className="space-y-3">
-          {recs.map((rec, i) => (
-            <div key={rec.id} className={cn('rounded-xl border p-4 space-y-2', i === 0 ? 'border-blue-500/40 bg-blue-500/5' : 'border-[#1e2433] bg-[#0a0c12]')}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  {i === 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600/20 border border-blue-500/30 text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1.5">
-                      <Sparkles className="w-2.5 h-2.5" /> Primary recommendation
-                    </span>
-                  )}
-                  <p className={cn('font-semibold', i === 0 ? 'text-white' : 'text-slate-200')}>{rec.title}</p>
-                  <p className="text-xs text-slate-400">{rec.subtitle}</p>
-                </div>
-                <button type="button" onClick={() => { onFinish(); navigate(rec.href) }}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-colors">
-                  Launch <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-              <p className="text-xs text-slate-500">{rec.description}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {rec.modules.map(m => (
-                  <span key={m} className="px-2 py-0.5 rounded-md bg-[#131720] border border-[#1e2433] text-[11px] text-slate-400">{m}</span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-[#1e2433] p-8 text-center">
-          <Sparkles className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-slate-300">No recommendations yet</p>
-          <p className="text-xs text-slate-500 mt-1">Go back and add priorities or workforce challenges to surface recommendations.</p>
-        </div>
-      )}
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-amber-400/80">
-        <strong>Advisory disclaimer:</strong> Recommendations are based on the inputs provided and are indicative only. They do not constitute professional HC or legal advice.
-      </div>
-    </div>
-  )
-}
-
 // ── Step metadata ──────────────────────────────────────────────────────────
 
 const STEPS = [
   { id: 'priorities', shortLabel: 'Priorities', icon: Target },
   { id: 'workforce', shortLabel: 'Workforce', icon: Users },
   { id: 'evidence', shortLabel: 'Evidence', icon: FileSearch },
-  { id: 'journeys', shortLabel: 'Journeys', icon: Sparkles },
 ]
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -649,7 +487,6 @@ export default function Onboarding() {
                 {stepIndex === 0 && <StepPriorities value={draft.agenda} onChange={v => setDraft({ ...draft, agenda: v })} />}
                 {stepIndex === 1 && <StepWorkforce value={draft.workforceContext} onChange={v => setDraft({ ...draft, workforceContext: v })} />}
                 {stepIndex === 2 && <StepEvidence evidence={draft.evidence} outputPrefs={draft.outputPreferences} onChangeEvidence={v => setDraft({ ...draft, evidence: v })} onChangeOutputPrefs={v => setDraft({ ...draft, outputPreferences: v })} />}
-                {stepIndex === 3 && <StepRecommendations profile={draft} onFinish={finish} />}
               </motion.div>
             </AnimatePresence>
           </div>
