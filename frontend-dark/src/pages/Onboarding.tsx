@@ -332,6 +332,9 @@ export default function Onboarding() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const workspaceId = searchParams.get('workspaceId') ?? ''
+  // ?edit=1 opens the form for editing even when onboarding is already
+  // complete (used by the brief's "Edit onboarding" link) - answers are kept.
+  const editMode = searchParams.get('edit') === '1'
 
   const { profile: storedProfile, isCompleted, save, markCompleted, setActiveWorkspace } = useClientProfileStore()
 
@@ -349,6 +352,7 @@ export default function Onboarding() {
   // the skip to the workspace; otherwise creating a new workspace silently jumps
   // to the brief and the form appears auto-filled from the prior engagement.
   useEffect(() => {
+    if (editMode) return
     if (workspaceId) {
       if (isWsCompleted(workspaceId)) {
         navigate(`/workspaces/${workspaceId}`, { replace: true })
@@ -356,7 +360,7 @@ export default function Onboarding() {
     } else if (isCompleted) {
       navigate('/advisor', { replace: true })
     }
-  }, [isCompleted, workspaceId, navigate]) // eslint-disable-line
+  }, [isCompleted, workspaceId, editMode, navigate]) // eslint-disable-line
 
   // Seed draft from this workspace's stored profile.
   const [draft, setDraft] = useState<ClientProfile>(() => ({ ...defaultProfile(), ...storedProfile, organization: { ...defaultProfile().organization, ...storedProfile.organization } }))

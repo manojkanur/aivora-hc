@@ -965,10 +965,17 @@ export default function ChallengeBrief() {
                 <ArrowLeft className="w-4 h-4" />
                 Back to workspace
               </button>
-              <button type="button" onClick={exitAndSave}
-                className="text-sm text-slate-600 hover:text-blue-400 transition-colors">
-                Save &amp; exit
-              </button>
+              <div className="flex items-center gap-4">
+                <button type="button"
+                  onClick={() => navigate(`/onboarding?workspaceId=${workspaceId}&edit=1`)}
+                  className="text-sm text-slate-600 hover:text-blue-400 transition-colors">
+                  Edit onboarding
+                </button>
+                <button type="button" onClick={exitAndSave}
+                  className="text-sm text-slate-600 hover:text-blue-400 transition-colors">
+                  Save &amp; exit
+                </button>
+              </div>
             </div>
           )}
 
