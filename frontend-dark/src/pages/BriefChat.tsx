@@ -5,8 +5,6 @@ import {
   Sparkles, Send, Loader2, Check, Circle, CircleDot, ArrowRight,
   Building2, BarChart2, AlertTriangle, FileSearch, RotateCcw,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { cn } from '../lib/utils'
 import { api, challengeBriefsAPI, workspacesAPI } from '../lib/api'
 import { hcBriefChatAPI, type BriefSectionKey, type BriefSectionStatus } from '../lib/hcPlatformApi'
@@ -14,6 +12,7 @@ import { useBriefStore } from '../store/briefStore'
 import { useClientProfileStore } from '../store/clientProfile'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { defaultBrief, type ChallengeBriefData } from './ChallengeBrief'
+import { AssistantMarkdown } from './AdvisorChat'
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; id: string }
 
@@ -325,11 +324,7 @@ export default function BriefChat() {
                     ? 'bg-blue-600 text-white rounded-br-md'
                     : 'bg-[#131720] border border-[#1e2433] text-slate-200 rounded-bl-md'
                 )}>
-                  {m.role === 'assistant' ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-li:my-0.5">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                    </div>
-                  ) : m.content}
+                  {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
                 </div>
               </div>
             ))}
