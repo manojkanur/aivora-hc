@@ -254,9 +254,9 @@ export default function Workspaces() {
         <motion.div initial="hidden" animate="visible" variants={staggerContainer}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((ws, i) => (
-            <motion.div key={ws.id} variants={fadeUp} custom={i} className="relative">
-              <Link to={`/workspaces/${ws.id}`}>
-                <div className="bg-[#131720] rounded-xl border border-[#1e2433] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(59,130,246,0.15)] hover:border-[#252d3f] transition-all p-5 cursor-pointer group">
+            <motion.div key={ws.id} variants={fadeUp} custom={i} className="relative h-full">
+              <Link to={`/workspaces/${ws.id}`} className="block h-full">
+                <div className="h-full flex flex-col bg-[#131720] rounded-xl border border-[#1e2433] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(59,130,246,0.15)] hover:border-[#252d3f] transition-all p-5 cursor-pointer group">
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-10 h-10 rounded-xl bg-[#1a1e2e] flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-slate-300" />
@@ -269,7 +269,7 @@ export default function Workspaces() {
                   {ws.client_name && ws.client_name !== ws.name && (
                     <p className="text-sm text-slate-600 mt-0.5">{ws.client_name}</p>
                   )}
-                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-[#1e2433]">
+                  <div className="flex items-center gap-4 mt-auto pt-4 border-t border-[#1e2433]">
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-slate-600" />
                       <span className="text-xs text-slate-300">{ws.skill_count} studios</span>

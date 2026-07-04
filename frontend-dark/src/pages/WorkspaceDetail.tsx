@@ -193,6 +193,15 @@ export default function WorkspaceDetail() {
   }, [id, profileEverCompleted]) // eslint-disable-line
   const briefDone = id ? hasBrief(id) : false
   const existingBrief = id ? getBrief(id) : null
+
+  // Onboarding done but no brief yet: skip this page entirely and drop the
+  // user into the AI brief intake (client does not want the interim page).
+  useEffect(() => {
+    if (id && onboardingDone && !briefDone) {
+      navigate(`/brief-chat?workspaceId=${id}`, { replace: true })
+    }
+  }, [id, onboardingDone, briefDone, navigate])
+
   const [serverBriefContent, setServerBriefContent] = useState<Record<string, unknown> | null>(null)
   useEffect(() => {
     if (!id) return
