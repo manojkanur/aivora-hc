@@ -156,6 +156,7 @@ function AppRoutes() {
           <Route path="/billing" element={<Billing />} />
           <Route path="/engage" element={<Engage />} />
           <Route path="/advisor" element={<AdvisorChat />} />
+          <Route path="/advisor/:workspaceId" element={<AdvisorChat />} />
           <Route path="/knowledge" element={<AdminRoute><KnowledgeBase /></AdminRoute>} />
           <Route path="/studio/:studioId" element={<StudioRunner />} />
           <Route path="/settings" element={<Settings />} />

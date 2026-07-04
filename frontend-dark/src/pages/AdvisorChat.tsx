@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
-  MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil,
+  MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -16,6 +16,7 @@ import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
 import { hcAiAdvisoryAPI, type AdvisoryProfile } from '../lib/hcPlatformApi'
+import { workspacesAPI } from '../lib/api'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
 const DELIVERABLE_TOPICS: Array<{ key: string; label: string }> = [
@@ -68,9 +69,8 @@ const PERSONAS = [
   'Learning', 'Workforce Planning', 'HR Operations', 'Business Leader',
 ] as const
 
-function loadStoredProfile(): AdvisoryProfile | null {
+function parseProfile(raw: string | null): AdvisoryProfile | null {
   try {
-    const raw = localStorage.getItem(PROFILE_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object' && typeof parsed.persona === 'string') return parsed as AdvisoryProfile
@@ -78,8 +78,23 @@ function loadStoredProfile(): AdvisoryProfile | null {
   return null
 }
 
-function saveStoredProfile(profile: AdvisoryProfile): void {
-  try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile)) } catch { /* ignore */ }
+function loadStoredProfile(workspaceId: string): AdvisoryProfile | null {
+  try {
+    return parseProfile(localStorage.getItem(`${PROFILE_STORAGE_KEY}:${workspaceId}`))
+  } catch { /* ignore */ }
+  return null
+}
+
+/** Legacy pre-workspace profile, used only to prefill the intake. */
+function loadLegacyProfile(): AdvisoryProfile | null {
+  try {
+    return parseProfile(localStorage.getItem(PROFILE_STORAGE_KEY))
+  } catch { /* ignore */ }
+  return null
+}
+
+function saveStoredProfile(workspaceId: string, profile: AdvisoryProfile): void {
+  try { localStorage.setItem(`${PROFILE_STORAGE_KEY}:${workspaceId}`, JSON.stringify(profile)) } catch { /* ignore */ }
 }
 
 function IntakeCard({ initial, onStart }: { initial: AdvisoryProfile | null; onStart: (p: AdvisoryProfile) => void }) {
@@ -218,9 +233,9 @@ const FORMAT_HINTS: string[] = ['Framework', 'Roadmap', 'RACI', 'KPI scorecard',
 
 const EVIDENCE_ACCEPT = '.pdf,.docx,.txt,.md,.pptx'
 
-function loadStoredChat(): ChatMessage[] {
+function loadStoredChat(workspaceId: string): ChatMessage[] {
   try {
-    const raw = localStorage.getItem(CHAT_STORAGE_KEY)
+    const raw = localStorage.getItem(`${CHAT_STORAGE_KEY}:${workspaceId}`)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) return parsed.slice(-40)
@@ -228,14 +243,14 @@ function loadStoredChat(): ChatMessage[] {
   return []
 }
 
-function saveStoredChat(messages: ChatMessage[]): void {
-  try { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-40))) } catch { /* ignore */ }
+function saveStoredChat(workspaceId: string, messages: ChatMessage[]): void {
+  try { localStorage.setItem(`${CHAT_STORAGE_KEY}:${workspaceId}`, JSON.stringify(messages.slice(-40))) } catch { /* ignore */ }
 }
 
-function ConversationPanel({ profile }: { profile: AdvisoryProfile }) {
+function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: AdvisoryProfile; workspaceId: string; workspaceName: string | null }) {
   const briefs = useBriefStore(s => s.briefs)
-  const brief = pickLatestBrief(briefs)
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadStoredChat())
+  const brief = briefs[workspaceId] ?? null
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadStoredChat(workspaceId))
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -245,7 +260,7 @@ function ConversationPanel({ profile }: { profile: AdvisoryProfile }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { saveStoredChat(messages) }, [messages])
+  useEffect(() => { saveStoredChat(workspaceId, messages) }, [workspaceId, messages])
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
@@ -271,6 +286,7 @@ function ConversationPanel({ profile }: { profile: AdvisoryProfile }) {
       const payload = {
         messages: next.map(m => ({ role: m.role, content: m.content })),
         brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
         profile,
         evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
       }
@@ -289,7 +305,7 @@ function ConversationPanel({ profile }: { profile: AdvisoryProfile }) {
   const clear = () => {
     setMessages([])
     setAttachments([])
-    localStorage.removeItem(CHAT_STORAGE_KEY)
+    localStorage.removeItem(`${CHAT_STORAGE_KEY}:${workspaceId}`)
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -773,22 +789,137 @@ function GuidedDiagnostic() {
 
 type Tab = 'chat' | 'deliverable' | 'assessment'
 
+interface WorkspaceSummary { id: string; name: string; client_name?: string | null }
+
+/** Shown at /advisor with no workspace: each workspace has its own advisory session. */
+function WorkspacePicker() {
+  const navigate = useNavigate()
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[] | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    workspacesAPI.list()
+      .then(res => {
+        if (cancelled) return
+        const list: WorkspaceSummary[] = res.data?.items ?? res.data ?? []
+        if (list.length === 1) {
+          navigate(`/advisor/${list[0].id}`, { replace: true })
+        } else {
+          setWorkspaces(list)
+        }
+      })
+      .catch(() => { if (!cancelled) setError(true) })
+    return () => { cancelled = true }
+  }, [navigate])
+
+  if (error) {
+    return (
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4">
+        <p className="text-sm text-slate-400">Could not load your workspaces. Refresh to try again.</p>
+      </div>
+    )
+  }
+
+  if (!workspaces) {
+    return (
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] p-7 sm:p-8 space-y-6"
+      >
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Choose a workspace</h1>
+            <p className="text-sm text-slate-400 mt-1.5">Each workspace has its own advisory session, evidence and history.</p>
+          </div>
+        </div>
+        {workspaces.length === 0 ? (
+          <div className="text-center space-y-4">
+            <p className="text-sm text-slate-400">You do not have a workspace yet. Create one to start an advisory session.</p>
+            <Link to="/workspaces" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">
+              <Plus className="w-4 h-4" /> Create workspace
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {workspaces.map(ws => (
+              <Link
+                key={ws.id}
+                to={`/advisor/${ws.id}`}
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-4 py-3 hover:border-blue-500/40 transition-colors group"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-white truncate">{ws.name}</div>
+                  {ws.client_name && <div className="text-xs text-slate-500 truncate">{ws.client_name}</div>}
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+              </Link>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </div>
+  )
+}
+
 export default function AdvisorChat() {
+  const { workspaceId } = useParams<{ workspaceId: string }>()
+  const navigate = useNavigate()
+  const briefs = useBriefStore(s => s.briefs)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
-  const [profile, setProfile] = useState<AdvisoryProfile | null>(() => loadStoredProfile())
+  const [profile, setProfile] = useState<AdvisoryProfile | null>(() => (workspaceId ? loadStoredProfile(workspaceId) : null))
   const [editingProfile, setEditingProfile] = useState(false)
+  const [workspaceName, setWorkspaceName] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!workspaceId) return
+    setProfile(loadStoredProfile(workspaceId))
+    setEditingProfile(false)
+    setActiveTab('chat')
+    let cancelled = false
+    workspacesAPI.get(workspaceId)
+      .then(res => { if (!cancelled) setWorkspaceName(res.data?.name ?? null) })
+      .catch(() => { if (!cancelled) navigate('/advisor', { replace: true }) })
+    return () => { cancelled = true }
+  }, [workspaceId, navigate])
+
+  if (!workspaceId) {
+    return <WorkspacePicker />
+  }
 
   const handleStart = (p: AdvisoryProfile) => {
-    saveStoredProfile(p)
+    saveStoredProfile(workspaceId, p)
     setProfile(p)
     setEditingProfile(false)
   }
 
   if (!profile || editingProfile) {
-    return <IntakeCard initial={profile} onStart={handleStart} />
+    // Prefill from this workspace's brief, then any legacy global profile.
+    const wsBrief = briefs[workspaceId] ?? null
+    const initial: AdvisoryProfile | null = profile ?? (wsBrief ? {
+      persona: loadLegacyProfile()?.persona ?? '',
+      organization_name: wsBrief.organizationName || workspaceName || undefined,
+      industry: wsBrief.industry || undefined,
+      region: wsBrief.region || undefined,
+      company_size: wsBrief.organizationSize || undefined,
+    } : loadLegacyProfile())
+    return <IntakeCard initial={initial} onStart={handleStart} />
   }
 
-  const orgLine = [profile.organization_name, profile.industry].filter(Boolean).join(' · ')
+  const orgLine = [workspaceName, profile.organization_name, profile.industry].filter(Boolean).join(' · ')
 
   return (
     <div className="p-5 sm:p-8 max-w-7xl mx-auto space-y-5">
@@ -813,6 +944,12 @@ export default function AdvisorChat() {
               >
                 <Pencil className="w-3 h-3" /> Edit
               </button>
+              <Link
+                to="/advisor"
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"
+              >
+                <Briefcase className="w-3 h-3" /> Switch workspace
+              </Link>
             </div>
           </div>
         </div>
@@ -824,7 +961,7 @@ export default function AdvisorChat() {
         </div>
       </div>
 
-      {activeTab === 'chat' && <ConversationPanel profile={profile} />}
+      {activeTab === 'chat' && <ConversationPanel key={workspaceId} profile={profile} workspaceId={workspaceId} workspaceName={workspaceName} />}
       {activeTab === 'deliverable' && <DeliverablePanel />}
       {activeTab === 'assessment' && <GuidedDiagnostic />}
     </div>

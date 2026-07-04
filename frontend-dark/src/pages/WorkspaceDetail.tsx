@@ -253,13 +253,20 @@ export default function WorkspaceDetail() {
           <h1 className="text-xl sm:text-2xl font-bold text-white">{workspace?.name || 'Workspace'}</h1>
           <p className="text-slate-400 mt-0.5 text-sm">{workspace?.client_name}</p>
         </div>
-        {onboardingDone && (
-          <button onClick={reRunOnboarding}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-400 transition-colors">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            Onboarding complete · Re-run
+        <div className="flex items-center gap-4 flex-wrap">
+          <button onClick={() => navigate(`/advisor/${id}`)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors">
+            <Sparkles className="w-4 h-4" />
+            AI Advisory
           </button>
-        )}
+          {onboardingDone && (
+            <button onClick={reRunOnboarding}
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-400 transition-colors">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              Onboarding complete · Re-run
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── PRE-ONBOARDING: show only the banner ───────────────────── */}
