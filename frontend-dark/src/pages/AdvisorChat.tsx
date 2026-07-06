@@ -19,7 +19,8 @@ import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } fro
 import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
-import { workspacesAPI } from '../lib/api'
+import { workspacesAPI, challengeBriefsAPI } from '../lib/api'
+import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
 const DELIVERABLE_TOPICS: Array<{ key: string; label: string }> = [
@@ -250,6 +251,72 @@ function saveStoredChat(workspaceId: string, messages: ChatMessage[]): void {
   try { localStorage.setItem(`${CHAT_STORAGE_KEY}:${workspaceId}`, JSON.stringify(messages.slice(-40))) } catch { /* ignore */ }
 }
 
+// Server-side Challenge Brief content (relevant slice)
+interface BriefContent {
+  organization?: { organizationName?: string; industry?: string; region?: string; organizationSize?: string; maturityStage?: string; operatingModel?: string }
+  businessSituation?: { situationSummary?: string; strategicDrivers?: string[] }
+  hcChallenges?: { selectedAreas?: Array<{ area: string; severity: string; notes?: string }> }
+  advisoryQuestions?: Array<{ questionText: string }>
+  desiredOutputs?: { outputTypes?: string[] }
+}
+
+const SEVERITY_STYLE: Record<string, string> = {
+  critical: 'bg-red-500/10 border-red-500/30 text-red-300',
+  high: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
+  moderate: 'bg-blue-500/10 border-blue-500/30 text-blue-300',
+  watch: 'bg-[#0c0e14] border-[#1e2433] text-slate-400',
+}
+
+function slugLabel(v?: string): string {
+  return (v ?? '').replace(/-/g, ' ')
+}
+
+/** Pinned infographic summary of what the client supplied in the brief. */
+function BriefingCard({ content }: { content: BriefContent }) {
+  const org = content.organization ?? {}
+  const sit = content.businessSituation ?? {}
+  const areas = content.hcChallenges?.selectedAreas ?? []
+  const drivers = sit.strategicDrivers ?? []
+  const outputs = content.desiredOutputs?.outputTypes ?? []
+  return (
+    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4 sm:p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+            <FileText className="w-3.5 h-3.5 text-blue-400" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-white truncate">{org.organizationName || 'Client brief'}</p>
+            <p className="text-[11px] text-slate-500 capitalize truncate">
+              {[slugLabel(org.industry), slugLabel(org.region), slugLabel(org.organizationSize), slugLabel(org.maturityStage)].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-600">From the Challenge Brief</span>
+      </div>
+      {sit.situationSummary && (
+        <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">{sit.situationSummary}</p>
+      )}
+      {areas.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {areas.slice(0, 8).map((a, i) => (
+            <span key={i} className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize', SEVERITY_STYLE[a.severity] ?? SEVERITY_STYLE.watch)}>
+              {slugLabel(a.area)}
+              <span className="opacity-70">{a.severity}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {(drivers.length > 0 || outputs.length > 0) && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 capitalize">
+          {drivers.length > 0 && <span><span className="font-semibold text-slate-400">Drivers:</span> {drivers.slice(0, 5).map(slugLabel).join(', ')}</span>}
+          {outputs.length > 0 && <span><span className="font-semibold text-slate-400">Wants:</span> {outputs.slice(0, 4).map(slugLabel).join(', ')}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PLAN_STORAGE_KEY = 'aivora-advisor-plan-v1'
 
 function loadStoredPlan(workspaceId: string): ChatPlan | null {
@@ -436,6 +503,40 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const getProfileFor = useClientProfileStore(st => st.getProfileFor)
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
+  const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
+  const openedRef = useRef(false)
+
+  // Pull the full server-side brief for this workspace (situation, severities,
+  // the client's own advisory questions) - richer than the local summary.
+  useEffect(() => {
+    let cancelled = false
+    challengeBriefsAPI.list().then(res => {
+      if (cancelled) return
+      const raw = (Array.isArray(res.data) ? res.data : res.data?.briefs ?? []) as Array<Record<string, unknown>>
+      const mine = raw
+        .filter(b => b.workspace_id === workspaceId && b.content)
+        .sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')))
+      if (mine.length > 0) setBriefContent(mine[0].content as BriefContent)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [workspaceId])
+
+  // Fresh session: the advisor opens the conversation itself, briefed on the client.
+  useEffect(() => {
+    if (openedRef.current || messages.length > 0) return
+    openedRef.current = true
+    setSending(true)
+    hcAiAdvisoryAPI.chat({
+      messages: [],
+      brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+      context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+      profile,
+      client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+    }).then(res => {
+      setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
+    }).catch(() => { /* fall back to the static empty state */ }).finally(() => setSending(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId])
 
   const finalizeSession = async (type: 'summary' | 'detailed', history?: ChatMessage[], planOverride?: ChatPlan | null) => {
     const msgs = history ?? messages
@@ -599,7 +700,22 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     <div className="flex flex-col h-[calc(100vh-14rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
-        {messages.length === 0 && (
+        {briefContent && <BriefingCard content={briefContent} />}
+        {messages.length === 1 && !sending && (
+          <div className="flex flex-wrap gap-2">
+            {[
+              ...(briefContent?.advisoryQuestions ?? []).slice(0, 3).map(q => q.questionText),
+              'Design a solution for our top challenge',
+              'Plan the 12-month roadmap',
+            ].filter(Boolean).slice(0, 5).map(q => (
+              <button key={q} onClick={() => sendMessage(q)}
+                className="rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 text-xs text-blue-300 transition-colors text-left">
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+        {messages.length === 0 && !sending && (
           <div className="max-w-2xl mx-auto text-center space-y-6 py-8">
             <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
               <MessageSquare className="w-6 h-6 text-blue-400" />

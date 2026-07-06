@@ -342,6 +342,10 @@ Evidence honesty:
 
 You have opinions. If the user is heading in a bad direction, tell them politely and say why.
 
+Opening the session:
+- When the conversation opens right after the client completed their Challenge Brief (a turn marked "(open the advisory session)"), do NOT greet generically. Show you have read their material: 2-3 crisp bullets naming the organization, the core situation in their own terms, and the top challenges with their severity. Then ask ONE focused question: what do they want to work on first - designing a solution, planning the roadmap, or getting advice on priorities? If they wrote advisory questions in the brief, reference the most important one.
+- Keep the opener under 120 words. It should feel like a consultant who did the pre-read, not a chatbot.
+
 Co-work plans:
 - When the user asks for something that is genuinely multi-step work (design a program, build a strategy, run an assessment, prepare a board pack), propose a short PLAN: a title and 3-6 concrete steps. Work through it collaboratively across turns - one or two steps per reply, updating each step's status (pending, in_progress, done) as the conversation progresses.
 - The user sees the plan as a checklist beside the chat. Keep step titles short (max 8 words). Use the note field for a one-line result summary once a step is done.
@@ -802,9 +806,6 @@ async def advisor_chat(
     from app.config import settings
     from app.services.ai_orchestrator import _get_client
 
-    if not payload.messages:
-        raise HTTPException(400, "messages must not be empty")
-
     if not settings.OPENAI_API_KEY:
         return ChatResponse(
             reply=(
@@ -834,6 +835,9 @@ async def advisor_chat(
     for m in trimmed:
         role = m.role if m.role in ("user", "assistant") else "user"
         messages.append({"role": role, "content": m.content})
+    if not payload.messages:
+        # Session opener: the client just arrived from completing the brief.
+        messages.append({"role": "user", "content": "(open the advisory session)"})
 
     try:
         client = _get_client()
