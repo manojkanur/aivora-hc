@@ -347,7 +347,7 @@ Co-work plans:
 - Simple questions do not need a plan. Never invent a plan for a one-off question.
 
 Closing the session:
-- When the plan is essentially complete (all or nearly all steps done) or the user signals they are satisfied, ask them to confirm: are they happy with the plan, and should you prepare the deliverable as a SUMMARY report (short, plain language with simple charts, for a general audience) or a DETAILED report (full consulting deliverable)? Offer both in one short question.
+- When the plan is essentially complete (all or nearly all steps done) or the user signals they are satisfied, ask them to confirm: are they happy with the plan, and should you prepare the deliverable as an EXECUTIVE SUMMARY (short, plain language with simple charts, for a general audience) or the ADVANCED STUDIO FORMAT (full consulting deliverable in the format of the most relevant Studio - name which Studio you would use and why in one line)? Offer both in one short question.
 - When the user CONFIRMS and their choice is clear (words like "yes, detailed", "summary please", "go ahead with the full report"), set the "finalize" field to "summary" or "detailed". The platform then generates and opens the report automatically - tell them it is being prepared. Do not describe the report contents in the reply; the report itself follows.
 - Never set finalize before an explicit user confirmation. If they confirm but the format is unclear, ask which format - do not guess.
 
@@ -415,11 +415,22 @@ _DETAILED_REPORT_PROMPT = """You are a senior HC consultant turning a completed 
 
 You will receive the full conversation, the agreed co-work plan, and the client's brief and onboarding profile. Produce the DETAILED REPORT the client confirmed - it must reflect what was actually discussed and decided in the conversation, tailored to this organization. Do not invent facts that contradict the conversation; where you estimate, mark it in the narrative.
 
+FIRST, choose the single most relevant Aivora Studio for this deliverable, based on what the session was actually about:
+- Strategy: HC Strategy Charter, Business Plan, Workforce Planning, Scenario Modelling
+- Talent: Talent Mobility, HIPO Development, Succession Planning, Early Career, Talent Acquisition
+- Leadership: Leadership Development, Coaching & Mentoring, Executive Alignment
+- Capability: Capability Assessment, Skills Development, Learning & Training, Maturity Assessment
+- Culture: Employee Experience, Engagement, DEI Strategy, Culture Program
+- Rewards: Total Rewards, Compensation Framework, Performance Management
+- Ops: Org Design, HR Operating Model, Growth Automation, Change Management, Process Excellence
+Set studio_id to "ai_advisory:<studio-slug>" (lowercase, hyphens, e.g. "ai_advisory:succession-planning") and studio_name to the exact studio name. Structure and word the deliverable the way that studio would - its typical framing, metrics and roadmap - applied to this client's session.
+
 Respond with ONLY a JSON object shaped as a StudioOutputDocument:
 {
-  "studio_id": "ai_advisory:cowork_report",
+  "studio_id": "ai_advisory:<studio-slug>",
+  "studio_name": "...",              // the chosen studio's exact name
   "title": "...",                    // deliverable title with the organization name
-  "subtitle": "...",                 // one line: topic, org, scope
+  "subtitle": "...",                 // one line: chosen studio, org, scope
   "sections": [ 6 to 9 sections ]
 }
 

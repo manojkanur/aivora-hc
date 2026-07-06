@@ -582,7 +582,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             <ArrowLeft className="w-4 h-4" /> Back to conversation
           </button>
           <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
-            {report.kind === 'detailed' ? 'Detailed report' : 'Summary report'}
+            {report.kind === 'detailed'
+              ? `Studio deliverable${(report.document as { studio_name?: string }).studio_name ? ` · ${(report.document as { studio_name?: string }).studio_name}` : ''}`
+              : 'Executive summary'}
           </span>
         </div>
         {report.kind === 'detailed'
@@ -1129,7 +1131,6 @@ export default function AdvisorChat() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const navigate = useNavigate()
   const briefs = useBriefStore(s => s.briefs)
-  const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [profile, setProfile] = useState<AdvisoryProfile | null>(() => (workspaceId ? loadStoredProfile(workspaceId) : null))
   const [editingProfile, setEditingProfile] = useState(false)
   const [workspaceName, setWorkspaceName] = useState<string | null>(null)
@@ -1138,7 +1139,6 @@ export default function AdvisorChat() {
     if (!workspaceId) return
     setProfile(loadStoredProfile(workspaceId))
     setEditingProfile(false)
-    setActiveTab('chat')
     let cancelled = false
     workspacesAPI.get(workspaceId)
       .then(res => { if (!cancelled) setWorkspaceName(res.data?.name ?? null) })
@@ -1218,16 +1218,9 @@ export default function AdvisorChat() {
           </div>
         </div>
 
-        <div className="flex gap-1 p-1 rounded-xl bg-[#0c0e14] border border-[#1e2433] w-fit">
-          <TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} icon={MessageSquare} label="Conversation" />
-          <TabButton active={activeTab === 'deliverable'} onClick={() => setActiveTab('deliverable')} icon={LayoutGrid} label="Deliverables" />
-          <TabButton active={activeTab === 'assessment'} onClick={() => setActiveTab('assessment')} icon={ClipboardList} label="Guided assessment" />
-        </div>
       </div>
 
-      {activeTab === 'chat' && <ConversationPanel key={workspaceId} profile={profile} workspaceId={workspaceId} workspaceName={workspaceName} />}
-      {activeTab === 'deliverable' && <DeliverablePanel />}
-      {activeTab === 'assessment' && <GuidedDiagnostic />}
+      <ConversationPanel key={workspaceId} profile={profile} workspaceId={workspaceId} workspaceName={workspaceName} />
     </div>
   )
 }
