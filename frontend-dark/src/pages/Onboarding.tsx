@@ -416,7 +416,9 @@ export default function Onboarding() {
 
   const exitAndSave = () => {
     save(draft)
-    navigate(workspaceId ? `/workspaces/${workspaceId}` : '/workspaces')
+    // Workspace hub redirects onward (to the brief) until the brief is done -
+    // exit to the Workspaces list instead so Back never bounces the user around.
+    navigate('/workspaces')
   }
 
   return (

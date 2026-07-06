@@ -909,11 +909,14 @@ export default function ChallengeBrief() {
   const isLast = stepIndex === STEPS.length - 1
 
   const advance = () => { setStepIndex(s => Math.min(STEPS.length - 1, s + 1)) }
+  // The workspace hub redirects back to this brief until it is completed, so
+  // exiting an incomplete brief goes to the Workspaces list to avoid a loop.
+  const exitTarget = workspaceId && getBrief(workspaceId) ? `/workspaces/${workspaceId}` : '/workspaces'
   const back = () => {
-    if (isFirst && workspaceId) { navigate(`/workspaces/${workspaceId}`) }
+    if (isFirst && workspaceId) { navigate(exitTarget) }
     else setStepIndex(s => Math.max(0, s - 1))
   }
-  const exitAndSave = () => { navigate(workspaceId ? `/workspaces/${workspaceId}` : '/workspaces') }
+  const exitAndSave = () => { navigate(workspaceId ? exitTarget : '/workspaces') }
 
   const [launching, setLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string | null>(null)

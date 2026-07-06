@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import { Menu, ChevronRight, LogOut, User, CreditCard, Bell, Sun, Moon } from 'lucide-react'
 import { useAuthStore } from '../../store/auth'
@@ -19,8 +19,15 @@ interface TopBarProps {
 const routeLabels: Record<string, string> = {
   dashboard: 'Dashboard',
   workspaces: 'Workspaces',
-  skills: 'Skills Marketplace',
+  skills: 'Studios',
+  advisor: 'AI Advisory',
+  onboarding: 'Client Onboarding',
   'challenge-brief': 'Challenge Brief',
+  'brief-chat': 'Brief Assistant',
+  'brief-results': 'Brief Results',
+  knowledge: 'Knowledge Base',
+  canvas: 'AI Canvas',
+  studio: 'Studio',
   inbox: 'Draft Inbox',
   exports: 'Exports',
   publish: 'Publish',
@@ -29,6 +36,7 @@ const routeLabels: Record<string, string> = {
   settings: 'Settings',
   admin: 'Admin Dashboard',
   'hipo-studio': 'HiPo Studio',
+  'hipo-studio-v2': 'HiPo Studio',
 }
 
 export function TopBar({ onMenuClick }: TopBarProps) {
@@ -37,7 +45,14 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const { user, logout } = useAuthStore()
   const { activeQuests } = useGamificationStore()
   const { mode: themeMode, toggle: toggleTheme } = useThemeStore()
-  const { workspaces, skills } = useWorkspaceStore()
+  const { workspaces, skills, fetchWorkspaces } = useWorkspaceStore()
+
+  // Breadcrumbs resolve workspace ids to names; make sure the list is loaded
+  // even when the user lands deep (e.g. /advisor/:id) without visiting /workspaces.
+  useEffect(() => {
+    if (workspaces.length === 0) fetchWorkspaces().catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [questPanelOpen, setQuestPanelOpen] = useState(false)
 
@@ -53,16 +68,18 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
     if (UUID_RE.test(seg)) {
       const prev = segments[i - 1]
-      if (prev === 'workspaces') {
+      if (prev === 'workspaces' || prev === 'advisor') {
         const ws = workspaces.find(w => w.id === seg)
-        label = ws?.name || ws?.client_name || `Workspace ${seg.slice(0, 6)}`
+        label = ws?.name || ws?.client_name || 'Workspace'
+      } else if (prev === 'brief-results') {
+        label = 'Results'
       } else if (prev === 'skills') {
         const sk = skills.find(s => s.id === seg)
         label = sk?.name || `Studio ${seg.slice(0, 6)}`
       } else if (prev === 'canvas') {
         label = `Draft ${seg.slice(0, 6)}`
       } else {
-        label = seg.slice(0, 6)
+        label = 'Details'
       }
     }
     return { label, href }
