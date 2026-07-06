@@ -1219,6 +1219,16 @@ export interface ChatPlan {
   steps: ChatPlanStep[]
 }
 
+export interface SummaryReport {
+  title: string
+  subtitle?: string
+  overview: string
+  kpis?: Array<{ label: string; value: string; unit?: string; meaning?: string }>
+  charts?: Array<{ type: 'bar' | 'donut'; title: string; explanation?: string; items: Array<{ label: string; value: number }> }>
+  takeaways?: Array<{ title: string; explanation?: string }>
+  next_steps?: string[]
+}
+
 export const hcAiAdvisoryAPI = {
   generate: (body: AiAdvisoryGenerateRequest) =>
     post<AiGeneratedInsight>(`${HC_BASE}/ai-advisory/generate`, body),
@@ -1252,6 +1262,17 @@ export const hcAiAdvisoryAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  finalizeReport: (body: {
+    messages: { role: 'user' | 'assistant'; content: string }[]
+    report_type: 'detailed' | 'summary'
+    plan_state?: ChatPlan | null
+    brief?: Record<string, unknown> | null
+    client_profile?: Record<string, unknown> | null
+    profile?: AdvisoryProfile | null
+    context?: { workspace_id?: string; workspace_name?: string } | null
+  }) => post<{ report_type: string; document?: Record<string, unknown> | null; summary?: SummaryReport | null }>(
+    `${HC_BASE}/ai-advisory/finalize-report`, body,
+  ),
 }
 
 // ---------------------------------------------------------------------------

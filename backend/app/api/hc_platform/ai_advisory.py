@@ -389,6 +389,145 @@ def _onboarding_block(client_profile: dict[str, Any] | None) -> str:
         return ""
 
 
+class FinalizeReportRequest(BaseModel):
+    messages: list[ChatMessage]
+    report_type: str  # 'detailed' | 'summary'
+    plan_state: dict[str, Any] | None = None
+    brief: dict[str, Any] | None = None
+    client_profile: dict[str, Any] | None = None
+    profile: AdvisoryProfile | None = None
+    context: ChatContext | None = None
+
+
+class FinalizeReportResponse(BaseModel):
+    report_type: str
+    document: dict[str, Any] | None = None  # StudioOutputDocument (detailed)
+    summary: dict[str, Any] | None = None   # simplified summary report
+
+
+_DETAILED_REPORT_PROMPT = """You are a senior HC consultant turning a completed advisory working session into a consultant-grade written deliverable.
+
+You will receive the full conversation, the agreed co-work plan, and the client's brief and onboarding profile. Produce the DETAILED REPORT the client confirmed - it must reflect what was actually discussed and decided in the conversation, tailored to this organization. Do not invent facts that contradict the conversation; where you estimate, mark it in the narrative.
+
+Respond with ONLY a JSON object shaped as a StudioOutputDocument:
+{
+  "studio_id": "ai_advisory:cowork_report",
+  "title": "...",                    // deliverable title with the organization name
+  "subtitle": "...",                 // one line: topic, org, scope
+  "sections": [ 6 to 9 sections ]
+}
+
+Each section: {"id": "<slug>", "title": "...", "layout": "<layout>", "data": {...}, "footnote": "optional source/assumption note"}
+
+ALLOWED layouts and their exact data shapes:
+- "narrative_paragraph": {"body": "2-4 paragraph markdown-lite text", "highlights": ["phrase to bold", ...]}
+- "kpi_grid": {"columns": 3, "items": [{"label": "...", "value": "42", "unit": "%", "sublabel": "context line"}]}  // 3-6 items
+- "bar_chart": {"items": [{"label": "...", "value": 62, "sentiment": "good|warning|bad|neutral", "benchmark": 70}]}  // 4-8 bars, values 0-100
+- "timeline": {"horizons": [{"label": "Phase 1 (0-3 months)", "actions": [{"title": "...", "owner": "..."}]}]}  // 3-4 horizons
+- "recommendation_cards": {"columns": 2, "items": [{"id": "r1", "title": "...", "rationale": "...", "priority": "high|medium|low", "effort": "low|medium|high", "impact": "low|medium|high", "tags": ["..."]}]}  // 3-6 cards
+
+Structure the report like a consulting deliverable: executive summary (narrative), current state with figures (kpi_grid and/or bar_chart), the agreed framework/approach (narrative + recommendation_cards), implementation roadmap (timeline), risks and success measures (narrative or kpi_grid). End with a short confidence and assumptions note as the last narrative section. Use plain hyphens, never em-dashes."""
+
+_SUMMARY_REPORT_PROMPT = """You are a senior HC consultant writing a SIMPLE summary report of a completed advisory working session, for a general business audience with no HR jargon.
+
+You will receive the full conversation, the agreed plan, and the client's brief. Produce a short, friendly report: what the situation is, what was agreed, what happens next. Every number and chart must come with a one-line plain-language explanation of what it means.
+
+Respond with ONLY a JSON object:
+{
+  "title": "...",                          // short, with the organization name
+  "subtitle": "...",                       // one line describing what this covers
+  "overview": "3-5 sentence plain-language summary of the situation and the agreed plan",
+  "kpis": [{"label": "...", "value": "42", "unit": "%", "meaning": "what this number means in plain words"}],   // 3-4
+  "charts": [{"type": "bar|donut", "title": "...", "explanation": "one plain sentence on what this chart shows", "items": [{"label": "...", "value": 62}]}],   // 1-3 charts, 3-6 items each, values 0-100
+  "takeaways": [{"title": "...", "explanation": "1-2 plain sentences"}],   // 3-5 key takeaways
+  "next_steps": ["short action sentence", ...]   // 3-6 steps in order
+}
+
+Keep language simple and human. No jargon, no acronyms without spelling them out. Use plain hyphens, never em-dashes."""
+
+
+@router.post("/finalize-report", response_model=FinalizeReportResponse)
+async def finalize_report(
+    payload: FinalizeReportRequest,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> FinalizeReportResponse:
+    """Turn a confirmed co-work session into a detailed or summary report."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+
+    if payload.report_type not in ("detailed", "summary"):
+        raise HTTPException(400, "report_type must be 'detailed' or 'summary'")
+    if not payload.messages:
+        raise HTTPException(400, "messages must not be empty")
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(503, "Report generation needs the OpenAI key configured.")
+
+    base = _DETAILED_REPORT_PROMPT if payload.report_type == "detailed" else _SUMMARY_REPORT_PROMPT
+    parts = [base]
+    for block in (
+        _brief_context_block(payload.brief),
+        _profile_block(payload.profile),
+        _onboarding_block(payload.client_profile),
+        _plan_state_block(payload.plan_state),
+    ):
+        if block:
+            parts.append(block)
+    system = "\n\n".join(parts)
+
+    transcript = "\n\n".join(
+        f"{'CLIENT' if m.role == 'user' else 'ADVISOR'}: {m.content}"
+        for m in payload.messages[-30:]
+    )[:24000]
+
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": f"WORKING SESSION TRANSCRIPT:\n\n{transcript}\n\nGenerate the {payload.report_type} report now."},
+            ],
+            temperature=0.4,
+            max_tokens=3600,
+            response_format={"type": "json_object"},
+        )
+        import json as _json
+        data = _json.loads(resp.choices[0].message.content or "{}")
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Report generation failed: {exc}")
+
+    def _deep_clean(value: Any) -> Any:
+        if isinstance(value, str):
+            return _clean(value)
+        if isinstance(value, list):
+            return [_deep_clean(v) for v in value]
+        if isinstance(value, dict):
+            return {k: _deep_clean(v) for k, v in value.items()}
+        return value
+
+    data = _deep_clean(data)
+    await _audit(
+        current_tenant.id,
+        current_user.id,
+        "hc_platform.ai_advisory.finalize_report",
+        {"report_type": payload.report_type, "workspace_id": payload.context.workspace_id if payload.context else None},
+    )
+    if payload.report_type == "detailed":
+        if not isinstance(data.get("sections"), list) or not data["sections"]:
+            raise HTTPException(502, "Report came back empty. Try again.")
+        data.setdefault("studio_id", "ai_advisory:cowork_report")
+        data.setdefault("title", "Advisory Report")
+        data.setdefault("subtitle", "")
+        return FinalizeReportResponse(report_type="detailed", document=data)
+    if not data.get("overview"):
+        raise HTTPException(502, "Report came back empty. Try again.")
+    return FinalizeReportResponse(report_type="summary", summary=data)
+
+
 def _plan_state_block(plan_state: dict[str, Any] | None) -> str:
     if not plan_state:
         return ""

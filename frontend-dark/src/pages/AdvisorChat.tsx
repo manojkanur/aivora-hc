@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
   MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
-  Check, Circle, CircleDot, ListChecks,
+  Check, Circle, CircleDot, ListChecks, ArrowLeft, FileBarChart2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -16,7 +16,7 @@ import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
-import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan } from '../lib/hcPlatformApi'
+import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { workspacesAPI } from '../lib/api'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
@@ -261,7 +261,113 @@ function loadStoredPlan(workspaceId: string): ChatPlan | null {
   return null
 }
 
-function PlanRail({ plan }: { plan: ChatPlan }) {
+type SessionReport =
+  | { kind: 'detailed'; document: StudioOutputDocument }
+  | { kind: 'summary'; summary: SummaryReport }
+
+const DONUT_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4']
+
+function SummaryReportView({ summary }: { summary: SummaryReport }) {
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-6">
+        <h2 className="text-xl font-bold text-white">{summary.title}</h2>
+        {summary.subtitle && <p className="text-sm text-slate-400 mt-1">{summary.subtitle}</p>}
+        <p className="text-sm text-slate-300 leading-relaxed mt-4">{summary.overview}</p>
+      </div>
+
+      {summary.kpis && summary.kpis.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {summary.kpis.map((k, i) => (
+            <div key={i} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500">{k.label}</p>
+              <p className="text-2xl font-bold text-white mt-1">{k.value}{k.unit && <span className="text-sm text-slate-400 ml-1">{k.unit}</span>}</p>
+              {k.meaning && <p className="text-xs text-slate-500 mt-2 leading-relaxed">{k.meaning}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(summary.charts ?? []).map((c, ci) => {
+        const total = c.items.reduce((a, it) => a + Math.max(0, it.value), 0) || 1
+        return (
+          <div key={ci} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+            <h3 className="text-sm font-semibold text-white">{c.title}</h3>
+            {c.explanation && <p className="text-xs text-slate-500 mt-1 mb-4">{c.explanation}</p>}
+            {c.type === 'donut' ? (
+              <div className="flex items-center gap-6 flex-wrap mt-4">
+                <div className="w-32 h-32 rounded-full flex-shrink-0" style={{
+                  background: `conic-gradient(${c.items.map((it, i) => {
+                    const start = c.items.slice(0, i).reduce((a, x) => a + (x.value / total) * 100, 0)
+                    return `${DONUT_COLORS[i % DONUT_COLORS.length]} ${start}% ${start + (it.value / total) * 100}%`
+                  }).join(', ')})`,
+                }}>
+                  <div className="w-full h-full rounded-full" style={{ background: 'radial-gradient(circle at center, #131720 0 38%, transparent 39%)' }} />
+                </div>
+                <div className="space-y-1.5">
+                  {c.items.map((it, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                      <span className="text-slate-300">{it.label}</span>
+                      <span className="text-slate-500 tabular-nums">{Math.round((it.value / total) * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5 mt-4">
+                {c.items.map((it, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-slate-300">{it.label}</span>
+                      <span className="text-slate-500 tabular-nums">{it.value}</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-[#1e2433] overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, Math.max(0, it.value))}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {summary.takeaways && summary.takeaways.length > 0 && (
+        <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+          <h3 className="text-sm font-semibold text-white mb-3">What this means</h3>
+          <div className="space-y-3">
+            {summary.takeaways.map((t, i) => (
+              <div key={i} className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                <div>
+                  <p className="text-sm font-medium text-white">{t.title}</p>
+                  {t.explanation && <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{t.explanation}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {summary.next_steps && summary.next_steps.length > 0 && (
+        <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+          <h3 className="text-sm font-semibold text-white mb-3">Next steps</h3>
+          <ol className="space-y-2">
+            {summary.next_steps.map((st, i) => (
+              <li key={i} className="flex gap-3 text-sm text-slate-300">
+                <span className="text-blue-400 font-bold tabular-nums flex-shrink-0">{i + 1}.</span>
+                {st}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize: (t: 'summary' | 'detailed') => void; finalizing: 'summary' | 'detailed' | null }) {
   const doneCount = plan.steps.filter(st => st.status === 'done').length
   return (
     <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4 space-y-3 lg:sticky lg:top-4">
@@ -294,6 +400,25 @@ function PlanRail({ plan }: { plan: ChatPlan }) {
           </div>
         ))}
       </div>
+      <div className="pt-2 border-t border-[#1e2433] space-y-2">
+        <p className="text-[11px] text-slate-500 leading-relaxed">Happy with the plan? Turn this session into a report.</p>
+        <button
+          onClick={() => onFinalize('summary')}
+          disabled={!!finalizing}
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border border-[#1e2433] bg-[#0c0e14] text-slate-200 hover:border-blue-500/40 transition-colors disabled:opacity-50"
+        >
+          {finalizing === 'summary' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileBarChart2 className="w-3.5 h-3.5" />}
+          Summary report
+        </button>
+        <button
+          onClick={() => onFinalize('detailed')}
+          disabled={!!finalizing}
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors disabled:opacity-50"
+        >
+          {finalizing === 'detailed' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+          Detailed report
+        </button>
+      </div>
     </div>
   )
 }
@@ -308,6 +433,37 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [plan, setPlan] = useState<ChatPlan | null>(() => loadStoredPlan(workspaceId))
   const getProfileFor = useClientProfileStore(st => st.getProfileFor)
+  const [report, setReport] = useState<SessionReport | null>(null)
+  const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
+
+  const finalizeSession = async (type: 'summary' | 'detailed') => {
+    if (finalizing || messages.length === 0) return
+    setError(null)
+    setFinalizing(type)
+    try {
+      const res = await hcAiAdvisoryAPI.finalizeReport({
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+        report_type: type,
+        plan_state: plan,
+        brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+        profile,
+        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+      })
+      if (type === 'detailed' && res.data.document) {
+        setReport({ kind: 'detailed', document: res.data.document as unknown as StudioOutputDocument })
+      } else if (type === 'summary' && res.data.summary) {
+        setReport({ kind: 'summary', summary: res.data.summary })
+      } else {
+        setError('The report came back empty. Try again.')
+      }
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : 'Could not generate the report. Try again.')
+    } finally {
+      setFinalizing(null)
+    }
+  }
   const [uploading, setUploading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -406,6 +562,27 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       return base ? `${base}\n${hint}` : hint
     })
     textareaRef.current?.focus()
+  }
+
+  if (report) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <button
+            onClick={() => setReport(null)}
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to conversation
+          </button>
+          <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
+            {report.kind === 'detailed' ? 'Detailed report' : 'Summary report'}
+          </span>
+        </div>
+        {report.kind === 'detailed'
+          ? <StudioOutput document={report.document} />
+          : <SummaryReportView summary={report.summary} />}
+      </div>
+    )
   }
 
   return (
@@ -574,7 +751,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         )}
       </div>
     </div>
-    {plan && <PlanRail plan={plan} />}
+    {plan && <PlanRail plan={plan} onFinalize={finalizeSession} finalizing={finalizing} />}
     </div>
   )
 }
