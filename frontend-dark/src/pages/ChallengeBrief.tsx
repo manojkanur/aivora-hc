@@ -14,6 +14,7 @@ import { useBriefStore } from '../store/briefStore'
 import { useClientProfileStore } from '../store/clientProfile'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { api, challengeBriefsAPI } from '../lib/api'
+import { hcBriefChatAPI } from '../lib/hcPlatformApi'
 import { useAutosave } from '../hooks/useAutosave'
 import { SaveIndicator } from '../components/ui/SaveIndicator'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
@@ -532,33 +533,16 @@ function CircleProgress({ pct, size = 80, stroke = 7 }: { pct: number; size?: nu
 }
 
 function StepReview({ brief, onLaunch, launching, launchError }: { brief: ChallengeBriefData; onLaunch: () => void; launching?: boolean; launchError?: string | null }) {
-  const navigate = useNavigate()
-  const [deselected, setDeselected] = useState<Set<string>>(new Set())
-  const [hoveredStudio, setHoveredStudio] = useState<string | null>(null)
-
-  const selectedAreaIds = brief.hcChallenges.selectedAreas.map(a => a.area)
-  // Brief-driven recommendations: score studios from signals, fall back to naive area-match
-  const briefDriven = recommendStudios(signalsFromBriefContent(brief), 8)
-  const briefDrivenNames = new Set(briefDriven.map(r => r.name))
-  const legacyMatch = ALL_STUDIOS.filter(s => selectedAreaIds.includes(s.area as HcChallengeArea))
-  const recommended = [
-    ...briefDriven.map(r => {
-      const legacy = ALL_STUDIOS.find(s => s.name === r.name)
-      return legacy ?? { name: r.name, icon: '', area: 'none' as HcChallengeArea, description: r.description, why: r.reasons[0] ?? '' }
-    }),
-    ...legacyMatch.filter(s => !briefDrivenNames.has(s.name)),
-  ]
-  const displayStudios = recommended.length > 0 ? recommended : ALL_STUDIOS.slice(0, 12)
-  const activeStudios = displayStudios.filter(s => !deselected.has(s.name))
-
-  const toggleStudio = (name: string) => {
-    setDeselected(prev => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }
+  // AI-written recap of everything the client shared, fetched once on arrival.
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    hcBriefChatAPI.summarize({ brief: JSON.parse(JSON.stringify(brief)) as Record<string, unknown> })
+      .then(res => { if (!cancelled) setAiSummary(res.data.summary) })
+      .catch(() => { if (!cancelled) setAiSummary('Your brief is saved. Proceed to the AI Advisory to start working on it together.') })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const sections = [
     { label: 'Organization', done: brief.organization.organizationName.length > 0, value: brief.organization.organizationName || ' - ', weight: 15 },
@@ -650,86 +634,35 @@ function StepReview({ brief, onLaunch, launching, launchError }: { brief: Challe
         </div>
       </div>
 
-      {/* Studio selector */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {recommended.length > 0 ? `Matched studios: ${activeStudios.length} selected` : `Available studios: ${activeStudios.length} selected`}
-          </p>
-          {deselected.size > 0 && (
-            <button type="button" onClick={() => setDeselected(new Set())}
-              className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-              Reset selection
-            </button>
-          )}
+      {/* AI recap of what the client shared */}
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-blue-400" />
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-300">Your consultant's read</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {displayStudios.map(studio => {
-            const active = !deselected.has(studio.name)
-            return (
-              <motion.button
-                key={studio.name}
-                type="button"
-                onClick={() => toggleStudio(studio.name)}
-                onMouseEnter={() => setHoveredStudio(studio.name)}
-                onMouseLeave={() => setHoveredStudio(null)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                className={cn(
-                  'relative flex flex-col gap-1 px-3 py-2.5 rounded-lg border transition-all text-left',
-                  active
-                    ? 'border-blue-500/40 bg-blue-500/5'
-                    : 'border-[#1e2433] bg-[#0a0c12] opacity-40'
-                )}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{studio.icon}</span>
-                  <span className={cn('text-xs font-semibold truncate', active ? 'text-slate-200' : 'text-slate-500')}>
-                    {studio.name}
-                  </span>
-                  {active && (
-                    <div className="ml-auto w-3 h-3 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-2 h-2 text-white" />
-                    </div>
-                  )}
-                </div>
-                <AnimatePresence>
-                  {hoveredStudio === studio.name && (
-                    <motion.p
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="text-[10px] text-slate-500 leading-tight"
-                    >
-                      {studio.description}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            )
-          })}
-        </div>
-        {displayStudios.length < ALL_STUDIOS.length && (
-          <p className="text-xs text-slate-600 text-center">
-            +{ALL_STUDIOS.length - displayStudios.length} more studios in the full library
-          </p>
+        {aiSummary === null ? (
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <span className="w-4 h-4 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+            Reviewing what you shared...
+          </div>
+        ) : (
+          <div className="text-sm text-slate-300 leading-relaxed [&_strong]:text-white space-y-2">
+            {aiSummary.split('\n').filter(Boolean).map((line, i) => (
+              <p key={i} dangerouslySetInnerHTML={{ __html: line.replace(/^[-*]\s*/, '• ').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Launch CTA */}
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* Proceed CTA */}
+      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">{activeStudios.length} studio{activeStudios.length !== 1 ? 's' : ''} ready to launch</p>
-          <p className="text-xs text-slate-400 mt-0.5">Your brief is saved. Studios will use your context automatically.</p>
+          <p className="text-sm font-semibold text-white">Ready to work on this together?</p>
+          <p className="text-xs text-slate-400 mt-0.5">Your brief is saved. The AI Advisory opens pre-briefed on everything above.</p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <Button variant="secondary" size="sm" onClick={() => navigate('/skills')}>
-            Browse all
-          </Button>
-          <Button size="sm" onClick={onLaunch} disabled={launching} rightIcon={<ArrowRight className="w-4 h-4" />}>
-            {launching ? 'Generating…' : 'Generate diagnosis'}
-          </Button>
-        </div>
+        <Button size="sm" onClick={onLaunch} disabled={launching} rightIcon={<ArrowRight className="w-4 h-4" />}>
+          {launching ? 'Opening...' : 'Proceed to AI Advisory'}
+        </Button>
       </div>
       {launchError && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
@@ -742,8 +675,9 @@ function StepReview({ brief, onLaunch, launching, launchError }: { brief: Challe
 
 // ── Step metadata ──────────────────────────────────────────────────────────
 
+// Org context is carried over from the workspace + onboarding, so the brief
+// starts directly at the business situation.
 const STEPS = [
-  { id: 'org', shortLabel: 'Org', icon: Building2 },
   { id: 'situation', shortLabel: 'Situation', icon: BarChart2 },
   { id: 'challenges', shortLabel: 'Challenges', icon: AlertTriangle },
   { id: 'questions', shortLabel: 'Questions', icon: HelpCircle },
@@ -1041,10 +975,9 @@ export default function ChallengeBrief() {
           <div className="rounded-2xl border border-[#1a1e2e] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18 }}>
-                {stepIndex === 0 && <StepOrg value={brief.organization} onChange={v => updateBrief({ ...brief, organization: v })} prefilled={orgPrefilled} />}
-                {stepIndex === 1 && <StepSituation value={brief.businessSituation} onChange={v => updateBrief({ ...brief, businessSituation: v })} />}
-                {stepIndex === 2 && <StepHcChallenges value={brief.hcChallenges} onChange={v => updateBrief({ ...brief, hcChallenges: v })} />}
-                {stepIndex === 3 && (
+                {stepIndex === 0 && <StepSituation value={brief.businessSituation} onChange={v => updateBrief({ ...brief, businessSituation: v })} />}
+                {stepIndex === 1 && <StepHcChallenges value={brief.hcChallenges} onChange={v => updateBrief({ ...brief, hcChallenges: v })} />}
+                {stepIndex === 2 && (
                   <StepAdvisoryQuestions
                     questions={brief.advisoryQuestions}
                     constraints={brief.constraints}
@@ -1053,8 +986,8 @@ export default function ChallengeBrief() {
                     onConstraintsChange={v => updateBrief({ ...brief, constraints: v })}
                   />
                 )}
-                {stepIndex === 4 && <StepDesiredOutputs value={brief.desiredOutputs} onChange={v => updateBrief({ ...brief, desiredOutputs: v })} />}
-                {stepIndex === 5 && <StepReview brief={brief} onLaunch={completeBrief} launching={launching} launchError={launchError} />}
+                {stepIndex === 3 && <StepDesiredOutputs value={brief.desiredOutputs} onChange={v => updateBrief({ ...brief, desiredOutputs: v })} />}
+                {stepIndex === 4 && <StepReview brief={brief} onLaunch={completeBrief} launching={launching} launchError={launchError} />}
               </motion.div>
             </AnimatePresence>
           </div>

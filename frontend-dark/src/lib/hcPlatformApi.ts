@@ -1292,6 +1292,8 @@ export interface BriefChatResponse {
 }
 
 export const hcBriefChatAPI = {
+  summarize: (body: { brief: Record<string, unknown>; workspace_name?: string | null }) =>
+    post<{ summary: string }>(`${HC_BASE}/brief-chat/summarize`, body),
   chat: (body: {
     messages: { role: 'user' | 'assistant'; content: string }[]
     brief_state?: Record<string, unknown> | null

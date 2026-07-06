@@ -221,7 +221,7 @@ export function AssistantMarkdown({ content }: { content: string }) {
 // Real conversational chat — the primary tab
 // ---------------------------------------------------------------------------
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; id: string }
+type ChatMessage = { role: 'user' | 'assistant'; content: string; id: string; plan?: ChatPlan | null }
 type Attachment = { evidence_id: string; filename: string }
 
 const CHAT_STORAGE_KEY = 'aivora-advisor-chat-v2'
@@ -435,6 +435,41 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
   )
 }
 
+/** Claude-style plan block rendered inside the conversation. */
+function PlanCardInline({ plan }: { plan: ChatPlan }) {
+  const done = plan.steps.filter(st => st.status === 'done').length
+  return (
+    <div className="mt-3 rounded-xl border border-blue-500/25 bg-[#0c0e14] overflow-hidden">
+      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-[#1e2433] bg-blue-500/5">
+        <ListChecks className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+        <p className="text-xs font-bold text-white flex-1 truncate">{plan.title}</p>
+        <span className="text-[11px] font-bold text-blue-400 tabular-nums">{done}/{plan.steps.length}</span>
+      </div>
+      <div className="divide-y divide-[#161b28]">
+        {plan.steps.map((st, i) => (
+          <div key={i} className="flex gap-3 px-3.5 py-2.5">
+            <span className={cn(
+              'w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5 border',
+              st.status === 'done' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                : st.status === 'in_progress' ? 'bg-blue-500/15 border-blue-500/40 text-blue-400'
+                : 'bg-[#131720] border-[#1e2433] text-slate-500'
+            )}>
+              {st.status === 'done' ? <Check className="w-3 h-3" /> : i + 1}
+            </span>
+            <div className="min-w-0">
+              <p className={cn('text-xs font-semibold', st.status === 'pending' ? 'text-slate-400' : 'text-white')}>
+                {st.title}
+                {st.status === 'in_progress' && <span className="ml-2 text-[10px] font-medium text-blue-400">in progress</span>}
+              </p>
+              {st.note && <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{st.note}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize: (t: 'summary' | 'detailed') => void; finalizing: 'summary' | 'detailed' | null }) {
   const doneCount = plan.steps.filter(st => st.status === 'done').length
   return (
@@ -459,9 +494,9 @@ function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize
             <div className="flex items-center gap-2.5">
               {st.status === 'done'
                 ? <span className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0"><Check className="w-3 h-3 text-emerald-400" /></span>
-                : st.status === 'in_progress'
-                  ? <CircleDot className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                  : <Circle className="w-5 h-5 text-slate-700 flex-shrink-0" />}
+                : <span className={st.status === 'in_progress'
+                    ? 'w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/40 text-blue-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0'
+                    : 'w-5 h-5 rounded-full bg-[#131720] border border-[#1e2433] text-slate-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0'}>{i + 1}</span>}
               <span className={st.status === 'pending' ? 'text-sm font-medium text-slate-500' : 'text-sm font-medium text-white'}>{st.title}</span>
             </div>
             {st.note && <p className="text-[11px] text-slate-500 mt-1.5 pl-7">{st.note}</p>}
@@ -607,8 +642,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       }
       const res = await hcAiAdvisoryAPI.chat(payload)
       const reply = res.data.reply
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, id: `a-${Date.now()}` }])
       const nextPlan = res.data.plan ?? null
+      const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, id: `a-${Date.now()}`, plan: planChanged && nextPlan ? nextPlan : undefined }])
       setPlan(nextPlan)
       try {
         if (nextPlan) localStorage.setItem(`${PLAN_STORAGE_KEY}:${workspaceId}`, JSON.stringify(nextPlan))
@@ -710,7 +746,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                       ? 'max-w-[90%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2.5 text-xs leading-relaxed'
                       : 'max-w-[90%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2.5 text-xs'
                   }>
-                    {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
+                    {m.role === 'assistant' ? <><AssistantMarkdown content={m.content} />{m.plan && <PlanCardInline plan={m.plan} />}</> : m.content}
                   </div>
                 </div>
               ))}
@@ -824,6 +860,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   </div>
                   <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3">
                     <AssistantMarkdown content={m.content} />
+                    {m.plan && <PlanCardInline plan={m.plan} />}
                   </div>
                 </div>
               ) : (

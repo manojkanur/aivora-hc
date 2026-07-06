@@ -181,3 +181,56 @@ async def brief_chat(
         sections=normalized_sections,
         done=bool(data.get("done")) and all(v == "complete" for v in normalized_sections.values()),
     )
+
+
+class BriefSummarizeRequest(BaseModel):
+    brief: dict[str, Any]
+    workspace_name: str | None = None
+
+
+class BriefSummarizeResponse(BaseModel):
+    summary: str
+
+
+_SUMMARIZE_SYSTEM = """You are a senior HC consultant. The client just finished filling their Challenge Brief. Evaluate what they shared and write a short, warm, professional recap in markdown:
+
+- Open with one sentence acknowledging the engagement ("Here is what I understand about <org>...").
+- Then 3-5 bullets: the organization in one line, the core situation, the key challenges with their severity, and what they want out of the engagement.
+- Close with ONE sentence inviting them to proceed to the AI Advisory to start working on it together.
+
+Rules: under 150 words, bold the key terms, no headings, no advice yet, no mention of studios or diagnosis. Plain hyphens only, never em-dashes."""
+
+
+@router.post("/summarize", response_model=BriefSummarizeResponse)
+async def summarize_brief(
+    payload: BriefSummarizeRequest,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+) -> BriefSummarizeResponse:
+    """Consultant-style recap of a completed brief, shown on the review step."""
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+
+    if not settings.OPENAI_API_KEY:
+        return BriefSummarizeResponse(summary="Your brief is saved. Proceed to the AI Advisory to start working on it.")
+
+    context = json.dumps(_clean_payload(payload.brief), ensure_ascii=True)[:8000]
+    if payload.workspace_name:
+        context = f"WORKSPACE: {payload.workspace_name}\n\n{context}"
+    try:
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": _SUMMARIZE_SYSTEM},
+                {"role": "user", "content": f"COMPLETED BRIEF:\n{context}"},
+            ],
+            temperature=0.4,
+            max_tokens=400,
+        )
+        summary = _clean(resp.choices[0].message.content or "")
+    except Exception:  # noqa: BLE001 - the recap is nice-to-have, never blocking
+        summary = ""
+    if not summary:
+        summary = "Your brief is saved. Proceed to the AI Advisory to start working on it together."
+    return BriefSummarizeResponse(summary=summary)

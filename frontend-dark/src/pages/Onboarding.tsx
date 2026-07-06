@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -347,13 +347,14 @@ export default function Onboarding() {
   }, [workspaceId, setActiveWorkspace])
 
   const { isCompleted: isWsCompleted, markCompleted: markWsCompleted } = useOnboardingCompletions()
+  const finishingRef = useRef(false)
 
   // Guard: only skip if THIS workspace's onboarding is done.
   // The global isCompleted flag stays set across engagements, so we must scope
   // the skip to the workspace; otherwise creating a new workspace silently jumps
   // to the brief and the form appears auto-filled from the prior engagement.
   useEffect(() => {
-    if (editMode) return
+    if (editMode || finishingRef.current) return
     if (workspaceId) {
       if (isWsCompleted(workspaceId)) {
         navigate(`/workspaces/${workspaceId}`, { replace: true })
@@ -399,6 +400,7 @@ export default function Onboarding() {
   const advance = () => { save(draft); setStepIndex(s => Math.min(STEPS.length - 1, s + 1)) }
   const back = () => setStepIndex(s => Math.max(0, s - 1))
   const finish = () => {
+    finishingRef.current = true
     save(draft)
     markCompleted()
     if (workspaceId) markWsCompleted(workspaceId)
