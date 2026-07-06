@@ -18,6 +18,7 @@ import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
 import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
+import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI } from '../lib/api'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -1166,6 +1167,8 @@ export default function AdvisorChat() {
 
   return (
     <div className="p-5 sm:p-8 max-w-7xl mx-auto space-y-5">
+      <JourneyTimeline current="advisor" workspaceId={workspaceId} />
+
       {/* Slim profile strip */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">

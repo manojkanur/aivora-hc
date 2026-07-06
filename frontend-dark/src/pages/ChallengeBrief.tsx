@@ -16,6 +16,7 @@ import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { api, challengeBriefsAPI } from '../lib/api'
 import { useAutosave } from '../hooks/useAutosave'
 import { SaveIndicator } from '../components/ui/SaveIndicator'
+import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { recommendStudios, signalsFromBriefContent } from '../lib/briefRecommender'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -981,6 +982,8 @@ export default function ChallengeBrief() {
               </div>
             </div>
           )}
+
+          <JourneyTimeline current="brief" workspaceId={workspaceId || null} />
 
           {/* Page header */}
           <div className="flex items-start justify-between gap-4">

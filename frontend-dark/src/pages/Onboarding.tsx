@@ -12,6 +12,7 @@ import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { onboardingAPI } from '../lib/api'
 import { useAutosave } from '../hooks/useAutosave'
 import { SaveIndicator } from '../components/ui/SaveIndicator'
+import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import {
   useClientProfileStore,
   defaultProfile,
@@ -437,6 +438,8 @@ export default function Onboarding() {
               </button>
             </div>
           )}
+
+          <JourneyTimeline current="onboarding" workspaceId={workspaceId || null} />
 
           {/* Page header */}
           <div className="text-center pb-2">
