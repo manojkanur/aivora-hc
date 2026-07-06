@@ -387,19 +387,45 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
   const areaOptions: (HcChallengeArea | 'none')[] = ['none', ...selectedAreas]
   const areaLabels = { none: 'Not linked', ...HC_AREA_LABELS } as Record<HcChallengeArea | 'none', string>
 
+  // One-click starter questions, phrased from the challenges the client picked.
+  const suggestedQuestions: Array<{ text: string; area: HcChallengeArea | 'none' }> = selectedAreas.slice(0, 3).map(a => ({
+    text: `What should we do about ${(HC_AREA_LABELS[a] ?? a).toLowerCase()} in the next 12 months?`,
+    area: a,
+  }))
+  if (suggestedQuestions.length === 0) {
+    suggestedQuestions.push({ text: 'What should our HC priorities be for the next 12 months?', area: 'none' })
+  }
+  const addSuggested = (sq: { text: string; area: HcChallengeArea | 'none' }) =>
+    onQuestionsChange([...questions, { id: genId(), questionText: sq.text, audience: 'hr-leadership', urgency: 'near-term', linkedChallengeArea: sq.area, desiredOutputType: 'executive-deck' }])
+
   return (
     <div className="space-y-6">
-      <div><h2 className="text-2xl font-bold text-white">Questions, constraints & assumptions</h2><p className="text-sm text-slate-400 mt-1">Define the advisory questions this engagement must answer, plus any constraints and assumptions.</p></div>
+      <div>
+        <h2 className="text-2xl font-bold text-white">What should this engagement answer?</h2>
+        <p className="text-sm text-slate-400 mt-1">
+          These questions steer your AI consultant: they become the first things it works on, and the final report is built around answering them. This whole step is optional - skip it and the consultant will propose the questions itself.
+        </p>
+      </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Advisory questions</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Advisory questions <span className="normal-case font-medium text-slate-600">(optional but powerful)</span></p>
           <button type="button" onClick={addQuestion} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Add question
+            <Plus className="w-3.5 h-3.5" /> Add your own
           </button>
         </div>
         {questions.length === 0 && (
-          <p className="text-xs text-slate-500 text-center py-4">No questions yet. Add one to define what this engagement must answer.</p>
+          <div className="rounded-xl border border-dashed border-[#1e2433] p-4 space-y-3">
+            <p className="text-xs text-slate-500">Tap a suggestion to add it - based on the challenges you selected:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestedQuestions.map(sq => (
+                <button key={sq.text} type="button" onClick={() => addSuggested(sq)}
+                  className="rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 text-xs text-blue-300 transition-colors text-left">
+                  + {sq.text}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {questions.map((q, i) => (
           <div key={q.id} className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-3 space-y-2">

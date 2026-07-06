@@ -19,7 +19,7 @@ import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } fro
 import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
-import { workspacesAPI, challengeBriefsAPI } from '../lib/api'
+import { workspacesAPI, challengeBriefsAPI, draftsAPI } from '../lib/api'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -357,27 +357,54 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
       )}
 
       {(summary.charts ?? []).map((c, ci) => {
-        const total = c.items.reduce((a, it) => a + Math.max(0, it.value), 0) || 1
+        const total = c.items.reduce((a, it) => a + Math.max(0, it.value ?? 0), 0) || 1
+        if (c.type === 'gantt') {
+          const span = Math.max(6, ...c.items.map(it => (it.start ?? 0) + (it.duration ?? 1)))
+          return (
+            <div key={ci} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+              <h3 className="text-sm font-semibold text-white">{c.title}</h3>
+              {c.explanation && <p className="text-xs text-slate-500 mt-1 mb-4">{c.explanation}</p>}
+              <div className="space-y-2.5 mt-4">
+                {c.items.map((it, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="w-36 text-xs text-slate-300 truncate flex-shrink-0">{it.label}</span>
+                    <div className="flex-1 h-5 rounded-md bg-[#1e2433] relative overflow-hidden">
+                      <div
+                        className="absolute top-0 h-full rounded-md bg-gradient-to-r from-blue-600 to-blue-400 flex items-center px-2"
+                        style={{ left: `${((it.start ?? 0) / span) * 100}%`, width: `${Math.max(4, ((it.duration ?? 1) / span) * 100)}%` }}
+                      >
+                        <span className="text-[9px] font-bold text-white whitespace-nowrap">M{(it.start ?? 0) + 1}-M{(it.start ?? 0) + (it.duration ?? 1)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-between text-[10px] text-slate-600 pl-[9.75rem]">
+                  <span>Month 1</span><span>Month {span}</span>
+                </div>
+              </div>
+            </div>
+          )
+        }
         return (
           <div key={ci} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
             <h3 className="text-sm font-semibold text-white">{c.title}</h3>
             {c.explanation && <p className="text-xs text-slate-500 mt-1 mb-4">{c.explanation}</p>}
-            {c.type === 'donut' ? (
+            {c.type === 'donut' || c.type === 'pie' ? (
               <div className="flex items-center gap-6 flex-wrap mt-4">
                 <div className="w-32 h-32 rounded-full flex-shrink-0" style={{
                   background: `conic-gradient(${c.items.map((it, i) => {
-                    const start = c.items.slice(0, i).reduce((a, x) => a + (x.value / total) * 100, 0)
-                    return `${DONUT_COLORS[i % DONUT_COLORS.length]} ${start}% ${start + (it.value / total) * 100}%`
+                    const start = c.items.slice(0, i).reduce((a, x) => a + ((x.value ?? 0) / total) * 100, 0)
+                    return `${DONUT_COLORS[i % DONUT_COLORS.length]} ${start}% ${start + ((it.value ?? 0) / total) * 100}%`
                   }).join(', ')})`,
                 }}>
-                  <div className="w-full h-full rounded-full" style={{ background: 'radial-gradient(circle at center, #131720 0 38%, transparent 39%)' }} />
+                  {c.type === 'donut' && <div className="w-full h-full rounded-full" style={{ background: 'radial-gradient(circle at center, #131720 0 38%, transparent 39%)' }} />}
                 </div>
                 <div className="space-y-1.5">
                   {c.items.map((it, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                       <span className="text-slate-300">{it.label}</span>
-                      <span className="text-slate-500 tabular-nums">{Math.round((it.value / total) * 100)}%</span>
+                      <span className="text-slate-500 tabular-nums">{Math.round(((it.value ?? 0) / total) * 100)}%</span>
                     </div>
                   ))}
                 </div>
@@ -388,10 +415,10 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
                   <div key={i}>
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="text-slate-300">{it.label}</span>
-                      <span className="text-slate-500 tabular-nums">{it.value}</span>
+                      <span className="text-slate-500 tabular-nums">{it.value ?? 0}</span>
                     </div>
                     <div className="h-2.5 rounded-full bg-[#1e2433] overflow-hidden">
-                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, Math.max(0, it.value))}%` }} />
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, Math.max(0, it.value ?? 0))}%` }} />
                     </div>
                   </div>
                 ))}
@@ -412,6 +439,21 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
                   <p className="text-sm font-medium text-white">{t.title}</p>
                   {t.explanation && <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{t.explanation}</p>}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {summary.data_notes && summary.data_notes.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <h3 className="text-sm font-semibold text-amber-300 mb-3">Where these numbers come from</h3>
+          <div className="space-y-3">
+            {summary.data_notes.map((n, i) => (
+              <div key={i} className="text-xs leading-relaxed">
+                <p className="font-semibold text-white">{n.point}</p>
+                {n.why && <p className="text-slate-400 mt-0.5">{n.why}</p>}
+                {n.basis && <p className="text-slate-500 mt-0.5"><span className="font-semibold text-slate-400">Based on:</span> {n.basis}</p>}
               </div>
             ))}
           </div>
@@ -539,6 +581,30 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
+  const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+
+  // #7/#10: confirmed report -> Draft Inbox draft -> existing export + Canvas pipeline
+  const confirmAndPublish = async () => {
+    if (!report || savingDraft) return
+    setSavingDraft(true)
+    setError(null)
+    try {
+      const content = report.kind === 'detailed'
+        ? (report.document as unknown as Record<string, unknown>)
+        : ({ studio_id: 'ai_advisory:executive_summary', title: report.summary.title, subtitle: report.summary.subtitle ?? '', summary_report: report.summary } as Record<string, unknown>)
+      const res = await draftsAPI.create({
+        workspace_id: workspaceId,
+        content,
+        skill_name: report.kind === 'detailed' ? ((report.document as { studio_name?: string }).studio_name ?? 'Strategy') : 'Strategy',
+      })
+      setSavedDraftId(String((res.data as { id?: string })?.id ?? ''))
+    } catch {
+      setError('Could not publish the report to the Draft Inbox. Try again.')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
   const openedRef = useRef(false)
 
   // Pull the full server-side brief for this workspace (situation, severities,
@@ -588,6 +654,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         profile,
         context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
       })
+      setSavedDraftId(null)
       if (type === 'detailed' && res.data.document) {
         setReport({ kind: 'detailed', document: res.data.document as unknown as StudioOutputDocument })
       } else if (type === 'summary' && res.data.summary) {
@@ -719,11 +786,32 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           >
             <ArrowLeft className="w-4 h-4" /> Back to conversation
           </button>
-          <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
-            {report.kind === 'detailed'
-              ? `Studio deliverable${(report.document as { studio_name?: string }).studio_name ? ` · ${(report.document as { studio_name?: string }).studio_name}` : ''}`
-              : 'Executive summary'}
-          </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
+              {report.kind === 'detailed'
+                ? `Studio deliverable${(report.document as { studio_name?: string }).studio_name ? ` · ${(report.document as { studio_name?: string }).studio_name}` : ''}`
+                : 'Executive summary'}
+            </span>
+            {savedDraftId ? (
+              <div className="flex items-center gap-2">
+                <Link to={`/exports?draft=${savedDraftId}`} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                  Export (PPTX / PDF / DOCX)
+                </Link>
+                <Link to={`/canvas/${savedDraftId}`} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#1e2433] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
+                  Edit in Canvas
+                </Link>
+              </div>
+            ) : (
+              <button
+                onClick={confirmAndPublish}
+                disabled={savingDraft}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Confirm & publish to Draft Inbox
+              </button>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5 items-start">
           <div className="min-w-0">
@@ -732,7 +820,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               : <SummaryReportView summary={report.summary} />}
           </div>
           {/* Docked advisor: question the report, ask for changes and explanations */}
-          <div className="flex flex-col h-[calc(100vh-14rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
+          <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
             <div className="px-4 py-3 border-b border-[#1e2433] flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
               <p className="text-xs font-bold text-white flex-1">Ask about this report</p>
@@ -799,7 +887,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
   return (
     <div className={plan ? 'grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start' : ''}>
-    <div className="flex flex-col h-[calc(100vh-14rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
         {briefContent && <BriefingCard content={briefContent} />}
@@ -1273,7 +1361,8 @@ function WorkspacePicker() {
     workspacesAPI.list()
       .then(res => {
         if (cancelled) return
-        const list: WorkspaceSummary[] = res.data?.items ?? res.data ?? []
+        const raw: Array<WorkspaceSummary & { status?: string }> = res.data?.items ?? res.data ?? []
+        const list = raw.filter(w => !w.status || w.status === 'active')
         if (list.length === 1) {
           navigate(`/advisor/${list[0].id}`, { replace: true })
         } else {
@@ -1354,6 +1443,14 @@ export default function AdvisorChat() {
   const [editingProfile, setEditingProfile] = useState(false)
   const [workspaceName, setWorkspaceName] = useState<string | null>(null)
 
+  const hasBrief = useBriefStore(st => st.hasBrief)
+  // The advisory only opens after the brief is completed and summarised.
+  useEffect(() => {
+    if (workspaceId && !hasBrief(workspaceId)) {
+      navigate(`/challenge-brief?workspaceId=${workspaceId}`, { replace: true })
+    }
+  }, [workspaceId, hasBrief, navigate])
+
   useEffect(() => {
     if (!workspaceId) return
     setProfile(loadStoredProfile(workspaceId))
@@ -1391,7 +1488,7 @@ export default function AdvisorChat() {
   const orgLine = [workspaceName, profile.organization_name, profile.industry].filter(Boolean).join(' · ')
 
   return (
-    <div className="p-5 sm:p-8 max-w-7xl mx-auto space-y-5">
+    <div className="p-4 sm:p-5 max-w-7xl mx-auto space-y-4">
       <JourneyTimeline current="advisor" workspaceId={workspaceId} />
 
       {/* Slim profile strip */}

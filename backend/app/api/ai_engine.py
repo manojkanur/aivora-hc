@@ -5,8 +5,10 @@ import json
 import uuid
 from typing import Any, AsyncGenerator
 
+from datetime import datetime, timezone
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -227,6 +229,67 @@ async def stream_job_progress(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class DraftCreateRequest(BaseModel):
+    workspace_id: uuid.UUID
+    content: dict[str, Any]
+    skill_name: str | None = None  # matched fuzzily against skill_registry
+
+
+@router.post("/drafts", response_model=AiDraftResponse, status_code=status.HTTP_201_CREATED)
+async def create_draft(
+    payload: DraftCreateRequest,
+    current_user: CurrentUser,
+    db: DBDep,
+) -> AiDraftResponse:
+    """Create a draft directly (e.g. an AI Advisory report saved for export)."""
+    ws = (
+        await db.execute(
+            select(Workspace).where(
+                Workspace.id == payload.workspace_id,
+                Workspace.tenant_id == current_user.tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if ws is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+    skill = None
+    if payload.skill_name:
+        skill = (
+            await db.execute(
+                select(SkillRegistry).where(SkillRegistry.name.ilike(f"%{payload.skill_name}%")).limit(1)
+            )
+        ).scalar_one_or_none()
+    if skill is None:
+        skill = (await db.execute(select(SkillRegistry).limit(1))).scalar_one_or_none()
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No studios registered")
+
+    job = AiJob(
+        workspace_id=ws.id,
+        skill_id=skill.id,
+        user_id=current_user.id,
+        model="gpt-4o-mini",
+        context={"source": "ai_advisory_report"},
+        status=AiJobStatus.completed,
+        completed_at=datetime.now(timezone.utc),
+    )
+    db.add(job)
+    await db.flush()
+    draft = AiDraft(
+        ai_job_id=job.id,
+        workspace_id=ws.id,
+        skill_id=skill.id,
+        content=payload.content,
+        approval_status=DraftApprovalStatus.pending,
+        version=1,
+    )
+    db.add(draft)
+    await db.flush()
+    await db.refresh(draft)
+    return _draft_to_response(draft)
 
 
 @router.get("/drafts", response_model=list[AiDraftResponse])

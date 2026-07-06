@@ -1224,8 +1224,9 @@ export interface SummaryReport {
   subtitle?: string
   overview: string
   kpis?: Array<{ label: string; value: string; unit?: string; meaning?: string }>
-  charts?: Array<{ type: 'bar' | 'donut'; title: string; explanation?: string; items: Array<{ label: string; value: number }> }>
+  charts?: Array<{ type: 'bar' | 'donut' | 'pie' | 'gantt'; title: string; explanation?: string; items: Array<{ label: string; value?: number; start?: number; duration?: number }> }>
   takeaways?: Array<{ title: string; explanation?: string }>
+  data_notes?: Array<{ point: string; why?: string; basis?: string }>
   next_steps?: string[]
 }
 

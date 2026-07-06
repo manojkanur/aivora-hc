@@ -304,17 +304,12 @@ function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputP
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">Evidence & desired outputs</h2>
-        <p className="text-sm text-slate-400 mt-1">Tag artefacts you can share, then set the outputs and audience the journey should produce.</p>
+        <h2 className="text-2xl font-bold text-white">Available evidence</h2>
+        <p className="text-sm text-slate-400 mt-1">Tag the artefacts you can share; the advisory grounds its analysis in them.</p>
       </div>
-      <ChipGroup label="Available evidence" description="Pick what you have access to; this helps us recommend journeys that fit your data." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
+      <ChipGroup label="Available evidence" description="Pick what you have access to; this shapes how confident the analysis can be." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
       <Textarea label="Notes about evidence (optional)" rows={3} placeholder="e.g. Engagement survey is 11 months old; comp bands cover GCC only." value={evidence.notes ?? ''} onChange={e => onChangeEvidence({ ...evidence, notes: e.target.value || undefined })} />
-      <ChipGroup label="Preferred output formats" description="Pick one or more deliverable formats." options={Object.keys(OUTPUT_LABELS) as PreferredOutputType[]} labels={OUTPUT_LABELS} value={outputPrefs.preferredOutputType} onChange={next => patchOut('preferredOutputType', next)} />
-      <ChipGroup label="Primary audience" description="Who will read or use the outputs?" options={Object.keys(AUDIENCE_LABELS) as ClientAudience[]} labels={AUDIENCE_LABELS} value={outputPrefs.audience} onChange={next => patchOut('audience', next)} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <SelectField label="Confidentiality" options={Object.keys(CONFIDENTIALITY_LABELS) as ConfidentialityLevel[]} labels={CONFIDENTIALITY_LABELS} value={outputPrefs.confidentiality} onChange={v => patchOut('confidentiality', v)} />
-        <SelectField label="Urgency" options={Object.keys(URGENCY_LABELS) as UrgencyBand[]} labels={URGENCY_LABELS} value={outputPrefs.urgency} onChange={v => patchOut('urgency', v)} />
-      </div>
+      <p className="text-xs text-slate-600">Output formats and audience are captured in the Challenge Brief, so you will not be asked twice.</p>
     </div>
   )
 }
