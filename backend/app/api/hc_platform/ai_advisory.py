@@ -281,6 +281,7 @@ class ChatResponse(BaseModel):
     reply: str
     followup_questions: list[str] = []
     plan: ChatPlan | None = None
+    finalize: str | None = None  # 'summary' | 'detailed' once the user confirms
 
 
 _ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant embedded inside the Aivora HC platform, advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
@@ -345,8 +346,13 @@ Co-work plans:
 - If the user changes direction, update the plan (add, remove, rename steps) rather than abandoning it silently. When all steps are done, say so and summarise the outcome.
 - Simple questions do not need a plan. Never invent a plan for a one-off question.
 
+Closing the session:
+- When the plan is essentially complete (all or nearly all steps done) or the user signals they are satisfied, ask them to confirm: are they happy with the plan, and should you prepare the deliverable as a SUMMARY report (short, plain language with simple charts, for a general audience) or a DETAILED report (full consulting deliverable)? Offer both in one short question.
+- When the user CONFIRMS and their choice is clear (words like "yes, detailed", "summary please", "go ahead with the full report"), set the "finalize" field to "summary" or "detailed". The platform then generates and opens the report automatically - tell them it is being prepared. Do not describe the report contents in the reply; the report itself follows.
+- Never set finalize before an explicit user confirmation. If they confirm but the format is unclear, ask which format - do not guess.
+
 OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
-{"reply": "<your full markdown reply>", "plan": {"title": "...", "steps": [{"title": "...", "status": "pending|in_progress|done", "note": "..."}]} or null}
+{"reply": "<your full markdown reply>", "plan": {"title": "...", "steps": [{"title": "...", "status": "pending|in_progress|done", "note": "..."}]} or null, "finalize": null or "summary" or "detailed"}
 Send the FULL updated plan every turn while one is active; send null when no plan is running.
 """
 
@@ -851,6 +857,14 @@ async def advisor_chat(
         # Model ignored the JSON contract - treat the whole payload as the reply.
         reply = _clean(raw)
 
+    finalize = None
+    try:
+        raw_finalize = data.get("finalize")
+        if raw_finalize in ("summary", "detailed"):
+            finalize = raw_finalize
+    except (NameError, AttributeError):
+        pass
+
     if not reply:
         reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
-    return ChatResponse(reply=reply, followup_questions=[], plan=plan)
+    return ChatResponse(reply=reply, followup_questions=[], plan=plan, finalize=finalize)

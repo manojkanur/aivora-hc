@@ -437,15 +437,16 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
 
-  const finalizeSession = async (type: 'summary' | 'detailed') => {
-    if (finalizing || messages.length === 0) return
+  const finalizeSession = async (type: 'summary' | 'detailed', history?: ChatMessage[], planOverride?: ChatPlan | null) => {
+    const msgs = history ?? messages
+    if (finalizing || msgs.length === 0) return
     setError(null)
     setFinalizing(type)
     try {
       const res = await hcAiAdvisoryAPI.finalizeReport({
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
+        messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
-        plan_state: plan,
+        plan_state: planOverride !== undefined ? planOverride : plan,
         brief: brief ? (brief as unknown as Record<string, unknown>) : null,
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
         profile,
@@ -511,6 +512,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         if (nextPlan) localStorage.setItem(`${PLAN_STORAGE_KEY}:${workspaceId}`, JSON.stringify(nextPlan))
         else localStorage.removeItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
       } catch { /* ignore */ }
+      // The user confirmed in the conversation - the deliverable follows automatically.
+      const confirmed = res.data.finalize
+      if (confirmed === 'summary' || confirmed === 'detailed') {
+        void finalizeSession(confirmed, [...next, { role: 'assistant', content: reply, id: `a-${Date.now()}` }], nextPlan)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'The advisor is unavailable right now.'
       setError(msg)
