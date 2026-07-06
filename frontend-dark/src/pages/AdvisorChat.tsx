@@ -603,6 +603,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
         plan_state: plan,
+        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
       }
       const res = await hcAiAdvisoryAPI.chat(payload)
       const reply = res.data.reply
@@ -688,9 +689,74 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               : 'Executive summary'}
           </span>
         </div>
-        {report.kind === 'detailed'
-          ? <StudioOutput document={report.document} />
-          : <SummaryReportView summary={report.summary} />}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5 items-start">
+          <div className="min-w-0">
+            {report.kind === 'detailed'
+              ? <StudioOutput document={report.document} />
+              : <SummaryReportView summary={report.summary} />}
+          </div>
+          {/* Docked advisor: question the report, ask for changes and explanations */}
+          <div className="flex flex-col h-[calc(100vh-14rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
+            <div className="px-4 py-3 border-b border-[#1e2433] flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+              <p className="text-xs font-bold text-white flex-1">Ask about this report</p>
+              {finalizing && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
+            </div>
+            <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3">
+              {messages.slice(-12).map(m => (
+                <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+                  <div className={
+                    m.role === 'user'
+                      ? 'max-w-[90%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2.5 text-xs leading-relaxed'
+                      : 'max-w-[90%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2.5 text-xs'
+                  }>
+                    {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
+                  </div>
+                </div>
+              ))}
+              {sending && (
+                <div className="flex justify-start">
+                  <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-3.5 py-2.5 flex items-center gap-1.5">
+                    {[0, 1, 2].map(i => (
+                      <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {error && <p className="text-[11px] text-red-400 text-center">{error}</p>}
+            </div>
+            <div className="border-t border-[#1e2433] p-3">
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {['Explain the roadmap', 'Why these numbers?', 'Make it more concise'].map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={sending}
+                    className="rounded-full border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1 text-[11px] text-slate-400 hover:text-white transition-colors disabled:opacity-50">
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  rows={1}
+                  disabled={sending}
+                  placeholder="Question the report or ask for changes"
+                  className="flex-1 resize-none rounded-xl bg-[#131720] border border-[#1e2433] text-xs text-white placeholder:text-slate-600 px-3 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors max-h-28"
+                />
+                <button
+                  onClick={() => sendMessage(draft)}
+                  disabled={!draft.trim() || sending}
+                  className="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center justify-center transition-colors flex-shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5 text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

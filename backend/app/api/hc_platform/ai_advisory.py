@@ -264,6 +264,7 @@ class ChatRequest(BaseModel):
     evidence_ids: list[str] = []
     client_profile: dict[str, Any] | None = None  # onboarding profile for the workspace
     plan_state: dict[str, Any] | None = None      # current co-work plan, if one is running
+    report_state: dict[str, Any] | None = None    # the report the client is currently viewing
 
 
 class PlanStep(BaseModel):
@@ -551,6 +552,22 @@ async def finalize_report(
     return FinalizeReportResponse(report_type="summary", summary=data)
 
 
+def _report_state_block(report_state: dict[str, Any] | None) -> str:
+    if not report_state:
+        return ""
+    try:
+        import json as _json
+        return (
+            "CURRENT REPORT ON SCREEN (the client is viewing this deliverable right now. "
+            "Answer questions about it, explain any figure or section in plain terms, and when they "
+            "request changes, acknowledge briefly and set finalize to the same report type so the "
+            "platform regenerates it with their changes reflected):\n"
+            + _json.dumps(report_state, ensure_ascii=True)[:8000]
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _plan_state_block(plan_state: dict[str, Any] | None) -> str:
     if not plan_state:
         return ""
@@ -823,8 +840,9 @@ async def advisor_chat(
     onboarding_ctx = _onboarding_block(payload.client_profile)
     kb_ctx = await _kb_block(db)
     plan_ctx = _plan_state_block(payload.plan_state)
+    report_ctx = _report_state_block(payload.report_state)
     system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
-    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx):
+    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx):
         if part:
             system_parts.append(part)
     system = "\n\n".join(system_parts)
