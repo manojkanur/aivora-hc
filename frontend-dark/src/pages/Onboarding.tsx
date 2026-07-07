@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Target, Users, FileSearch,
+  Target, Users, FileSearch, Shuffle,
   ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
@@ -197,6 +197,32 @@ function ChipGroup<T extends string>({
   )
 }
 
+function SingleChipRow({ label, options, value, onChange }: {
+  label: string
+  options: Record<string, string>
+  value?: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(options).map(([key, lab]) => (
+          <button key={key} type="button" onClick={() => onChange(key)}
+            className={cn(
+              'px-3.5 py-2 rounded-xl text-sm font-medium border transition-all',
+              value === key
+                ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+                : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]'
+            )}>
+            {lab}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SelectField<T extends string>({
   label, options, labels, value, onChange, placeholder,
 }: {
@@ -285,6 +311,17 @@ function StepWorkforce({ value, onChange }: {
   const patchNat = <K extends keyof ClientProfile['workforceContext']['nationalizationContext']>(k: K, v: ClientProfile['workforceContext']['nationalizationContext'][K]) =>
     onChange({ ...value, nationalizationContext: { ...value.nationalizationContext, [k]: v } })
   const isNatApplicable = value.nationalizationContext.applicable
+  const patchMobility = (delta: Partial<NonNullable<ClientProfile['workforceContext']['mobilityContext']>>) =>
+    onChange({
+      ...value,
+      mobilityContext: {
+        mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [],
+        groupsInScope: value.mobilityContext?.groupsInScope ?? [],
+        releaseRules: value.mobilityContext?.releaseRules,
+        primaryOutcome: value.mobilityContext?.primaryOutcome,
+        ...delta,
+      },
+    })
 
   return (
     <div className="space-y-6">
@@ -298,24 +335,35 @@ function StepWorkforce({ value, onChange }: {
       <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} />
 
       {/* Talent mobility context - grounds the Talent Mobility Studio */}
-      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Talent mobility today</p>
-          <p className="text-sm text-slate-500 mt-1">How talent moves in the organization right now - this grounds the Talent Mobility Studio in your reality instead of assumptions.</p>
+      <div className="relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-600/10 via-[#0a0c12] to-[#0a0c12] p-5 space-y-4">
+        <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-blue-600/10 blur-2xl pointer-events-none" />
+        <div className="relative flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+            <Shuffle className="w-5 h-5 text-blue-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-bold text-white">Talent mobility today</p>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-full px-2 py-0.5">
+                Powers the Talent Mobility Studio
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Tap what matches how talent moves right now - your mobility reports build on this instead of assumptions.</p>
+          </div>
         </div>
-        <ChipGroup label="Mobility used today" options={Object.keys(MOBILITY_TYPE_LABELS)} labels={MOBILITY_TYPE_LABELS}
-          value={value.mobilityContext?.mobilityTypesUsed ?? []}
-          onChange={next => patch('mobilityContext', { mobilityTypesUsed: next, groupsInScope: value.mobilityContext?.groupsInScope ?? [], releaseRules: value.mobilityContext?.releaseRules, primaryOutcome: value.mobilityContext?.primaryOutcome })} />
-        <ChipGroup label="Employee groups in scope" options={Object.keys(MOBILITY_GROUP_LABELS)} labels={MOBILITY_GROUP_LABELS}
-          value={value.mobilityContext?.groupsInScope ?? []}
-          onChange={next => patch('mobilityContext', { mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [], groupsInScope: next, releaseRules: value.mobilityContext?.releaseRules, primaryOutcome: value.mobilityContext?.primaryOutcome })} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <SelectField label="Manager release & approval rules" options={Object.keys(MOBILITY_RELEASE_LABELS)} labels={MOBILITY_RELEASE_LABELS}
-            value={value.mobilityContext?.releaseRules ?? ''}
-            onChange={v => patch('mobilityContext', { mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [], groupsInScope: value.mobilityContext?.groupsInScope ?? [], releaseRules: v, primaryOutcome: value.mobilityContext?.primaryOutcome })} />
-          <SelectField label="Primary outcome sought" options={Object.keys(MOBILITY_OUTCOME_LABELS)} labels={MOBILITY_OUTCOME_LABELS}
-            value={value.mobilityContext?.primaryOutcome ?? ''}
-            onChange={v => patch('mobilityContext', { mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [], groupsInScope: value.mobilityContext?.groupsInScope ?? [], releaseRules: value.mobilityContext?.releaseRules, primaryOutcome: v })} />
+        <div className="relative space-y-4">
+          <ChipGroup label="Mobility used today" options={Object.keys(MOBILITY_TYPE_LABELS)} labels={MOBILITY_TYPE_LABELS}
+            value={value.mobilityContext?.mobilityTypesUsed ?? []}
+            onChange={next => patchMobility({ mobilityTypesUsed: next })} />
+          <ChipGroup label="Employee groups in scope" options={Object.keys(MOBILITY_GROUP_LABELS)} labels={MOBILITY_GROUP_LABELS}
+            value={value.mobilityContext?.groupsInScope ?? []}
+            onChange={next => patchMobility({ groupsInScope: next })} />
+          <SingleChipRow label="Manager release & approval rules" options={MOBILITY_RELEASE_LABELS}
+            value={value.mobilityContext?.releaseRules}
+            onChange={v => patchMobility({ releaseRules: v })} />
+          <SingleChipRow label="Primary outcome sought" options={MOBILITY_OUTCOME_LABELS}
+            value={value.mobilityContext?.primaryOutcome}
+            onChange={v => patchMobility({ primaryOutcome: v })} />
         </div>
       </div>
       <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
