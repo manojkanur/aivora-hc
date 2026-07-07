@@ -411,6 +411,7 @@ class FinalizeReportRequest(BaseModel):
     messages: list[ChatMessage]
     report_type: str  # 'detailed' | 'summary'
     studio: str | None = None  # builder slug; spec-backed studios use their master instruction
+    report_state: dict[str, Any] | None = None  # existing report being revised, if any
     plan_state: dict[str, Any] | None = None
     brief: dict[str, Any] | None = None
     client_profile: dict[str, Any] | None = None
@@ -506,6 +507,14 @@ async def finalize_report(
     # Spec-backed studios: the client-authored master instruction is the engine.
     from app.services.hc_platform.spec_studio import generate_spec_report, load_spec
 
+    revise_block = ""
+    if payload.report_state:
+        import json as _json
+        revise_block = (
+            "CURRENT REPORT TO REVISE (apply the changes requested in the transcript; keep everything "
+            "else consistent with this version):\n" + _json.dumps(payload.report_state, ensure_ascii=True)[:12000]
+        )
+
     if payload.report_type == "detailed" and load_spec(payload.studio):
         try:
             document = await generate_spec_report(
@@ -516,6 +525,7 @@ async def finalize_report(
                     _profile_block(payload.profile),
                     _onboarding_block(payload.client_profile),
                     _plan_state_block(payload.plan_state),
+                    revise_block,
                 ],
             )
         except Exception as exc:  # noqa: BLE001
@@ -547,6 +557,7 @@ async def finalize_report(
         _profile_block(payload.profile),
         _onboarding_block(payload.client_profile),
         _plan_state_block(payload.plan_state),
+        revise_block,
     ):
         if block:
             parts.append(block)

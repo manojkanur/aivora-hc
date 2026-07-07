@@ -687,12 +687,51 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [viewMode, setViewMode] = useState<'chat' | 'report'>('chat')
   const [pendingApproval, setPendingApproval] = useState<{ type: 'summary' | 'detailed'; studio: string | null; history: ChatMessage[]; plan: ChatPlan | null } | null>(null)
 
+  // Chat-based editing after approval runs as a FRESH session, separate from
+  // the main conversation.
+  const [editMessages, setEditMessages] = useState<ChatMessage[]>([])
+  const [editDraft, setEditDraft] = useState('')
+  const [editSending, setEditSending] = useState(false)
+
   const approveGeneration = () => {
     if (!pendingApproval) return
     const p = pendingApproval
     setPendingApproval(null)
+    setEditMessages([])
     setViewMode('report')
     void finalizeSession(p.type, p.history, p.plan, p.studio)
+  }
+
+  const sendEditMessage = async (content: string) => {
+    const clean = content.trim()
+    if (!clean || editSending || finalizing) return
+    setError(null)
+    const next = [...editMessages, { role: 'user' as const, content: clean, id: `eu-${Date.now()}` }]
+    setEditMessages(next)
+    setEditDraft('')
+    setEditSending(true)
+    try {
+      const res = await hcAiAdvisoryAPI.chat({
+        messages: next.map(m => ({ role: m.role, content: m.content })),
+        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
+        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+        profile,
+        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
+        preferences: prefs,
+      })
+      const withReply = [...next, { role: 'assistant' as const, content: res.data.reply, id: `ea-${Date.now()}` }]
+      setEditMessages(withReply)
+      const confirmed = res.data.finalize
+      if (confirmed === 'summary' || confirmed === 'detailed') {
+        // Editing an open report - regenerate with the revision transcript.
+        void finalizeSession(confirmed, withReply, plan, res.data.studio ?? null)
+      }
+    } catch {
+      setError('The advisor is unavailable right now. Try again.')
+    } finally {
+      setEditSending(false)
+    }
   }
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
@@ -805,6 +844,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         studio: studioSlug ?? null,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
+        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
         plan_state: planOverride !== undefined ? planOverride : plan,
         brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
@@ -944,73 +984,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     textareaRef.current?.focus()
   }
 
-  // ── Report workspace: full-screen section with edit chat left, preview right ──
+  // ── Report workspace: full-screen canvas + fresh chat-editing session ──
   if (viewMode === 'report' && (report || finalizing)) {
     return (
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)] gap-5 items-start">
-        {/* Edit dock */}
-        <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
-          <div className="px-4 py-3 border-b border-[#1e2433] bg-[#0f1117] flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0" />
-            <p className="text-xs font-bold text-white flex-1">Refine this report</p>
-            <button onClick={() => setViewMode('chat')} className="text-[11px] text-slate-500 hover:text-blue-400 transition-colors">
-              Back to chat
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3">
-            {messages.slice(-10).map(m => (
-              <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                <div className={
-                  m.role === 'user'
-                    ? 'max-w-[90%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2.5 text-xs leading-relaxed'
-                    : 'max-w-[90%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2.5 text-xs'
-                }>
-                  {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
-                </div>
-              </div>
-            ))}
-            {(sending || finalizing) && (
-              <div className="flex justify-start">
-                <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-3.5 py-2.5 flex items-center gap-2">
-                  {[0, 1, 2].map(i => (
-                    <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }} />
-                  ))}
-                  {finalizing && <span className="text-[11px] text-slate-500">building the report...</span>}
-                </div>
-              </div>
-            )}
-            {error && <p className="text-[11px] text-red-400 text-center">{error}</p>}
-          </div>
-          <div className="border-t border-[#1e2433] p-3">
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {['Add an infographic section', 'Simplify the language', 'Add industry benchmarks'].map(q => (
-                <button key={q} onClick={() => sendMessage(q)} disabled={sending || !!finalizing}
-                  className="rounded-full border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1 text-[11px] text-slate-400 hover:text-white transition-colors disabled:opacity-50">
-                  {q}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-end gap-2">
-              <textarea
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                onKeyDown={onKeyDown}
-                rows={1}
-                disabled={sending || !!finalizing}
-                placeholder="Ask for changes or explanations"
-                className="flex-1 resize-none rounded-xl bg-[#131720] border border-[#1e2433] text-xs text-white placeholder:text-slate-600 px-3 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors max-h-28"
-              />
-              <button onClick={() => sendMessage(draft)} disabled={!draft.trim() || sending || !!finalizing}
-                className="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center justify-center transition-colors flex-shrink-0">
-                <Send className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Report canvas */}
+      <div className="space-y-4">
+        {/* Report canvas - full width */}
         <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
           <div className="sticky top-0 z-10 flex items-center gap-3 px-5 py-3.5 border-b border-[#1e2433] bg-[#0f1117]/95 backdrop-blur flex-wrap">
             <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
@@ -1047,8 +1025,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 Approve output - unlock downloads
               </button>
             ))}
+            <button onClick={() => setViewMode('chat')} className="text-[11px] text-slate-500 hover:text-blue-400 transition-colors flex-shrink-0">
+              Back to chat
+            </button>
           </div>
-          <div className="p-5 sm:p-8 max-h-[calc(100vh-15.5rem)] overflow-y-auto">
+          <div className="p-5 sm:p-8 max-h-[calc(100vh-24rem)] overflow-y-auto">
             {report ? (
               <div className="max-w-4xl mx-auto">
                 {report.kind === 'detailed'
@@ -1061,6 +1042,68 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 <p className="text-sm text-slate-500">Building the {finalizing === 'summary' ? 'executive summary' : 'studio report'} from your session...</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Fresh chat-editing session under the report */}
+        <div className="rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+          {editMessages.length > 0 && (
+            <div className="max-h-56 overflow-y-auto px-4 py-3 space-y-2.5 border-b border-[#161b28]">
+              {editMessages.map(m => (
+                <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+                  <div className={
+                    m.role === 'user'
+                      ? 'max-w-[80%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2 text-xs leading-relaxed'
+                      : 'max-w-[85%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2 text-xs'
+                  }>
+                    {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
+                  </div>
+                </div>
+              ))}
+              {(editSending || finalizing) && (
+                <div className="flex justify-start">
+                  <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-3.5 py-2 flex items-center gap-2">
+                    {[0, 1, 2].map(i => (
+                      <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }} />
+                    ))}
+                    {finalizing && <span className="text-[11px] text-slate-500">updating the report...</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="p-3">
+            {error && <p className="text-[11px] text-red-400 mb-2">{error}</p>}
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {['Add an infographic section', 'Simplify the language', 'Add industry benchmarks'].map(q => (
+                <button key={q} onClick={() => sendEditMessage(q)} disabled={editSending || !!finalizing || !report}
+                  className="rounded-full border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1 text-[11px] text-slate-400 hover:text-white transition-colors disabled:opacity-50">
+                  {q}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-end gap-2 rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-1.5">
+              <textarea
+                value={editDraft}
+                onChange={e => setEditDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEditMessage(editDraft) } }}
+                rows={1}
+                disabled={editSending || !!finalizing || !report}
+                autoFocus
+                placeholder="Refine this report - ask for changes, infographics or explanations"
+                className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center"
+              />
+              <button onClick={() => sendEditMessage(editDraft)} disabled={!editDraft.trim() || editSending || !!finalizing || !report}
+                className={
+                  editDraft.trim() && !editSending && !finalizing
+                    ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-colors'
+                    : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'
+                }>
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
         {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}

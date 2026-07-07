@@ -1270,13 +1270,14 @@ export const hcAiAdvisoryAPI = {
     messages: { role: 'user' | 'assistant'; content: string }[]
     report_type: 'detailed' | 'summary'
     studio?: string | null
+    report_state?: Record<string, unknown> | null
     plan_state?: ChatPlan | null
     brief?: Record<string, unknown> | null
     client_profile?: Record<string, unknown> | null
     profile?: AdvisoryProfile | null
     context?: { workspace_id?: string; workspace_name?: string } | null
   }) => post<{ report_type: string; document?: Record<string, unknown> | null; summary?: SummaryReport | null }>(
-    `${HC_BASE}/ai-advisory/finalize-report`, body,
+    `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 180000 },
   ),
 }
 
