@@ -120,6 +120,8 @@ export interface ClientProfile {
     foundationsInPlace?: string[]
     notes?: string
   }
+  /** Studio categories the client flagged as the immediate challenge (strategy | talent | learning | advisory | commercial). */
+  immediateChallenges?: string[]
   completedAt?: string
   lastUpdatedAt: string
 }

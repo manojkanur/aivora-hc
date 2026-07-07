@@ -103,27 +103,6 @@ const RATE_BAND_LABELS: Record<RateBand, string> = {
   '50-75': '50-75%', '75-100': '75-100%', unknown: 'Unknown',
 }
 
-const MOBILITY_TYPE_LABELS: Record<string, string> = {
-  'ad-hoc-promotions': 'Ad hoc promotions', 'lateral-transfers': 'Lateral transfers',
-  'cross-functional': 'Cross-functional moves', rotations: 'Job rotations',
-  secondments: 'Secondments / attachments', 'project-assignments': 'Project assignments',
-  'none-informal': 'None / informal only',
-}
-const MOBILITY_GROUP_LABELS: Record<string, string> = {
-  'all-employees': 'All employees', corporate: 'Corporate / office staff',
-  frontline: 'Frontline / operations', leadership: 'Leadership levels',
-  'critical-roles': 'Critical roles only', graduates: 'Graduates / early career',
-}
-const MOBILITY_RELEASE_LABELS: Record<string, string> = {
-  none: 'No rules - manager discretion', informal: 'Informal / inconsistent',
-  defined: 'Defined but not enforced', formal: 'Formal and enforced',
-}
-const MOBILITY_OUTCOME_LABELS: Record<string, string> = {
-  retention: 'Retention of key talent', succession: 'Succession readiness',
-  agility: 'Workforce agility / redeployment', development: 'Employee development & growth',
-  cost: 'Reduce external hiring cost',
-}
-
 const FOUNDATION_LABELS: Record<string, string> = {
   'career-paths': 'Career paths', 'job-families': 'Job families',
   'skills-profiles': 'Skills profiles', 'mobility-policy': 'Internal mobility policy',
@@ -190,32 +169,6 @@ function ChipGroup<T extends string>({
                 : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]'
             )}>
             {labels[opt]}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function SingleChipRow({ label, options, value, onChange }: {
-  label: string
-  options: Record<string, string>
-  value?: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(options).map(([key, lab]) => (
-          <button key={key} type="button" onClick={() => onChange(key)}
-            className={cn(
-              'px-3.5 py-2 rounded-xl text-sm font-medium border transition-all',
-              value === key
-                ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
-                : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]'
-            )}>
-            {lab}
           </button>
         ))}
       </div>
@@ -311,17 +264,6 @@ function StepWorkforce({ value, onChange }: {
   const patchNat = <K extends keyof ClientProfile['workforceContext']['nationalizationContext']>(k: K, v: ClientProfile['workforceContext']['nationalizationContext'][K]) =>
     onChange({ ...value, nationalizationContext: { ...value.nationalizationContext, [k]: v } })
   const isNatApplicable = value.nationalizationContext.applicable
-  const patchMobility = (delta: Partial<NonNullable<ClientProfile['workforceContext']['mobilityContext']>>) =>
-    onChange({
-      ...value,
-      mobilityContext: {
-        mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [],
-        groupsInScope: value.mobilityContext?.groupsInScope ?? [],
-        releaseRules: value.mobilityContext?.releaseRules,
-        primaryOutcome: value.mobilityContext?.primaryOutcome,
-        ...delta,
-      },
-    })
 
   return (
     <div className="space-y-6">
@@ -334,38 +276,6 @@ function StepWorkforce({ value, onChange }: {
       <ChipGroup label="Leadership challenges" options={Object.keys(LEADERSHIP_CHALLENGE_LABELS) as LeadershipChallenge[]} labels={LEADERSHIP_CHALLENGE_LABELS} value={value.leadershipChallenges} onChange={next => patch('leadershipChallenges', next)} />
       <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} />
 
-      {/* Talent mobility context - grounds the Talent Mobility Studio */}
-      <div className="relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-600/10 via-[#0a0c12] to-[#0a0c12] p-5 space-y-4">
-        <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-blue-600/10 blur-2xl pointer-events-none" />
-        <div className="relative flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-            <Shuffle className="w-5 h-5 text-blue-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-bold text-white">Talent mobility today</p>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-full px-2 py-0.5">
-                Powers the Talent Mobility Studio
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Tap what matches how talent moves right now - your mobility reports build on this instead of assumptions.</p>
-          </div>
-        </div>
-        <div className="relative space-y-4">
-          <ChipGroup label="Mobility used today" options={Object.keys(MOBILITY_TYPE_LABELS)} labels={MOBILITY_TYPE_LABELS}
-            value={value.mobilityContext?.mobilityTypesUsed ?? []}
-            onChange={next => patchMobility({ mobilityTypesUsed: next })} />
-          <ChipGroup label="Employee groups in scope" options={Object.keys(MOBILITY_GROUP_LABELS)} labels={MOBILITY_GROUP_LABELS}
-            value={value.mobilityContext?.groupsInScope ?? []}
-            onChange={next => patchMobility({ groupsInScope: next })} />
-          <SingleChipRow label="Manager release & approval rules" options={MOBILITY_RELEASE_LABELS}
-            value={value.mobilityContext?.releaseRules}
-            onChange={v => patchMobility({ releaseRules: v })} />
-          <SingleChipRow label="Primary outcome sought" options={MOBILITY_OUTCOME_LABELS}
-            value={value.mobilityContext?.primaryOutcome}
-            onChange={v => patchMobility({ primaryOutcome: v })} />
-        </div>
-      </div>
       <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -413,10 +323,67 @@ function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputP
   )
 }
 
+// ── Step 2: Immediate challenge (studio categories) ───────────────────────
+
+const CHALLENGE_CATEGORIES: Array<{ key: string; label: string; blurb: string; dot: string; card: string }> = [
+  { key: 'strategy', label: 'Strategy & Transformation',
+    blurb: 'Aligning HC strategy, operating model and transformation with the business direction.',
+    dot: 'bg-violet-400', card: 'border-violet-500/30 bg-violet-500/5' },
+  { key: 'talent', label: 'Talent & People',
+    blurb: 'Mobility, succession, high-potentials, acquisition and keeping your critical people.',
+    dot: 'bg-blue-400', card: 'border-blue-500/30 bg-blue-500/5' },
+  { key: 'learning', label: 'Learning',
+    blurb: 'Skills, capability building and the learning pathways that close your gaps.',
+    dot: 'bg-emerald-400', card: 'border-emerald-500/30 bg-emerald-500/5' },
+  { key: 'advisory', label: 'Advisory',
+    blurb: 'Diagnostics, maturity assessments and expert guidance on where to act first.',
+    dot: 'bg-amber-400', card: 'border-amber-500/30 bg-amber-500/5' },
+  { key: 'commercial', label: 'Commercial',
+    blurb: 'Workforce cost, productivity, rewards and the business case behind people decisions.',
+    dot: 'bg-rose-400', card: 'border-rose-500/30 bg-rose-500/5' },
+]
+
+function StepImmediateChallenge({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (key: string) =>
+    onChange(value.includes(key) ? value.filter(k => k !== key) : [...value, key])
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Where is the immediate challenge?</h2>
+        <p className="text-sm text-slate-400 mt-1">Pick the area(s) that need attention first - this steers which studios and advice come to the front.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {CHALLENGE_CATEGORIES.map(c => {
+          const active = value.includes(c.key)
+          return (
+            <button key={c.key} type="button" onClick={() => toggle(c.key)}
+              className={cn(
+                'relative text-left rounded-2xl border p-4 transition-all',
+                active ? c.card : 'border-[#1e2433] bg-[#0f1117] hover:border-[#2a3048]'
+              )}>
+              <div className="flex items-center gap-2.5">
+                <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', c.dot)} />
+                <p className={cn('text-sm font-bold', active ? 'text-white' : 'text-slate-300')}>{c.label}</p>
+                {active && (
+                  <span className="ml-auto w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-white" />
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{c.blurb}</p>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Step metadata ──────────────────────────────────────────────────────────
 
 const STEPS = [
   { id: 'priorities', shortLabel: 'Priorities', icon: Target },
+  { id: 'challenge', shortLabel: 'Immediate challenge', icon: Shuffle },
   { id: 'workforce', shortLabel: 'Workforce', icon: Users },
   { id: 'evidence', shortLabel: 'Evidence', icon: FileSearch },
 ]
@@ -590,8 +557,9 @@ export default function Onboarding() {
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 {stepIndex === 0 && <StepPriorities value={draft.agenda} onChange={v => setDraft({ ...draft, agenda: v })} />}
-                {stepIndex === 1 && <StepWorkforce value={draft.workforceContext} onChange={v => setDraft({ ...draft, workforceContext: v })} />}
-                {stepIndex === 2 && <StepEvidence evidence={draft.evidence} outputPrefs={draft.outputPreferences} onChangeEvidence={v => setDraft({ ...draft, evidence: v })} onChangeOutputPrefs={v => setDraft({ ...draft, outputPreferences: v })} />}
+                {stepIndex === 1 && <StepImmediateChallenge value={draft.immediateChallenges ?? []} onChange={v => setDraft({ ...draft, immediateChallenges: v })} />}
+                {stepIndex === 2 && <StepWorkforce value={draft.workforceContext} onChange={v => setDraft({ ...draft, workforceContext: v })} />}
+                {stepIndex === 3 && <StepEvidence evidence={draft.evidence} outputPrefs={draft.outputPreferences} onChangeEvidence={v => setDraft({ ...draft, evidence: v })} onChangeOutputPrefs={v => setDraft({ ...draft, outputPreferences: v })} />}
               </motion.div>
             </AnimatePresence>
           </div>
