@@ -137,9 +137,75 @@ function renderLayout(section: StudioOutputSection) {
     case 'stat_block_section':
       return <StatBlockSection data={data} />
 
+    case 'infographic':
+    case 'infographics':
+    case 'infographic_summary':
+      return <InfographicSection title={t} data={data} footnote={f} />
+
     default:
       return <UnknownSection layout={layout} title={t} data={data} />
   }
+}
+
+// Tolerant renderer for model-invented "infographic" sections: renders grouped
+// icon/description cards from whatever nested shape arrives, never raw JSON.
+function InfographicSection({ title, data, footnote }: { title: string; data: any; footnote?: string }) {
+  type Group = { title: string; elements: Array<{ label: string; detail?: string }> }
+  const groups: Group[] = []
+
+  const pushElement = (g: Group, el: any) => {
+    if (typeof el === 'string') { g.elements.push({ label: el }); return }
+    if (el && typeof el === 'object') {
+      const label = el.title ?? el.label ?? el.name ?? el.icon ?? el.description ?? ''
+      const detail = el.description && el.description !== label ? el.description : (el.value != null ? String(el.value) : undefined)
+      if (label) g.elements.push({ label: String(label).replace(/[-_]/g, ' '), detail })
+    }
+  }
+
+  const content = Array.isArray(data?.content) ? data.content
+    : Array.isArray(data?.sections) ? data.sections
+    : Array.isArray(data?.items) ? [{ title: '', elements: data.items }]
+    : Array.isArray(data?.kpis) ? [{ title: '', elements: data.kpis }]
+    : []
+  for (const c of content) {
+    const g: Group = { title: String(c?.title ?? ''), elements: [] }
+    const els = Array.isArray(c?.elements) ? c.elements : Array.isArray(c?.items) ? c.items : (c && typeof c === 'object' && !c.title ? [c] : [])
+    for (const el of els) pushElement(g, el)
+    if (c && typeof c === 'object' && g.elements.length === 0 && (c.description || c.label || c.name)) pushElement(g, c)
+    if (g.elements.length > 0 || g.title) groups.push(g)
+  }
+
+  if (groups.length === 0) {
+    return (
+      <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6">
+        <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
+        <p className="text-sm text-slate-400">This visual summary is included in the exported document.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6 space-y-5">
+      {title && <h3 className="text-sm font-semibold text-white">{title}</h3>}
+      {groups.map((g, gi) => (
+        <div key={gi}>
+          {g.title && <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">{g.title}</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {g.elements.map((el, i) => (
+              <div key={i} className="flex items-start gap-2.5 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-3">
+                <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0 mt-1.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white capitalize">{el.label}</p>
+                  {el.detail && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{el.detail}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {footnote && <p className="text-[11px] text-slate-600">{footnote}</p>}
+    </div>
+  )
 }
 
 interface StudioOutputProps {

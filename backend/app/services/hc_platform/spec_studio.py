@@ -95,6 +95,7 @@ THE 10 SECTIONS (implementing the 19-part recommended structure):
            "role": "Recommended next action", "emphasis": "insight"}
 
 RULES:
+- ONLY the layouts listed above are valid ("narrative_paragraph", "comparison_table", "kpi_grid", "risk_flags_list", "timeline", "callout_quote"). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual section, express it as a kpi_grid (stat tiles), a comparison_table, or a timeline. Any other layout name will fail to render.
 - Ground everything in the client context provided below (brief, onboarding, conversation). Follow the customization rules for their persona, size, industry and region.
 - Never claim high confidence when evidence is missing.
 - Plain hyphens only, never em-dashes or smart quotes.

@@ -450,7 +450,7 @@ Respond with ONLY a JSON object shaped as a StudioOutputDocument:
 
 Each section: {"id": "<slug>", "title": "...", "layout": "<layout>", "data": {...}, "footnote": "optional source/assumption note"}
 
-ALLOWED layouts and their exact data shapes:
+ALLOWED layouts and their exact data shapes (ONLY these - never invent layout names like 'infographic'; an infographic request means kpi_grid, bar_chart or timeline visuals):
 - "narrative_paragraph": {"body": "2-4 paragraph markdown-lite text", "highlights": ["phrase to bold", ...]}
 - "kpi_grid": {"columns": 3, "items": [{"label": "...", "value": "42", "unit": "%", "sublabel": "context line"}]}  // 3-6 items
 - "bar_chart": {"items": [{"label": "...", "value": 62, "sentiment": "good|warning|bad|neutral", "benchmark": 70}]}  // 4-8 bars, values 0-100
@@ -661,9 +661,11 @@ def _report_state_block(report_state: dict[str, Any] | None) -> str:
         import json as _json
         return (
             "CURRENT REPORT ON SCREEN (the client is viewing this deliverable right now. "
-            "Answer questions about it, explain any figure or section in plain terms, and when they "
-            "request changes, acknowledge briefly and set finalize to the same report type so the "
-            "platform regenerates it with their changes reflected):\n"
+            "Answer questions about it and explain any figure in plain terms. When they request a "
+            "CHANGE - including 'add an infographic' - do NOT propose ideas, list options, or ask "
+            "whether to proceed: APPLY it. Reply with ONE short sentence saying what you are changing "
+            "and set finalize to the same report type so the platform regenerates immediately. "
+            "The change itself belongs in the regenerated report, not in your chat reply):\n"
             + _json.dumps(report_state, ensure_ascii=True)[:8000]
         )
     except Exception:  # noqa: BLE001
