@@ -144,6 +144,10 @@ const DRIVER_RULES: Record<string, Array<{ id: string; weight: number; reason: s
 }
 
 // HC challenge area → studio weights. Areas come from the brief's "selectedAreas[].area".
+// The Challenge Brief emits these driver slugs; alias them onto the rules above.
+DRIVER_RULES['merger-acquisition'] = DRIVER_RULES['m-and-a']
+DRIVER_RULES['sustainability-esg'] = DRIVER_RULES['esg-sustainability']
+
 const CHALLENGE_RULES: Record<string, Array<{ id: string; weight: number; reason: string }>> = {
   'leadership-pipeline':       [{ id: 'hipo', weight: 6, reason: 'Pipeline depth starts with calibrated HiPo identification.' }, { id: 'succession', weight: 5, reason: 'Succession is the discipline that proves pipeline strength.' }, { id: 'leadership-dev', weight: 4, reason: 'Develop the named bench, do not assume readiness.' }],
   'succession-risk':           [{ id: 'succession', weight: 6, reason: 'Address the named risk directly.' }, { id: 'hipo', weight: 4, reason: 'Build the second-line behind the at-risk roles.' }],
@@ -165,6 +169,64 @@ const CHALLENGE_RULES: Record<string, Array<{ id: string; weight: number; reason
 }
 
 // Output type rules — tie-break the commercial studios.
+// ── Native Challenge Brief area slugs (the form's actual vocabulary) ──
+Object.assign(CHALLENGE_RULES, {
+  'strategy-business-alignment': [
+    { id: 'hc-strategy',   weight: 5, reason: 'You flagged strategy-business alignment - the HC Strategy Charter closes exactly that gap.' },
+    { id: 'business-plan', weight: 4, reason: 'A costed HC business plan makes the alignment tangible for the executive team.' },
+  ],
+  'capability-skills': [
+    { id: 'capability',    weight: 5, reason: 'You flagged capability and skills - start by assessing where the gaps actually are.' },
+    { id: 'skills-dev',    weight: 4, reason: 'Turn the capability gaps into a skills development roadmap.' },
+  ],
+  'learning-training': [
+    { id: 'learning',      weight: 5, reason: 'You flagged learning and training - design the learning architecture around your gaps.' },
+    { id: 'skills-dev',    weight: 3, reason: 'Anchor learning investment to the skills that matter most.' },
+  ],
+  leadership: [
+    { id: 'leadership-dev', weight: 5, reason: 'You flagged leadership - build the tiered development programme first.' },
+    { id: 'hipo',           weight: 3, reason: 'Feed the leadership bench by identifying high-potentials early.' },
+    { id: 'coaching',       weight: 3, reason: 'Coaching sustains leadership growth between programmes.' },
+  ],
+  succession: [
+    { id: 'succession',    weight: 5, reason: 'You flagged succession - map critical roles and successor readiness.' },
+    { id: 'hipo',          weight: 4, reason: 'HiPo identification feeds the succession pipeline.' },
+  ],
+  mobility: [
+    { id: 'mobility',      weight: 5, reason: 'You flagged mobility - design the internal movement framework and career lattice.' },
+    { id: 'workforce',     weight: 3, reason: 'Workforce planning shows where internal moves relieve demand.' },
+  ],
+  performance: [
+    { id: 'performance',   weight: 5, reason: 'You flagged performance - redesign the framework and review cadence.' },
+  ],
+  rewards: [
+    { id: 'total-rewards', weight: 5, reason: 'You flagged rewards - rebalance pay, benefits and recognition.' },
+  ],
+  'organization-design': [
+    { id: 'org-design',    weight: 5, reason: 'You flagged organization design - re-cut structures, spans and reporting lines.' },
+  ],
+  'process-excellence': [
+    { id: 'process-exc',   weight: 5, reason: 'You flagged process excellence - map and optimise the HC processes.' },
+  ],
+  'governance-operating-model': [
+    { id: 'framework',     weight: 5, reason: 'You flagged governance and operating model - audit it against a reference framework.' },
+    { id: 'org-design',    weight: 3, reason: 'Operating model changes usually land as structure changes.' },
+  ],
+  'ai-digital-transformation': [
+    { id: 'skills-dev',    weight: 4, reason: 'AI and digital transformation stands or falls on reskilling.' },
+    { id: 'org-dev',       weight: 3, reason: 'Digital change is an adoption problem - treat it as OD.' },
+    { id: 'learning',      weight: 3, reason: 'Digital capability needs a learning pathway, not one-off training.' },
+  ],
+  'culture-change-readiness': [
+    { id: 'org-dev',       weight: 5, reason: 'You flagged culture and change readiness - the OD studio designs the change journey.' },
+    { id: 'employee-exp',  weight: 3, reason: 'Culture shows up in the employee experience touchpoints.' },
+  ],
+  'analytics-productivity': [
+    { id: 'benchmarking',  weight: 4, reason: 'You flagged analytics - benchmark your metrics against industry peers first.' },
+    { id: 'business-plan', weight: 3, reason: 'Productivity claims need a costed business case behind them.' },
+  ],
+})
+
 const OUTPUT_RULES: Record<string, Array<{ id: string; weight: number; reason: string }>> = {
   'board-deck':        [{ id: 'deck-gen',    weight: 4, reason: 'Generate the board-ready deck.' }, { id: 'business-plan', weight: 3, reason: 'Underpin the deck with a real plan.' }],
   'playbook':          [{ id: 'playbook',    weight: 4, reason: 'Produce the structured implementation playbook.' }],
@@ -175,6 +237,17 @@ const OUTPUT_RULES: Record<string, Array<{ id: string; weight: number; reason: s
   'roadmap':           [{ id: 'business-plan', weight: 3, reason: 'A roadmap needs a phased plan underneath.' }],
   'metric-tree':       [{ id: 'benchmarking', weight: 3, reason: 'Metric trees gain credibility with benchmarks.' }],
 }
+
+// Native Challenge Brief output-type slugs (tie-breakers).
+Object.assign(OUTPUT_RULES, {
+  'executive-deck':          [{ id: 'deck-gen',   weight: 3, reason: 'You asked for an executive deck.' }],
+  'consulting-report':       [{ id: 'doc-engine', weight: 2, reason: 'You asked for a consulting report.' }],
+  'strategy-recommendation': [{ id: 'hc-strategy',weight: 2, reason: 'You asked for strategy recommendations.' }],
+  framework:                 [{ id: 'framework',  weight: 2, reason: 'You asked for a framework.' }],
+  'maturity-assessment':     [{ id: 'maturity',   weight: 3, reason: 'You asked for a maturity assessment.' }],
+  'implementation-plan':     [{ id: 'playbook',   weight: 2, reason: 'You asked for an implementation plan.' }],
+  'scenario-comparison':     [{ id: 'workforce',  weight: 2, reason: 'You asked for scenario comparisons.' }],
+})
 
 export function recommendStudios(brief: BriefSignals, topN = 5): StudioRecommendation[] {
   const scores: Record<string, { score: number; reasons: Set<string> }> = {}
