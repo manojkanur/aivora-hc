@@ -1223,50 +1223,48 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           </div>
         )}
 
-        <div className="flex items-end gap-3">
+        <div className="flex items-end gap-2 rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
           <input ref={fileInputRef} type="file" accept={EVIDENCE_ACCEPT} className="hidden" onChange={handleFilePicked} />
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || sending}
             title="Attach evidence (pdf, docx, txt, md, pptx)"
-            className="flex-shrink-0 w-11 h-11 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 text-slate-400 hover:text-blue-400 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
           </button>
           <button
             onClick={() => setPrefsOpen(true)}
             title="Configure chat (length, style)"
-            className="flex-shrink-0 w-11 h-11 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 text-slate-400 hover:text-blue-400 flex items-center justify-center transition-colors"
+            className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors"
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
-          <div className="flex-1 rounded-xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors">
-            <textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              onKeyDown={onKeyDown}
-              rows={1}
-              disabled={sending}
-              placeholder={
-                brief
-                  ? `Ask about ${brief.organizationName || 'your organisation'} - press Enter to send, Shift + Enter for a new line`
-                  : 'Ask anything about your HC challenge - press Enter to send'
-              }
-              className="w-full bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-3.5 py-3 resize-none leading-relaxed"
-            />
-          </div>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={onKeyDown}
+            rows={1}
+            disabled={sending}
+            placeholder={
+              brief
+                ? `Ask about ${brief.organizationName || 'your organisation'}...`
+                : 'Ask anything about your HC challenge...'
+            }
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center"
+          />
           <button
             onClick={() => sendMessage(draft)}
             disabled={!draft.trim() || sending}
+            title="Send (Enter)"
             className={
               draft.trim() && !sending
-                ? 'inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors'
-                : 'inline-flex items-center gap-2 rounded-xl bg-blue-600/30 text-white/70 px-4 py-2.5 text-sm font-semibold cursor-not-allowed'
+                ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-[0_2px_10px_rgba(37,99,235,0.35)] transition-colors'
+                : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'
             }
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Send
           </button>
         </div>
         {messages.length > 0 && (
