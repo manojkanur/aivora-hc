@@ -1070,6 +1070,17 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   return (
     <div>
     <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+      {messages.length > 0 && (
+        <div className="flex items-center justify-end px-4 py-1.5 border-b border-[#161b28]">
+          <button
+            onClick={clear}
+            className="text-[11px] text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-1.5"
+          >
+            <RotateCcw className="w-3 h-3" /> Clear conversation
+          </button>
+        </div>
+      )}
+
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
         {briefContent && <BriefingCard content={briefContent} />}
@@ -1267,19 +1278,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        {messages.length > 0 && (
-          <div className="mt-2 flex items-center justify-between">
-            <div className="text-[11px] text-slate-600">
-              {brief ? `Grounded in your ${brief.industry || 'organisation'} brief` : 'No brief connected yet. The advisor will ask grounding questions if needed.'}
-            </div>
-            <button
-              onClick={clear}
-              className="text-[11px] text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-1.5"
-            >
-              <RotateCcw className="w-3 h-3" /> Clear conversation
-            </button>
-          </div>
-        )}
+
       </div>
     </div>
     {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
