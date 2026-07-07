@@ -100,6 +100,13 @@ export interface ClientProfile {
       currentRateBand?: RateBand
       targetRateBand?: RateBand
     }
+    /** Talent mobility context - feeds the Talent Mobility Studio intake. */
+    mobilityContext?: {
+      mobilityTypesUsed: string[]
+      groupsInScope: string[]
+      releaseRules?: string
+      primaryOutcome?: string
+    }
   }
   outputPreferences: {
     preferredOutputType: PreferredOutputType[]

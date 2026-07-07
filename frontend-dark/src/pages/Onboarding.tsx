@@ -103,6 +103,27 @@ const RATE_BAND_LABELS: Record<RateBand, string> = {
   '50-75': '50-75%', '75-100': '75-100%', unknown: 'Unknown',
 }
 
+const MOBILITY_TYPE_LABELS: Record<string, string> = {
+  'ad-hoc-promotions': 'Ad hoc promotions', 'lateral-transfers': 'Lateral transfers',
+  'cross-functional': 'Cross-functional moves', rotations: 'Job rotations',
+  secondments: 'Secondments / attachments', 'project-assignments': 'Project assignments',
+  'none-informal': 'None / informal only',
+}
+const MOBILITY_GROUP_LABELS: Record<string, string> = {
+  'all-employees': 'All employees', corporate: 'Corporate / office staff',
+  frontline: 'Frontline / operations', leadership: 'Leadership levels',
+  'critical-roles': 'Critical roles only', graduates: 'Graduates / early career',
+}
+const MOBILITY_RELEASE_LABELS: Record<string, string> = {
+  none: 'No rules - manager discretion', informal: 'Informal / inconsistent',
+  defined: 'Defined but not enforced', formal: 'Formal and enforced',
+}
+const MOBILITY_OUTCOME_LABELS: Record<string, string> = {
+  retention: 'Retention of key talent', succession: 'Succession readiness',
+  agility: 'Workforce agility / redeployment', development: 'Employee development & growth',
+  cost: 'Reduce external hiring cost',
+}
+
 const FOUNDATION_LABELS: Record<string, string> = {
   'career-paths': 'Career paths', 'job-families': 'Job families',
   'skills-profiles': 'Skills profiles', 'mobility-policy': 'Internal mobility policy',
@@ -275,6 +296,28 @@ function StepWorkforce({ value, onChange }: {
       <ChipGroup label="Talent challenges" options={Object.keys(TALENT_CHALLENGE_LABELS) as TalentChallenge[]} labels={TALENT_CHALLENGE_LABELS} value={value.talentChallenges} onChange={next => patch('talentChallenges', next)} />
       <ChipGroup label="Leadership challenges" options={Object.keys(LEADERSHIP_CHALLENGE_LABELS) as LeadershipChallenge[]} labels={LEADERSHIP_CHALLENGE_LABELS} value={value.leadershipChallenges} onChange={next => patch('leadershipChallenges', next)} />
       <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} />
+
+      {/* Talent mobility context - grounds the Talent Mobility Studio */}
+      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Talent mobility today</p>
+          <p className="text-sm text-slate-500 mt-1">How talent moves in the organization right now - this grounds the Talent Mobility Studio in your reality instead of assumptions.</p>
+        </div>
+        <ChipGroup label="Mobility used today" options={Object.keys(MOBILITY_TYPE_LABELS)} labels={MOBILITY_TYPE_LABELS}
+          value={value.mobilityContext?.mobilityTypesUsed ?? []}
+          onChange={next => patch('mobilityContext', { mobilityTypesUsed: next, groupsInScope: value.mobilityContext?.groupsInScope ?? [], releaseRules: value.mobilityContext?.releaseRules, primaryOutcome: value.mobilityContext?.primaryOutcome })} />
+        <ChipGroup label="Employee groups in scope" options={Object.keys(MOBILITY_GROUP_LABELS)} labels={MOBILITY_GROUP_LABELS}
+          value={value.mobilityContext?.groupsInScope ?? []}
+          onChange={next => patch('mobilityContext', { mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [], groupsInScope: next, releaseRules: value.mobilityContext?.releaseRules, primaryOutcome: value.mobilityContext?.primaryOutcome })} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectField label="Manager release & approval rules" options={Object.keys(MOBILITY_RELEASE_LABELS)} labels={MOBILITY_RELEASE_LABELS}
+            value={value.mobilityContext?.releaseRules ?? ''}
+            onChange={v => patch('mobilityContext', { mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [], groupsInScope: value.mobilityContext?.groupsInScope ?? [], releaseRules: v, primaryOutcome: value.mobilityContext?.primaryOutcome })} />
+          <SelectField label="Primary outcome sought" options={Object.keys(MOBILITY_OUTCOME_LABELS)} labels={MOBILITY_OUTCOME_LABELS}
+            value={value.mobilityContext?.primaryOutcome ?? ''}
+            onChange={v => patch('mobilityContext', { mobilityTypesUsed: value.mobilityContext?.mobilityTypesUsed ?? [], groupsInScope: value.mobilityContext?.groupsInScope ?? [], releaseRules: value.mobilityContext?.releaseRules, primaryOutcome: v })} />
+        </div>
+      </div>
       <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
