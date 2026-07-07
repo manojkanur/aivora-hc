@@ -1021,8 +1021,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               disabled={sending}
               placeholder={
                 brief
-                  ? `Ask about ${brief.organizationName || 'your organisation'} — press Enter to send, Shift + Enter for a new line`
-                  : 'Ask anything about your HC challenge — press Enter to send'
+                  ? `Ask about ${brief.organizationName || 'your organisation'} - press Enter to send, Shift + Enter for a new line`
+                  : 'Ask anything about your HC challenge - press Enter to send'
               }
               className="w-full bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-3.5 py-3 resize-none leading-relaxed"
             />
@@ -1518,7 +1518,7 @@ export default function AdvisorChat() {
     return <IntakeCard initial={initial} onStart={handleStart} />
   }
 
-  const orgLine = [workspaceName, profile.organization_name, profile.industry].filter(Boolean).join(' · ')
+  const orgLine = [...new Set([workspaceName, profile.organization_name, profile.industry].filter(Boolean))].join(' · ')
 
   return (
     <div className="p-4 sm:p-5 max-w-7xl mx-auto space-y-4">

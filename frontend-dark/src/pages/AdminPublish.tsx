@@ -370,7 +370,7 @@ function PreviewStep({
         ) : (
           <div className="rounded-xl border border-dashed border-[#1e2433] bg-[#0c0e14] py-10 text-center">
             <Type className="w-6 h-6 text-slate-500 mx-auto mb-2" />
-            <p className="text-xs text-slate-500">Text-only post — no attached image</p>
+            <p className="text-xs text-slate-500">Text-only post - no attached image</p>
           </div>
         )}
 

@@ -270,7 +270,7 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
   return (
     <div className="flex flex-col h-full bg-[#0c0e14]">
       {/* Header */}
-      <div className={cn('border-b border-[#1a1e2e]', collapsed ? 'px-2 py-3' : 'px-4 py-5')}>
+      <div className={cn('border-b border-[#1a1e2e] flex-shrink-0', collapsed ? 'px-2 py-3' : 'h-16 px-4 flex items-center')}>
         {collapsed ? (
           // Collapsed: stack icons vertically, all centered
           <div className="flex flex-col items-center gap-2">
@@ -301,7 +301,7 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
           </div>
         ) : (
           // Expanded: logo on left, action buttons on right
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             <div className="flex flex-col gap-0.5 min-w-0">
               <AivoraLogo size="sm" />
               {tenant && (

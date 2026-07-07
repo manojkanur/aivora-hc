@@ -515,7 +515,7 @@ function ArticleEditor({ article, onClose, onSaved }: {
               onChange={e => patchSection(i, { body: e.target.value })}
               rows={4}
               className="w-full bg-transparent text-sm text-slate-200 leading-relaxed focus:outline-none resize-y"
-              placeholder="Section body — plain text, line breaks preserved."
+              placeholder="Section body - plain text, line breaks preserved."
             />
           </div>
         ))}
