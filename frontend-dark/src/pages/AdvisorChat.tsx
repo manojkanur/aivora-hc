@@ -190,7 +190,7 @@ function IntakeCard({ initial, onStart }: { initial: AdvisoryProfile | null; onS
 
 export function AssistantMarkdown({ content }: { content: string }) {
   return (
-    <div className="text-sm text-slate-200 leading-relaxed space-y-3 [&_strong]:text-white [&_code]:text-blue-300 [&_code]:bg-[#0c0e14] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[0.85em]">
+    <div className="text-sm text-slate-200 leading-relaxed space-y-3 [&_strong]:text-white [&_code]:text-blue-300 [&_code]:bg-slate-500/15 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[0.85em]">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
