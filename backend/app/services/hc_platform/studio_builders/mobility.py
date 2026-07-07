@@ -727,52 +727,148 @@ async def build(
         executive = _diagnostic_executive(bench, org, industry)
         source_note = f"Benchmark-anchored diagnostic for {industry}"
 
+    # ── Normalise every payload to the shapes StudioRenderer's sections
+    # actually consume; the raw builder shapes rendered as empty boxes. ──
+
+    exec_data = {
+        "quote": executive.get("headline", ""),
+        "attribution": executive.get("summary", ""),
+        "role": f"Confidence: {executive.get('confidence', 'medium')} · themes: "
+                + ", ".join(executive.get("top_themes", [])[:3]),
+        "emphasis": "insight",
+    }
+
+    kpi_data = {
+        "columns": 3,
+        "items": [
+            {"label": k.get("label", ""), "value": k.get("value", ""), "unit": k.get("unit", ""),
+             "sublabel": k.get("context", "")}
+            for k in kpis.get("kpis", [])
+        ],
+    }
+
+    bar_data = {
+        "items": [
+            {"label": f.get("family", ""), "value": f.get("demand", 0), "benchmark": f.get("supply", 0),
+             "sentiment": "bad" if f.get("gap", 0) < 0 else "good"}
+            for f in supply_demand.get("families", [])
+        ],
+    }
+
+    match_data = {
+        "items": [
+            {"rank": m.get("rank", i + 1),
+             "title": f"{m.get('current_role', '')} -> {m.get('opportunity', '')}",
+             "score": round(float(m.get("score", 0)) * 100),
+             "scoreMax": 100,
+             "subtitle": m.get("employee_ref", ""),
+             "meta": [f"{dim}: {round(float(v) * 100)}" for dim, v in (m.get("breakdown") or {}).items()]}
+            for i, m in enumerate(top_matches.get("matches", []))
+        ],
+    }
+
+    heat_data = {
+        "rows": role_adjacencies.get("rows", []),
+        "cols": role_adjacencies.get("cols", []),
+        "values": role_adjacencies.get("cells", role_adjacencies.get("values", [])),
+    }
+
+    funnel_data = {
+        "items": [
+            {"label": str(st.get("stage", "")).replace("_", " ").title(), "value": st.get("count", 0)}
+            for st in funnel.get("stages", [])
+        ],
+    }
+    conversion = (funnel.get("conversion") or {}).get("identified_to_moved")
+
+    barrier_data = {
+        "items": [
+            {"id": f"barrier-{i}",
+             "severity": b.get("severity", "medium"),
+             "title": b.get("type", b.get("title", f"Barrier {i + 1}")),
+             "description": f"{b.get('description', '')} Affects an estimated {b.get('affected', 0)}% of potential moves."}
+            for i, b in enumerate(barriers.get("barriers", barriers.get("items", [])))
+            if isinstance(b, dict)
+        ],
+    }
+
+    fw_meta = framework.get("framework", {}) or {}
+    framework_data = {
+        "columns": [
+            {"key": "move_type", "label": "Move type"},
+            {"key": "description", "label": "What it is"},
+        ],
+        "rows": [
+            {"move_type": mt.get("label", ""), "description": mt.get("description", "")}
+            for mt in framework.get("move_types", [])
+        ],
+    }
+    rule_cov = framework.get("rule_coverage", {}) or {}
+
+    rec_data = {
+        "columns": 2,
+        "items": [
+            {"id": r.get("id", f"rec-{i}"),
+             "title": r.get("title", ""),
+             "rationale": r.get("description", ""),
+             "priority": "high" if r.get("tier") == "priority" else "medium" if r.get("tier") == "foundational" else "low",
+             "impact": r.get("impact", "medium"),
+             "effort": r.get("effort", "medium"),
+             "tags": [t for t in [r.get("tier"), str(r.get("horizon", "")).replace("_", " ")] if t]}
+            for i, r in enumerate(recommendations.get("recommendations", []))
+        ],
+    }
+
     sections = [
         {"id": "executive_read",
          "title": "Executive Read",
          "layout": "callout_quote",
-         "data": executive,
+         "data": exec_data,
          "source": source_note},
         {"id": "kpis",
          "title": "Mobility Health KPIs",
          "layout": "kpi_grid",
-         "data": kpis,
+         "data": kpi_data,
          "source": source_note},
         {"id": "supply_demand",
          "title": f"Talent Supply vs Opportunity Demand · {industry}",
          "layout": "horizontal_bar_chart",
-         "data": supply_demand,
+         "data": bar_data,
+         "footnote": "Bars show opportunity demand per role family; the dashed marker is internal talent supply. A bar past its marker signals a shortage.",
          "source": source_note},
         {"id": "top_matches",
          "title": "Top Internal Matches",
          "layout": "ranked_list",
-         "data": top_matches,
-         "footnote": "Scores computed by mobility_matcher v1; threshold >= 0.7.",
+         "data": match_data,
+         "footnote": f"Scores from mobility_matcher v1; threshold >= {int(float(top_matches.get('min_score', 0.7)) * 100)}. {top_matches.get('note', '')}".strip(),
          "source": source_note},
         {"id": "role_adjacencies",
          "title": "Role Adjacency Heatmap",
          "layout": "heatmap",
-         "data": role_adjacencies,
+         "data": heat_data,
+         "footnote": "Closeness of role pairs (1.0 = same role). Pairs above 0.7 are realistic lateral moves.",
          "source": source_note},
         {"id": "funnel",
          "title": "Movement Funnel · last 90 days",
-         "layout": "timeline",
-         "data": funnel,
+         "layout": "horizontal_bar_chart",
+         "data": funnel_data,
+         "footnote": (f"End-to-end conversion identified to moved: {round(conversion * 100)}%." if conversion else None),
          "source": source_note},
         {"id": "barriers",
          "title": "Mobility Barriers & Risk Flags",
          "layout": "risk_flags_list",
-         "data": barriers,
+         "data": barrier_data,
          "source": source_note},
         {"id": "framework",
-         "title": "Mobility Framework & Move Types",
+         "title": "Mobility Framework · Move Types",
          "layout": "comparison_table",
-         "data": framework,
+         "data": framework_data,
+         "footnote": f"{fw_meta.get('name', 'Mobility Framework')} · mode {fw_meta.get('mode', 'hybrid')} · {rule_cov.get('defined', 0)}/{rule_cov.get('of_total', 6)} eligibility rules defined.",
          "source": source_note},
         {"id": "recommendations",
          "title": "Recommended Mobility Plays",
          "layout": "recommendation_cards",
-         "data": recommendations,
+         "data": rec_data,
          "source": source_note},
     ]
 
