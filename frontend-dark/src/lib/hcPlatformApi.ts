@@ -1256,6 +1256,7 @@ export const hcAiAdvisoryAPI = {
     client_profile?: Record<string, unknown> | null
     plan_state?: ChatPlan | null
     report_state?: Record<string, unknown> | null
+    preferences?: { length?: string; style?: string; instructions?: string } | null
   }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null }>(`${HC_BASE}/ai-advisory/chat`, body),
   uploadEvidence: (file: File) => {
     const form = new FormData()

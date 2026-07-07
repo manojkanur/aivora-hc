@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
   MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
-  Check, Circle, CircleDot, ListChecks, ArrowLeft, FileBarChart2,
+  Check, Circle, CircleDot, ListChecks, FileBarChart2, SlidersHorizontal, Download,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -19,7 +19,7 @@ import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } fro
 import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
-import { workspacesAPI, challengeBriefsAPI, draftsAPI } from '../lib/api'
+import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -317,6 +317,69 @@ function BriefingCard({ content }: { content: BriefContent }) {
   )
 }
 
+const PREFS_STORAGE_KEY = 'aivora-advisor-prefs-v1'
+
+interface ChatPrefs { length: 'default' | 'longer' | 'shorter'; style: 'consultant' | 'coach' | 'analyst' | 'custom'; instructions: string }
+const DEFAULT_PREFS: ChatPrefs = { length: 'default', style: 'consultant', instructions: '' }
+
+function loadPrefs(workspaceId: string): ChatPrefs {
+  try {
+    const raw = localStorage.getItem(`${PREFS_STORAGE_KEY}:${workspaceId}`)
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return DEFAULT_PREFS
+}
+
+function PrefsModal({ prefs, onSave, onClose }: { prefs: ChatPrefs; onSave: (p: ChatPrefs) => void; onClose: () => void }) {
+  const [draft, setDraft] = useState<ChatPrefs>(prefs)
+  const chip = (active: boolean) => active
+    ? 'px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white transition-colors'
+    : 'px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 transition-colors'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-5" onClick={e => e.stopPropagation()}>
+        <div>
+          <h2 className="text-lg font-bold text-white">Configure chat</h2>
+          <p className="text-xs text-slate-500 mt-1">Shape how the advisor responds in this workspace.</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">Response length</p>
+          <div className="flex gap-2">
+            {(['default', 'longer', 'shorter'] as const).map(l => (
+              <button key={l} onClick={() => setDraft(d => ({ ...d, length: l }))} className={chip(draft.length === l)}>
+                {l.charAt(0).toUpperCase() + l.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">Style</p>
+          <div className="flex gap-2 flex-wrap">
+            {(['consultant', 'coach', 'analyst', 'custom'] as const).map(st => (
+              <button key={st} onClick={() => setDraft(d => ({ ...d, style: st }))} className={chip(draft.style === st)}>
+                {st.charAt(0).toUpperCase() + st.slice(1)}
+              </button>
+            ))}
+          </div>
+          {draft.style === 'custom' && (
+            <textarea
+              value={draft.instructions}
+              onChange={e => setDraft(d => ({ ...d, instructions: e.target.value }))}
+              rows={3}
+              placeholder="e.g. Always give GCC-specific examples, avoid jargon, address me as the CHRO"
+              className="mt-3 w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+            />
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+          <button onClick={() => { onSave(draft); onClose() }} className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">Save</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const PLAN_STORAGE_KEY = 'aivora-advisor-plan-v1'
 
 function loadStoredPlan(workspaceId: string): ChatPlan | null {
@@ -583,6 +646,32 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
+  const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
+  const [prefsOpen, setPrefsOpen] = useState(false)
+  const [exporting, setExporting] = useState<string | null>(null)
+
+  const savePrefs = (p: ChatPrefs) => {
+    setPrefs(p)
+    try { localStorage.setItem(`${PREFS_STORAGE_KEY}:${workspaceId}`, JSON.stringify(p)) } catch { /* ignore */ }
+  }
+
+  const exportDraft = async (fmt: 'pptx' | 'pdf' | 'docx' | 'html') => {
+    if (!savedDraftId || exporting) return
+    setExporting(fmt)
+    try {
+      const res = await exportsAPI.create(savedDraftId, fmt)
+      const url = URL.createObjectURL(res.data as Blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `advisory-report.${fmt}`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError(`Could not export as ${fmt.toUpperCase()}. Try again.`)
+    } finally {
+      setExporting(null)
+    }
+  }
 
   // #7/#10: confirmed report -> Draft Inbox draft -> existing export + Canvas pipeline
   const confirmAndPublish = async () => {
@@ -706,6 +795,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
         plan_state: plan,
         report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
+        preferences: prefs,
       }
       const res = await hcAiAdvisoryAPI.chat(payload)
       const reply = res.data.reply
@@ -776,117 +866,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     textareaRef.current?.focus()
   }
 
-  if (report) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <button
-            onClick={() => setReport(null)}
-            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to conversation
-          </button>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
-              {report.kind === 'detailed'
-                ? `Studio deliverable${(report.document as { studio_name?: string }).studio_name ? ` · ${(report.document as { studio_name?: string }).studio_name}` : ''}`
-                : 'Executive summary'}
-            </span>
-            {savedDraftId ? (
-              <div className="flex items-center gap-2">
-                <Link to={`/exports?draft=${savedDraftId}`} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
-                  Export (PPTX / PDF / DOCX)
-                </Link>
-                <Link to={`/canvas/${savedDraftId}`} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#1e2433] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
-                  Edit in Canvas
-                </Link>
-              </div>
-            ) : (
-              <button
-                onClick={confirmAndPublish}
-                disabled={savingDraft}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
-              >
-                {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                Confirm & publish to Draft Inbox
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5 items-start">
-          <div className="min-w-0">
-            {report.kind === 'detailed'
-              ? <StudioOutput document={report.document} />
-              : <SummaryReportView summary={report.summary} />}
-          </div>
-          {/* Docked advisor: question the report, ask for changes and explanations */}
-          <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
-            <div className="px-4 py-3 border-b border-[#1e2433] flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <p className="text-xs font-bold text-white flex-1">Ask about this report</p>
-              {finalizing && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
-            </div>
-            <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3">
-              {messages.slice(-12).map(m => (
-                <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                  <div className={
-                    m.role === 'user'
-                      ? 'max-w-[90%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2.5 text-xs leading-relaxed'
-                      : 'max-w-[90%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2.5 text-xs'
-                  }>
-                    {m.role === 'assistant' ? <><AssistantMarkdown content={m.content} />{m.plan && <PlanCardInline plan={m.plan} />}</> : m.content}
-                  </div>
-                </div>
-              ))}
-              {sending && (
-                <div className="flex justify-start">
-                  <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-3.5 py-2.5 flex items-center gap-1.5">
-                    {[0, 1, 2].map(i => (
-                      <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {error && <p className="text-[11px] text-red-400 text-center">{error}</p>}
-            </div>
-            <div className="border-t border-[#1e2433] p-3">
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {['Explain the roadmap', 'Why these numbers?', 'Make it more concise'].map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={sending}
-                    className="rounded-full border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1 text-[11px] text-slate-400 hover:text-white transition-colors disabled:opacity-50">
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-end gap-2">
-                <textarea
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  rows={1}
-                  disabled={sending}
-                  placeholder="Question the report or ask for changes"
-                  className="flex-1 resize-none rounded-xl bg-[#131720] border border-[#1e2433] text-xs text-white placeholder:text-slate-600 px-3 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors max-h-28"
-                />
-                <button
-                  onClick={() => sendMessage(draft)}
-                  disabled={!draft.trim() || sending}
-                  className="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center justify-center transition-colors flex-shrink-0"
-                >
-                  <Send className="w-3.5 h-3.5 text-white" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className={plan ? 'grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start' : ''}>
+    <div className={report ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(420px,46%)] gap-5 items-start' : plan ? 'grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start' : ''}>
     <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
@@ -1023,6 +1004,13 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
           </button>
+          <button
+            onClick={() => setPrefsOpen(true)}
+            title="Configure chat (length, style)"
+            className="flex-shrink-0 w-11 h-11 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 text-slate-400 hover:text-blue-400 flex items-center justify-center transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
           <div className="flex-1 rounded-xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors">
             <textarea
               ref={textareaRef}
@@ -1045,7 +1033,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             className={
               draft.trim() && !sending
                 ? 'inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors'
-                : 'inline-flex items-center gap-2 rounded-xl bg-slate-800 text-slate-500 px-4 py-2.5 text-sm font-semibold cursor-not-allowed'
+                : 'inline-flex items-center gap-2 rounded-xl bg-blue-600/30 text-white/70 px-4 py-2.5 text-sm font-semibold cursor-not-allowed'
             }
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1067,7 +1055,52 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         )}
       </div>
     </div>
-    {plan && <PlanRail plan={plan} onFinalize={finalizeSession} finalizing={finalizing} />}
+    {report ? (
+      <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e2433] bg-[#0f1117]">
+          <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+          <p className="text-xs font-bold text-white flex-1 truncate">
+            {report.kind === 'detailed'
+              ? `Preview · ${(report.document as { studio_name?: string }).studio_name ?? 'Studio deliverable'}`
+              : 'Preview · Executive summary'}
+          </p>
+          <button onClick={() => { setReport(null); setSavedDraftId(null) }} className="text-slate-500 hover:text-white transition-colors p-1" aria-label="Close preview">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {report.kind === 'detailed'
+            ? <StudioOutput document={report.document} />
+            : <SummaryReportView summary={report.summary} />}
+        </div>
+        <div className="border-t border-[#1e2433] p-3 space-y-2">
+          {savedDraftId ? (
+            <>
+              <div className="grid grid-cols-4 gap-2">
+                {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
+                  <button key={fmt} onClick={() => exportDraft(fmt)} disabled={!!exporting}
+                    className="inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-xs font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                    {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                    {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <Link to={`/canvas/${savedDraftId}`}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-xs font-semibold transition-colors">
+                <Pencil className="w-3.5 h-3.5" /> Edit in Canvas
+              </Link>
+            </>
+          ) : (
+            <button onClick={confirmAndPublish} disabled={savingDraft}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50">
+              {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Confirm output - unlock export & Canvas
+            </button>
+          )}
+        </div>
+      </div>
+    ) : plan ? <PlanRail plan={plan} onFinalize={finalizeSession} finalizing={finalizing} /> : null}
+    {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
     </div>
   )
 }

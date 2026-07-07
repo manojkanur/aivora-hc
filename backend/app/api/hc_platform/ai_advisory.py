@@ -265,6 +265,7 @@ class ChatRequest(BaseModel):
     client_profile: dict[str, Any] | None = None  # onboarding profile for the workspace
     plan_state: dict[str, Any] | None = None      # current co-work plan, if one is running
     report_state: dict[str, Any] | None = None    # the report the client is currently viewing
+    preferences: dict[str, Any] | None = None     # {length: default|longer|shorter, style: str, instructions: str}
 
 
 class PlanStep(BaseModel):
@@ -327,10 +328,10 @@ How you converse:
 - When suggesting a Studio, name it exactly and say why in one line.
 - End most replies with a short question or a suggested next step so the conversation stays alive.
 
-Flexible output generation:
-- In chat, keep outputs conversational: short tables, bullet summaries, small excerpts are fine to discuss and iterate on. Do NOT dump full multi-page deliverables as chat text.
-- When the user asks for a FULL deliverable of any kind - a framework, model, program design, roadmap, policy, RACI matrix, KPI scorecard, maturity interpretation, benchmarking summary, executive brief, board summary, playbook, process flow, action plan, SWOT, heatmap, scenario recommendations, or any structure they invent - that request IS the confirmation: set "finalize" to "detailed", name the Studio format you will use, and keep the reply to 2-3 sentences ("Preparing this in the Succession Planning Studio format - it will cover X, Y, Z."). The platform renders the deliverable as a proper studio document; never write it out in the chat.
-- If they explicitly ask for a simple or plain-language version, set "finalize" to "summary" instead.
+Flexible output generation (ChatGPT-style - the answer lives IN the chat):
+- When the user asks for a deliverable of ANY kind - a framework, model, program design, roadmap, policy, RACI matrix, KPI scorecard, maturity interpretation, benchmarking summary, executive brief, board summary, playbook, process flow, action plan, SWOT, heatmap, scenario recommendations, or any structure they invent - write it out FULLY, right there in the reply, in rich markdown: real tables with column headers, numbered phases with timeframes, clear section headings, specifics tied to their organisation. Detailed and complete, never a teaser.
+- End every full deliverable with one short question: would they like it prepared as a formatted document for preview and export (PDF, PPTX, DOCX, HTML)?
+- When the user confirms the document version ("yes, make the document", "prepare it for export", "create the report"), set "finalize" to "detailed" (or "summary" if they ask for the simple plain-language version) and keep that reply to one sentence - the platform opens the formatted document in a side preview.
 - Never refuse or defer because "no template exists". Studios are scaffolds, not limits - pick the closest one and adapt.
 - Customize every deliverable to their organisation, industry, size and objective as far as the context allows. Where you must generalize, say so.
 
@@ -357,7 +358,7 @@ Co-work plans:
 Closing the session:
 - When the plan is essentially complete (all or nearly all steps done) or the user signals they are satisfied, ask them to confirm: are they happy with the plan, and should you prepare the deliverable as an EXECUTIVE SUMMARY (short, plain language with simple charts, for a general audience) or the ADVANCED STUDIO FORMAT (full consulting deliverable in the format of the most relevant Studio - name which Studio you would use and why in one line)? Offer both in one short question.
 - When the user CONFIRMS and their choice is clear (words like "yes, detailed", "summary please", "go ahead with the full report"), set the "finalize" field to "summary" or "detailed". The platform then generates and opens the report automatically - tell them it is being prepared. Do not describe the report contents in the reply; the report itself follows.
-- A direct request for a full deliverable ("give me the KPI scorecard", "build the succession framework", "prepare the program") also counts as confirmation - set finalize immediately per the output rules above. Only ask summary-vs-detailed when the user is wrapping up a longer session without naming what they want.
+- A request to export, download or 'make the document/report' of something already discussed counts as confirmation - set finalize immediately. Only ask summary-vs-detailed when the user is wrapping up a longer session without naming what they want.
 
 OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
 {"reply": "<your full markdown reply>", "plan": {"title": "...", "steps": [{"title": "...", "status": "pending|in_progress|done", "note": "..."}]} or null, "finalize": null or "summary" or "detailed"}
@@ -555,6 +556,31 @@ async def finalize_report(
     if not data.get("overview"):
         raise HTTPException(502, "Report came back empty. Try again.")
     return FinalizeReportResponse(report_type="summary", summary=data)
+
+
+def _prefs_block(prefs: dict[str, Any] | None) -> str:
+    if not prefs:
+        return ""
+    parts = []
+    length = prefs.get("length")
+    if length == "shorter":
+        parts.append("Keep replies compact: about half your normal length, lead with the answer.")
+    elif length == "longer":
+        parts.append("Give expansive, thorough replies: more depth, more examples, more explanation than normal.")
+    style = prefs.get("style")
+    if style and style != "consultant":
+        style_map = {
+            "coach": "Adopt a coaching style: ask guiding questions, encourage the user's own thinking, softer tone.",
+            "analyst": "Adopt an analyst style: lead with data, quantify everything you can, minimal narrative.",
+        }
+        parts.append(style_map.get(style, ""))
+    instructions = (prefs.get("instructions") or "").strip()
+    if instructions:
+        parts.append(f"USER'S CUSTOM CHAT INSTRUCTIONS (follow unless they conflict with safety or format rules): {instructions[:600]}")
+    parts = [p for p in parts if p]
+    if not parts:
+        return ""
+    return "CHAT PREFERENCES:\n" + "\n".join(f"- {p}" for p in parts)
 
 
 def _report_state_block(report_state: dict[str, Any] | None) -> str:
@@ -846,8 +872,9 @@ async def advisor_chat(
     kb_ctx = await _kb_block(db)
     plan_ctx = _plan_state_block(payload.plan_state)
     report_ctx = _report_state_block(payload.report_state)
+    prefs_ctx = _prefs_block(payload.preferences)
     system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
-    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx):
+    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx, prefs_ctx):
         if part:
             system_parts.append(part)
     system = "\n\n".join(system_parts)
@@ -868,7 +895,7 @@ async def advisor_chat(
             model="gpt-4o-mini",
             messages=messages,
             temperature=0.55,
-            max_tokens=2000,
+            max_tokens=2800,
             response_format={"type": "json_object"},
         )
         raw = resp.choices[0].message.content or ""
