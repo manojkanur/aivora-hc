@@ -13,8 +13,7 @@ import { isAdminUser } from '../../lib/adminAccess'
 import { getInitials } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { TopBar } from './TopBar'
-// AdvisorBubble hidden per client request (2026-07-04) — re-enable by restoring the import and mount below
-// import { AdvisorBubble } from '../advisor/AdvisorBubble'
+import { AdvisorBubble } from '../advisor/AdvisorBubble'
 import { ToastContainer, useInsufficientCreditsHandler } from '../ui/Toast'
 import { useConversationInsights } from '../../store/conversationInsights'
 import { useThemeStore } from '../../store/theme'
@@ -27,7 +26,6 @@ interface NavItem {
 }
 
 const platformNav: NavItem[] = [
-  { label: 'AI Advisory',   href: '/advisor',        icon: Brain,             desc: 'Your senior HC advisor - chat, deliverables and assessments' },
   { label: 'Dashboard',     href: '/dashboard',      icon: LayoutDashboard,   desc: 'Overview of your workspaces, credits and activity'        },
   { label: 'Workspaces',    href: '/workspaces',     icon: Briefcase,         desc: 'Client projects, each holds studios and drafts'          },
   { label: 'Studios',       href: '/skills',         icon: Sparkles,          desc: '27 specialised HC advisory studios powered by AI'         },
@@ -496,7 +494,7 @@ export function AppLayout() {
         {learningOpen && <LearningCenterPanel onClose={() => setLearningOpen(false)} />}
       </AnimatePresence>
 
-      {/* <AdvisorBubble /> */}
+      <AdvisorBubble />
 
       <ToastContainer />
     </div>

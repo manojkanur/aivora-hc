@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, X, Send, Loader2, RotateCcw, MessageSquare } from 'lucide-react'
 import { hcAiAdvisoryAPI } from '../../lib/hcPlatformApi'
@@ -47,6 +47,8 @@ function saveStoredChat(m: ChatMessage[]): void {
 
 export function AdvisorBubble() {
   const location = useLocation()
+  // The full Advisory Command Centre lives at /advisor - no bubble there.
+  const onAdvisorPage = location.pathname.startsWith('/advisor')
   const params = useParams<{ studioId?: string; id?: string }>()
   const briefs = useBriefStore(s => s.briefs)
   const brief = pickLatestBrief(briefs)
@@ -159,6 +161,8 @@ export function AdvisorBubble() {
     }
   }
 
+  if (onAdvisorPage) return null
+
   return (
     <>
       {/* Floating button */}
@@ -216,6 +220,14 @@ export function AdvisorBubble() {
                   {ctx.studio_name ? `on ${ctx.studio_name}` : 'senior consultant, on demand'}
                 </p>
               </div>
+              <Link
+                to="/advisor"
+                onClick={() => setOpen(false)}
+                className="text-[11px] text-slate-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                title="Open the full Advisory Command Centre"
+              >
+                Open full view
+              </Link>
               {messages.length > 0 && (
                 <button
                   onClick={clear}
