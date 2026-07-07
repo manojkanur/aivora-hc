@@ -266,6 +266,7 @@ class ChatRequest(BaseModel):
     plan_state: dict[str, Any] | None = None      # current co-work plan, if one is running
     report_state: dict[str, Any] | None = None    # the report the client is currently viewing
     preferences: dict[str, Any] | None = None     # {length: default|longer|shorter, style: str, instructions: str}
+    studio_recommendations: list[dict[str, Any]] | None = None  # deterministic recs from the client's answers
 
 
 class PlanStep(BaseModel):
@@ -598,6 +599,25 @@ async def finalize_report(
     return FinalizeReportResponse(report_type="summary", summary=data)
 
 
+def _recs_block(recs: list[dict[str, Any]] | None) -> str:
+    if not recs:
+        return ""
+    lines = [
+        f"- {r.get('name')} [{r.get('category')}] ({r.get('id')}): {r.get('reason')}"
+        for r in recs[:5]
+        if isinstance(r, dict) and r.get("name")
+    ]
+    if not lines:
+        return ""
+    return (
+        "STUDIO RECOMMENDATIONS (computed deterministically from the client's own onboarding and brief "
+        "answers - these are what their answers point to):\n" + "\n".join(lines) + "\n"
+        "Rules: in a session opener, name the TOP recommendation and tie it to their answers in one line. "
+        "When choosing the deliverable's \"studio\" slug, prefer these recommendations (use the id as the slug) "
+        "unless the user explicitly asks for a different studio or topic."
+    )
+
+
 def _prefs_block(prefs: dict[str, Any] | None) -> str:
     if not prefs:
         return ""
@@ -913,8 +933,9 @@ async def advisor_chat(
     plan_ctx = _plan_state_block(payload.plan_state)
     report_ctx = _report_state_block(payload.report_state)
     prefs_ctx = _prefs_block(payload.preferences)
+    recs_ctx = _recs_block(payload.studio_recommendations)
     system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
-    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx, prefs_ctx):
+    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx, prefs_ctx, recs_ctx):
         if part:
             system_parts.append(part)
     system = "\n\n".join(system_parts)

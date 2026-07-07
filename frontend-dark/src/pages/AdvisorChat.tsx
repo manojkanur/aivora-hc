@@ -20,6 +20,7 @@ import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryRepor
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
+import { recommendStudios, signalsFromBriefContent, type StudioRecommendation } from '../lib/briefRecommender'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -313,6 +314,46 @@ function BriefingCard({ content }: { content: BriefContent }) {
           {outputs.length > 0 && <span><span className="font-semibold text-slate-400">Wants:</span> {outputs.slice(0, 4).map(slugLabel).join(', ')}</span>}
         </div>
       )}
+    </div>
+  )
+}
+
+const CATEGORY_DOTS: Record<string, string> = {
+  strategy: 'bg-violet-400', talent: 'bg-blue-400', learning: 'bg-emerald-400',
+  advisory: 'bg-amber-400', commercial: 'bg-rose-400',
+}
+
+/** Visible junction: the client's answers -> ranked studios with reasons. */
+function StudioMatchCard({ recs, flagged, onGenerate }: {
+  recs: StudioRecommendation[]
+  flagged: string[]
+  onGenerate: (name: string) => void
+}) {
+  return (
+    <div className="rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-600/10 via-[#131720] to-[#131720] p-4 sm:p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm font-bold text-white">Studios matched to your answers</p>
+        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
+          From your onboarding + brief{flagged.length > 0 ? ` · focus: ${flagged.join(', ')}` : ''}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {recs.map(r => (
+          <div key={r.id} className="flex items-start gap-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-3">
+            <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5', CATEGORY_DOTS[r.category] ?? 'bg-slate-500')} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">{r.name}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{r.reasons[0] ?? r.description}</p>
+            </div>
+            <button
+              onClick={() => onGenerate(r.name)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition-colors"
+            >
+              Generate
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -645,6 +686,19 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
+
+  // Deterministic studio recommendations: brief answers scored by the
+  // recommender, boosted by the categories flagged in onboarding.
+  const flaggedCategories = ((getProfileFor(workspaceId) as unknown as { immediateChallenges?: string[] })?.immediateChallenges ?? [])
+  const studioRecs = useMemo(() => {
+    if (!briefContent) return []
+    const scored = recommendStudios(signalsFromBriefContent(briefContent as unknown as Record<string, unknown>), 10)
+    const boosted = scored
+      .map(r => ({ ...r, score: r.score + (flaggedCategories.includes(r.category) ? 5 : 0) }))
+      .sort((a, b) => b.score - a.score)
+    return boosted.slice(0, 3)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [briefContent, flaggedCategories.join(',')])
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
@@ -724,6 +778,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
       profile,
       client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+      studio_recommendations: studioRecs.map(r => ({ id: r.id, name: r.name, category: r.category, reason: r.reasons[0] ?? '' })),
     }).then(res => {
       setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
     }).catch(() => { /* fall back to the static empty state */ }).finally(() => setSending(false))
@@ -796,6 +851,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         profile,
         evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+        studio_recommendations: studioRecs.map(r => ({ id: r.id, name: r.name, category: r.category, reason: r.reasons[0] ?? '' })),
         plan_state: plan,
         report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
         preferences: prefs,
@@ -875,6 +931,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
         {briefContent && <BriefingCard content={briefContent} />}
+        {studioRecs.length > 0 && messages.length <= 1 && (
+          <StudioMatchCard recs={studioRecs} flagged={flaggedCategories} onGenerate={name => sendMessage(`Create the ${name} deliverable`)} />
+        )}
         {messages.length === 1 && !sending && (
           <div className="flex flex-wrap gap-2">
             {[
