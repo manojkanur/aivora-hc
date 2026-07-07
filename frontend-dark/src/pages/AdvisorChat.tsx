@@ -644,6 +644,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
+  const [briefLoaded, setBriefLoaded] = useState(false)
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
@@ -707,18 +708,19 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         .filter(b => b.workspace_id === workspaceId && b.content)
         .sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')))
       if (mine.length > 0) setBriefContent(mine[0].content as BriefContent)
-    }).catch(() => {})
+      setBriefLoaded(true)
+    }).catch(() => setBriefLoaded(true))
     return () => { cancelled = true }
   }, [workspaceId])
 
   // Fresh session: the advisor opens the conversation itself, briefed on the client.
   useEffect(() => {
-    if (openedRef.current || messages.length > 0) return
+    if (openedRef.current || messages.length > 0 || !briefLoaded) return
     openedRef.current = true
     setSending(true)
     hcAiAdvisoryAPI.chat({
       messages: [],
-      brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+      brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
       context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
       profile,
       client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
@@ -739,7 +741,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
         plan_state: planOverride !== undefined ? planOverride : plan,
-        brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
         profile,
         context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
@@ -789,7 +791,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     try {
       const payload = {
         messages: next.map(m => ({ role: m.role, content: m.content })),
-        brief: brief ? (brief as unknown as Record<string, unknown>) : null,
+        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
         context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
         profile,
         evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
