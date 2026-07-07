@@ -48,6 +48,29 @@ async def run_studio_endpoint(
     db: DBDep,
 ) -> dict[str, Any]:
     """Run the builder registered for ``studio_id`` and return its StudioOutputDocument."""
+    # Spec-backed studios generate from their client-authored master
+    # instruction; the coded builder remains as fallback so runs never 500.
+    from app.services.hc_platform.spec_studio import generate_spec_report, load_spec
+
+    if load_spec(studio_id):
+        try:
+            import json as _json
+
+            brief_block = (
+                "CLIENT BRIEF:\n" + _json.dumps(body.brief, ensure_ascii=True)[:8000]
+                if body.brief else ""
+            )
+            output = await generate_spec_report(studio_id, context_blocks=[brief_block])
+            await _audit(
+                current_tenant.id,
+                current_user.id,
+                "hc_platform.studio.run",
+                {"studio_id": studio_id, "engine": "spec"},
+            )
+            return {"studio_id": studio_id, "document": output, "engine": "spec"}
+        except Exception:  # noqa: BLE001 - fall back to the coded builder
+            pass
+
     try:
         output = await run_studio(
             studio_id,

@@ -408,6 +408,7 @@ def _onboarding_block(client_profile: dict[str, Any] | None) -> str:
 class FinalizeReportRequest(BaseModel):
     messages: list[ChatMessage]
     report_type: str  # 'detailed' | 'summary'
+    studio: str | None = None  # builder slug; spec-backed studios use their master instruction
     plan_state: dict[str, Any] | None = None
     brief: dict[str, Any] | None = None
     client_profile: dict[str, Any] | None = None
@@ -495,6 +496,48 @@ async def finalize_report(
     if not settings.OPENAI_API_KEY:
         raise HTTPException(503, "Report generation needs the OpenAI key configured.")
 
+    transcript = "\n\n".join(
+        f"{'CLIENT' if m.role == 'user' else 'ADVISOR'}: {m.content}"
+        for m in payload.messages[-30:]
+    )[:24000]
+
+    # Spec-backed studios: the client-authored master instruction is the engine.
+    from app.services.hc_platform.spec_studio import generate_spec_report, load_spec
+
+    if payload.report_type == "detailed" and load_spec(payload.studio):
+        try:
+            document = await generate_spec_report(
+                payload.studio or "",
+                transcript=transcript,
+                context_blocks=[
+                    _brief_context_block(payload.brief),
+                    _profile_block(payload.profile),
+                    _onboarding_block(payload.client_profile),
+                    _plan_state_block(payload.plan_state),
+                ],
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"Report generation failed: {exc}")
+
+        def _spec_clean(value: Any) -> Any:
+            if isinstance(value, str):
+                return _clean(value)
+            if isinstance(value, list):
+                return [_spec_clean(v) for v in value]
+            if isinstance(value, dict):
+                return {k: _spec_clean(v) for k, v in value.items()}
+            return value
+
+        document = _spec_clean(document)
+        await _audit(
+            current_tenant.id,
+            current_user.id,
+            "hc_platform.ai_advisory.finalize_report",
+            {"report_type": "detailed", "studio": payload.studio,
+             "workspace_id": payload.context.workspace_id if payload.context else None},
+        )
+        return FinalizeReportResponse(report_type="detailed", document=document)
+
     base = _DETAILED_REPORT_PROMPT if payload.report_type == "detailed" else _SUMMARY_REPORT_PROMPT
     parts = [base]
     for block in (
@@ -506,11 +549,6 @@ async def finalize_report(
         if block:
             parts.append(block)
     system = "\n\n".join(parts)
-
-    transcript = "\n\n".join(
-        f"{'CLIENT' if m.role == 'user' else 'ADVISOR'}: {m.content}"
-        for m in payload.messages[-30:]
-    )[:24000]
 
     try:
         client = _get_client()

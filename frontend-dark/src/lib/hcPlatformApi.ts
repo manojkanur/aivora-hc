@@ -1268,6 +1268,7 @@ export const hcAiAdvisoryAPI = {
   finalizeReport: (body: {
     messages: { role: 'user' | 'assistant'; content: string }[]
     report_type: 'detailed' | 'summary'
+    studio?: string | null
     plan_state?: ChatPlan | null
     brief?: Record<string, unknown> | null
     client_profile?: Record<string, unknown> | null

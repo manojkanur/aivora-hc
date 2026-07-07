@@ -16,7 +16,7 @@ import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
-import { hcAiAdvisoryAPI, hcStudioRunAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
+import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
@@ -734,24 +734,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setError(null)
     setFinalizing(type)
     try {
-      // Real studio builders are instant and data-true - prefer them for the
-      // detailed report when the advisor named a registered studio.
-      if (type === 'detailed' && studioSlug) {
-        try {
-          const run = await hcStudioRunAPI.run(studioSlug, {
-            brief: (briefContent as unknown as Record<string, unknown>) ?? (brief as unknown as Record<string, unknown>) ?? null,
-            workspace_id: workspaceId,
-          })
-          const doc = ((run.data as { document?: Record<string, unknown> }).document ?? run.data) as unknown as StudioOutputDocument
-          if (doc && Array.isArray((doc as unknown as { sections?: unknown[] }).sections)) {
-            setSavedDraftId(null)
-            setReport({ kind: 'detailed', document: doc })
-            setFinalizing(null)
-            return
-          }
-        } catch { /* unknown slug or builder error - fall through to the LLM report */ }
-      }
       const res = await hcAiAdvisoryAPI.finalizeReport({
+        studio: studioSlug ?? null,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
         plan_state: planOverride !== undefined ? planOverride : plan,
