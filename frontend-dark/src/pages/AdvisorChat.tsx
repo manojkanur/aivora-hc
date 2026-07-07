@@ -361,7 +361,7 @@ function StudioMatchCard({ recs, flagged, onGenerate }: {
 const PREFS_STORAGE_KEY = 'aivora-advisor-prefs-v1'
 
 interface ChatPrefs { length: 'default' | 'longer' | 'shorter'; style: 'consultant' | 'coach' | 'analyst' | 'custom'; instructions: string }
-const DEFAULT_PREFS: ChatPrefs = { length: 'default', style: 'consultant', instructions: '' }
+const DEFAULT_PREFS: ChatPrefs = { length: 'longer', style: 'consultant', instructions: '' }
 
 function loadPrefs(workspaceId: string): ChatPrefs {
   try {
@@ -791,7 +791,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       studio_recommendations: studioRecs.map(r => ({ id: r.id, name: r.name, category: r.category, reason: r.reasons[0] ?? '' })),
     }).then(res => {
       setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
-    }).catch(() => { /* fall back to the static empty state */ }).finally(() => setSending(false))
+    }).catch(() => { /* fall back to the static empty state */ }).finally(() => { setSending(false); setTimeout(() => textareaRef.current?.focus(), 0) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId])
 
@@ -894,6 +894,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       // Rollback the user message stays; user can retry.
     } finally {
       setSending(false)
+      // Keep the cursor in the composer so the conversation flows without clicking.
+      setTimeout(() => textareaRef.current?.focus(), 0)
     }
   }
 
@@ -1258,6 +1260,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             onKeyDown={onKeyDown}
             rows={1}
             disabled={sending}
+            autoFocus
             placeholder={
               brief
                 ? `Ask about ${brief.organizationName || 'your organisation'}...`
