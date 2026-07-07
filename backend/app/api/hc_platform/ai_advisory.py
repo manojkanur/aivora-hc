@@ -284,6 +284,7 @@ class ChatResponse(BaseModel):
     followup_questions: list[str] = []
     plan: ChatPlan | None = None
     finalize: str | None = None  # 'summary' | 'detailed' once the user confirms
+    studio: str | None = None    # builder slug for the chosen studio, when known
 
 
 _ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant embedded inside the Aivora HC platform, advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
@@ -330,8 +331,8 @@ How you converse:
 
 Flexible output generation (ChatGPT-style - the answer lives IN the chat):
 - When the user asks for a deliverable of ANY kind - a framework, model, program design, roadmap, policy, RACI matrix, KPI scorecard, maturity interpretation, benchmarking summary, executive brief, board summary, playbook, process flow, action plan, SWOT, heatmap, scenario recommendations, or any structure they invent - write it out FULLY, right there in the reply, in rich markdown: real tables with column headers, numbered phases with timeframes, clear section headings, specifics tied to their organisation. Detailed and complete, never a teaser.
-- End every full deliverable with one short question: would they like it prepared as a formatted document for preview and export (PDF, PPTX, DOCX, HTML)?
-- When the user confirms the document version ("yes, make the document", "prepare it for export", "create the report"), set "finalize" to "detailed" (or "summary" if they ask for the simple plain-language version) and keep that reply to one sentence - the platform opens the formatted document in a side preview.
+- In the SAME response, set "finalize" to "detailed" and set "studio" to the closest matching studio slug from: mobility | hc-strategy | hipo | succession | workforce | capability | leadership-dev | learning | maturity | org-design | performance | playbook | process-excellence | skills-dev | total-rewards | employee-exp | early-career | benchmarking | business-plan | org-dev. The platform opens the formatted studio report in a side preview alongside your chat answer - one request, both outputs. Mention at the end of your reply that the formatted report is opening on the right for review.
+- If they ask for the simple plain-language version, set "finalize" to "summary" instead (studio still set).
 - Never refuse or defer because "no template exists". Studios are scaffolds, not limits - pick the closest one and adapt.
 - Customize every deliverable to their organisation, industry, size and objective as far as the context allows. Where you must generalize, say so.
 
@@ -361,7 +362,7 @@ Closing the session:
 - A request to export, download or 'make the document/report' of something already discussed counts as confirmation - set finalize immediately. Only ask summary-vs-detailed when the user is wrapping up a longer session without naming what they want.
 
 OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
-{"reply": "<your full markdown reply>", "plan": {"title": "...", "steps": [{"title": "...", "status": "pending|in_progress|done", "note": "..."}]} or null, "finalize": null or "summary" or "detailed"}
+{"reply": "<your full markdown reply>", "plan": {...} or null, "finalize": null or "summary" or "detailed", "studio": null or "<studio-slug>"}
 Send the FULL updated plan every turn while one is active; send null when no plan is running.
 """
 
@@ -932,6 +933,14 @@ async def advisor_chat(
     except (NameError, AttributeError):
         pass
 
+    studio_slug = None
+    try:
+        raw_studio = data.get("studio")
+        if isinstance(raw_studio, str) and raw_studio.strip():
+            studio_slug = raw_studio.strip().lower().replace("_", "-")
+    except (NameError, AttributeError):
+        pass
+
     if not reply:
         reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
-    return ChatResponse(reply=reply, followup_questions=[], plan=plan, finalize=finalize)
+    return ChatResponse(reply=reply, followup_questions=[], plan=plan, finalize=finalize, studio=studio_slug)

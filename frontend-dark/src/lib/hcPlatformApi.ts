@@ -1257,7 +1257,7 @@ export const hcAiAdvisoryAPI = {
     plan_state?: ChatPlan | null
     report_state?: Record<string, unknown> | null
     preferences?: { length?: string; style?: string; instructions?: string } | null
-  }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null }>(`${HC_BASE}/ai-advisory/chat`, body),
+  }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null; studio?: string | null }>(`${HC_BASE}/ai-advisory/chat`, body),
   uploadEvidence: (file: File) => {
     const form = new FormData()
     form.append('file', file)
@@ -1291,6 +1291,11 @@ export interface BriefChatResponse {
   brief_patch: Record<string, unknown>
   sections: Record<BriefSectionKey, BriefSectionStatus>
   done: boolean
+}
+
+export const hcStudioRunAPI = {
+  run: (slug: string, body: { brief?: Record<string, unknown> | null; workspace_id?: string | null; params?: Record<string, unknown> }) =>
+    post<Record<string, unknown>>(`${HC_BASE}/studios/${slug}/run`, body),
 }
 
 export const hcBriefChatAPI = {

@@ -16,7 +16,7 @@ import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
-import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
+import { hcAiAdvisoryAPI, hcStudioRunAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
@@ -728,12 +728,29 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId])
 
-  const finalizeSession = async (type: 'summary' | 'detailed', history?: ChatMessage[], planOverride?: ChatPlan | null) => {
+  const finalizeSession = async (type: 'summary' | 'detailed', history?: ChatMessage[], planOverride?: ChatPlan | null, studioSlug?: string | null) => {
     const msgs = history ?? messages
     if (finalizing || msgs.length === 0) return
     setError(null)
     setFinalizing(type)
     try {
+      // Real studio builders are instant and data-true - prefer them for the
+      // detailed report when the advisor named a registered studio.
+      if (type === 'detailed' && studioSlug) {
+        try {
+          const run = await hcStudioRunAPI.run(studioSlug, {
+            brief: (briefContent as unknown as Record<string, unknown>) ?? (brief as unknown as Record<string, unknown>) ?? null,
+            workspace_id: workspaceId,
+          })
+          const doc = ((run.data as { document?: Record<string, unknown> }).document ?? run.data) as unknown as StudioOutputDocument
+          if (doc && Array.isArray((doc as unknown as { sections?: unknown[] }).sections)) {
+            setSavedDraftId(null)
+            setReport({ kind: 'detailed', document: doc })
+            setFinalizing(null)
+            return
+          }
+        } catch { /* unknown slug or builder error - fall through to the LLM report */ }
+      }
       const res = await hcAiAdvisoryAPI.finalizeReport({
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
@@ -810,7 +827,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       // The user confirmed in the conversation - the deliverable follows automatically.
       const confirmed = res.data.finalize
       if (confirmed === 'summary' || confirmed === 'detailed') {
-        void finalizeSession(confirmed, [...next, { role: 'assistant', content: reply, id: `a-${Date.now()}` }], nextPlan)
+        void finalizeSession(confirmed, [...next, { role: 'assistant', content: reply, id: `a-${Date.now()}` }], nextPlan, res.data.studio ?? null)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'The advisor is unavailable right now.'
@@ -966,19 +983,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       {/* Composer */}
       <div className="border-t border-[#1e2433] bg-[#0f1117] px-4 sm:px-6 py-4">
         {/* Output-format hints */}
-        <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-0.5">
-          <span className="text-[11px] text-slate-600 flex-shrink-0">Format as</span>
-          {FORMAT_HINTS.map(f => (
-            <button
-              key={f}
-              onClick={() => appendFormatHint(f)}
-              className="flex-shrink-0 rounded-full border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 hover:text-white px-3 py-1 text-[11px] text-slate-400 transition-colors"
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
         {/* Attached evidence pills */}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
