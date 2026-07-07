@@ -109,6 +109,8 @@ export interface ClientProfile {
   }
   evidence: {
     availableDocuments: AvailableDocument[]
+    /** HC foundations that already exist in the organization (career paths, skills profiles, ...). */
+    foundationsInPlace?: string[]
     notes?: string
   }
   completedAt?: string

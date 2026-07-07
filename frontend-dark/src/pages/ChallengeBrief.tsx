@@ -96,7 +96,15 @@ interface DesiredOutputs {
   expectedDeliveryWindow: TimeHorizon
 }
 
+interface TalentPractices {
+  mobilityTypesUsed: string[]
+  releaseRules: string
+  groupsInScope: string[]
+  primaryOutcome: string
+}
+
 export interface ChallengeBriefData {
+  talentPractices?: TalentPractices
   organization: OrganizationContext
   businessSituation: BusinessSituation
   hcChallenges: HcChallenges
@@ -145,6 +153,27 @@ const HC_AREA_LABELS: Record<HcChallengeArea, string> = {
   'governance-operating-model': 'Governance & operating model', 'ai-digital-transformation': 'AI & digital transformation',
   'culture-change-readiness': 'Culture & change readiness', 'analytics-productivity': 'Analytics & productivity',
 }
+const MOBILITY_TYPE_LABELS: Record<string, string> = {
+  'ad-hoc-promotions': 'Ad hoc promotions', 'lateral-transfers': 'Lateral transfers',
+  'cross-functional': 'Cross-functional moves', rotations: 'Job rotations',
+  secondments: 'Secondments / attachments', 'project-assignments': 'Project assignments',
+  'none-informal': 'None / informal only',
+}
+const RELEASE_RULE_LABELS: Record<string, string> = {
+  none: 'No rules - manager discretion', informal: 'Informal / inconsistent',
+  defined: 'Defined but not enforced', formal: 'Formal and enforced',
+}
+const GROUP_SCOPE_LABELS: Record<string, string> = {
+  'all-employees': 'All employees', corporate: 'Corporate / office staff',
+  frontline: 'Frontline / operations', leadership: 'Leadership levels',
+  'critical-roles': 'Critical roles only', graduates: 'Graduates / early career',
+}
+const PRIMARY_OUTCOME_LABELS: Record<string, string> = {
+  retention: 'Retention of key talent', succession: 'Succession readiness',
+  agility: 'Workforce agility / redeployment', development: 'Employee development & growth',
+  cost: 'Reduce external hiring cost',
+}
+
 const SEVERITY_LABELS: Record<ChallengeSeverity, string> = { watch: 'Watch', moderate: 'Moderate', high: 'High', critical: 'Critical' }
 const OUTPUT_TYPE_LABELS: Record<DesiredOutputType, string> = {
   'executive-deck': 'Executive deck', 'consulting-report': 'Consulting report', playbook: 'Playbook',
@@ -176,6 +205,7 @@ export function defaultBrief(): ChallengeBriefData {
     organization: { organizationName: '', industry: 'other', region: 'gcc', organizationSize: 'large', maturityStage: 'mature', operatingModel: 'single-entity', employeeCountBand: 'unknown', geographicScope: 'unknown', notes: '' },
     businessSituation: { situationSummary: '', strategicDrivers: [], timeHorizon: 'medium-term', budgetEnvelope: 'not-defined', executiveSponsor: 'none', boardVisibility: false, recentChangesNote: '' },
     hcChallenges: { selectedAreas: [], topPriorityArea: 'none', painPointsNote: '' },
+    talentPractices: { mobilityTypesUsed: [], releaseRules: '', groupsInScope: [], primaryOutcome: '' },
     advisoryQuestions: [],
     constraints: { constraints: [], assumptions: [], outOfScopeNote: '' },
     desiredOutputs: { outputTypes: [], primaryAudience: 'hr-leadership', outputDepth: 'standard', preferredTone: 'advisory', innovationAppetite: 'balanced', implementationOrientation: 'advisory', confidentialityLevel: 'internal', expectedDeliveryWindow: 'medium-term' },
@@ -285,7 +315,7 @@ function StepSituation({ value, onChange }: { value: BusinessSituation; onChange
 
 // ── Step 3: HC challenges ──────────────────────────────────────────────────
 
-function StepHcChallenges({ value, onChange }: { value: HcChallenges; onChange: (v: HcChallenges) => void }) {
+function StepHcChallenges({ value, onChange, practices, onPracticesChange }: { value: HcChallenges; onChange: (v: HcChallenges) => void; practices: TalentPractices; onPracticesChange: (v: TalentPractices) => void }) {
   const areas = Object.keys(HC_AREA_LABELS) as HcChallengeArea[]
   const selectedAreaIds = value.selectedAreas.map(a => a.area)
 
@@ -358,6 +388,44 @@ function StepHcChallenges({ value, onChange }: { value: HcChallenges; onChange: 
       )}
 
       <Textarea label="Pain points note (optional)" rows={3} placeholder="Describe the key pain points we need to address..." value={value.painPointsNote} onChange={e => onChange({ ...value, painPointsNote: e.target.value })} />
+
+      {/* Current talent practices - feeds studio intake (mobility, succession, ...) */}
+      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Current talent practices</p>
+          <p className="text-xs text-slate-500 mt-1">How talent moves today. This grounds the advisory and its reports in your reality instead of assumptions.</p>
+        </div>
+        <ChipGroup
+          label="Mobility used today"
+          options={Object.keys(MOBILITY_TYPE_LABELS)}
+          labels={MOBILITY_TYPE_LABELS}
+          value={practices.mobilityTypesUsed}
+          onChange={next => onPracticesChange({ ...practices, mobilityTypesUsed: next })}
+        />
+        <ChipGroup
+          label="Employee groups in scope"
+          options={Object.keys(GROUP_SCOPE_LABELS)}
+          labels={GROUP_SCOPE_LABELS}
+          value={practices.groupsInScope}
+          onChange={next => onPracticesChange({ ...practices, groupsInScope: next })}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectField
+            label="Manager release & approval rules"
+            options={Object.keys(RELEASE_RULE_LABELS)}
+            labels={RELEASE_RULE_LABELS}
+            value={practices.releaseRules}
+            onChange={v => onPracticesChange({ ...practices, releaseRules: v })}
+          />
+          <SelectField
+            label="Primary outcome sought"
+            options={Object.keys(PRIMARY_OUTCOME_LABELS)}
+            labels={PRIMARY_OUTCOME_LABELS}
+            value={practices.primaryOutcome}
+            onChange={v => onPracticesChange({ ...practices, primaryOutcome: v })}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -1002,7 +1070,7 @@ export default function ChallengeBrief() {
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18 }}>
                 {stepIndex === 0 && <StepSituation value={brief.businessSituation} onChange={v => updateBrief({ ...brief, businessSituation: v })} />}
-                {stepIndex === 1 && <StepHcChallenges value={brief.hcChallenges} onChange={v => updateBrief({ ...brief, hcChallenges: v })} />}
+                {stepIndex === 1 && <StepHcChallenges value={brief.hcChallenges} onChange={v => updateBrief({ ...brief, hcChallenges: v })} practices={brief.talentPractices ?? { mobilityTypesUsed: [], releaseRules: '', groupsInScope: [], primaryOutcome: '' }} onPracticesChange={v => updateBrief({ ...brief, talentPractices: v })} />}
                 {stepIndex === 2 && (
                   <StepAdvisoryQuestions
                     questions={brief.advisoryQuestions}

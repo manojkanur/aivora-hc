@@ -103,6 +103,13 @@ const RATE_BAND_LABELS: Record<RateBand, string> = {
   '50-75': '50-75%', '75-100': '75-100%', unknown: 'Unknown',
 }
 
+const FOUNDATION_LABELS: Record<string, string> = {
+  'career-paths': 'Career paths', 'job-families': 'Job families',
+  'skills-profiles': 'Skills profiles', 'mobility-policy': 'Internal mobility policy',
+  'internal-job-board': 'Internal job posting', 'succession-plans': 'Succession plans',
+  'competency-framework': 'Competency framework', none: 'None of these yet',
+}
+
 const AVAILABLE_DOC_LABELS: Record<AvailableDocument, string> = {
   'strategy-deck': 'Strategy deck', 'org-chart': 'Org chart', 'hc-policy': 'HC policy',
   'engagement-survey': 'Engagement survey', 'exit-data': 'Exit data', 'comp-bands': 'Comp bands',
@@ -308,6 +315,7 @@ function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputP
         <p className="text-sm text-slate-400 mt-1">Tag the artefacts you can share; the advisory grounds its analysis in them.</p>
       </div>
       <ChipGroup label="Available evidence" description="Pick what you have access to; this shapes how confident the analysis can be." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
+      <ChipGroup label="What is already in place" description="HC foundations that exist today - the advisory builds on these instead of assuming." options={Object.keys(FOUNDATION_LABELS)} labels={FOUNDATION_LABELS} value={evidence.foundationsInPlace ?? []} onChange={next => onChangeEvidence({ ...evidence, foundationsInPlace: next })} />
       <Textarea label="Notes about evidence (optional)" rows={3} placeholder="e.g. Engagement survey is 11 months old; comp bands cover GCC only." value={evidence.notes ?? ''} onChange={e => onChangeEvidence({ ...evidence, notes: e.target.value || undefined })} />
       <p className="text-xs text-slate-600">Output formats and audience are captured in the Challenge Brief, so you will not be asked twice.</p>
     </div>
