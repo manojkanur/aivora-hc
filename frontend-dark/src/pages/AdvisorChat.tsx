@@ -684,6 +684,16 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const getProfileFor = useClientProfileStore(st => st.getProfileFor)
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
+  const [viewMode, setViewMode] = useState<'chat' | 'report'>('chat')
+  const [pendingApproval, setPendingApproval] = useState<{ type: 'summary' | 'detailed'; studio: string | null; history: ChatMessage[]; plan: ChatPlan | null } | null>(null)
+
+  const approveGeneration = () => {
+    if (!pendingApproval) return
+    const p = pendingApproval
+    setPendingApproval(null)
+    setViewMode('report')
+    void finalizeSession(p.type, p.history, p.plan, p.studio)
+  }
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
 
@@ -869,7 +879,14 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       // The user confirmed in the conversation - the deliverable follows automatically.
       const confirmed = res.data.finalize
       if (confirmed === 'summary' || confirmed === 'detailed') {
-        void finalizeSession(confirmed, [...next, { role: 'assistant', content: reply, id: `a-${Date.now()}` }], nextPlan, res.data.studio ?? null)
+        const history = [...next, { role: 'assistant' as const, content: reply, id: `a-${Date.now()}` }]
+        if (viewMode === 'report') {
+          // The user is editing an open report - regenerate without re-asking.
+          void finalizeSession(confirmed, history, nextPlan, res.data.studio ?? null)
+        } else {
+          // Claude-style permission request: nothing generates until approved.
+          setPendingApproval({ type: confirmed, studio: res.data.studio ?? null, history, plan: nextPlan })
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'The advisor is unavailable right now.'
@@ -925,8 +942,133 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     textareaRef.current?.focus()
   }
 
+  // ── Report workspace: full-screen section with edit chat left, preview right ──
+  if (viewMode === 'report' && (report || finalizing)) {
+    return (
+      <div className="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)] gap-5 items-start">
+        {/* Edit dock */}
+        <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
+          <div className="px-4 py-3 border-b border-[#1e2433] bg-[#0f1117] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0" />
+            <p className="text-xs font-bold text-white flex-1">Refine this report</p>
+            <button onClick={() => setViewMode('chat')} className="text-[11px] text-slate-500 hover:text-blue-400 transition-colors">
+              Back to chat
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3">
+            {messages.slice(-10).map(m => (
+              <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+                <div className={
+                  m.role === 'user'
+                    ? 'max-w-[90%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2.5 text-xs leading-relaxed'
+                    : 'max-w-[90%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2.5 text-xs'
+                }>
+                  {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
+                </div>
+              </div>
+            ))}
+            {(sending || finalizing) && (
+              <div className="flex justify-start">
+                <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-3.5 py-2.5 flex items-center gap-2">
+                  {[0, 1, 2].map(i => (
+                    <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }} />
+                  ))}
+                  {finalizing && <span className="text-[11px] text-slate-500">building the report...</span>}
+                </div>
+              </div>
+            )}
+            {error && <p className="text-[11px] text-red-400 text-center">{error}</p>}
+          </div>
+          <div className="border-t border-[#1e2433] p-3">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {['Add an infographic section', 'Simplify the language', 'Add industry benchmarks'].map(q => (
+                <button key={q} onClick={() => sendMessage(q)} disabled={sending || !!finalizing}
+                  className="rounded-full border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1 text-[11px] text-slate-400 hover:text-white transition-colors disabled:opacity-50">
+                  {q}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-end gap-2">
+              <textarea
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onKeyDown={onKeyDown}
+                rows={1}
+                disabled={sending || !!finalizing}
+                placeholder="Ask for changes or explanations"
+                className="flex-1 resize-none rounded-xl bg-[#131720] border border-[#1e2433] text-xs text-white placeholder:text-slate-600 px-3 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors max-h-28"
+              />
+              <button onClick={() => sendMessage(draft)} disabled={!draft.trim() || sending || !!finalizing}
+                className="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center justify-center transition-colors flex-shrink-0">
+                <Send className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Report canvas */}
+        <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
+          <div className="sticky top-0 z-10 flex items-center gap-3 px-5 py-3.5 border-b border-[#1e2433] bg-[#0f1117]/95 backdrop-blur flex-wrap">
+            <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white truncate">
+                {report?.kind === 'detailed'
+                  ? ((report.document as { title?: string }).title ?? 'Studio deliverable')
+                  : report?.kind === 'summary' ? report.summary.title : 'Generating report...'}
+              </p>
+              <p className="text-[11px] text-slate-500 truncate">
+                {report?.kind === 'detailed'
+                  ? `${(report.document as { studio_name?: string }).studio_name ?? 'Studio deliverable'} · generated from this session`
+                  : report ? 'Executive summary · generated from this session' : ''}
+              </p>
+            </div>
+            {report && (savedDraftId ? (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
+                  <button key={fmt} onClick={() => exportDraft(fmt)} disabled={!!exporting}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                    {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                    {fmt.toUpperCase()}
+                  </button>
+                ))}
+                <Link to={`/canvas/${savedDraftId}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition-colors">
+                  <Pencil className="w-3 h-3" /> Canvas
+                </Link>
+              </div>
+            ) : (
+              <button onClick={confirmAndPublish} disabled={savingDraft}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50">
+                {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Approve output - unlock downloads
+              </button>
+            ))}
+          </div>
+          <div className="p-5 sm:p-8 max-h-[calc(100vh-15.5rem)] overflow-y-auto">
+            {report ? (
+              <div className="max-w-4xl mx-auto">
+                {report.kind === 'detailed'
+                  ? <StudioOutput document={report.document} />
+                  : <SummaryReportView summary={report.summary} />}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <div className="w-10 h-10 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+                <p className="text-sm text-slate-500">Building the {finalizing === 'summary' ? 'executive summary' : 'studio report'} from your session...</p>
+              </div>
+            )}
+          </div>
+        </div>
+        {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
+      </div>
+    )
+  }
+
+  // ── Chat mode: full-width conversation ──
   return (
-    <div className={report ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(420px,46%)] gap-5 items-start' : plan ? 'grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start' : ''}>
+    <div>
     <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
@@ -1004,6 +1146,44 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {/* Claude-style permission request: nothing generates until approved */}
+        {pendingApproval && (
+          <div className="max-w-xl rounded-2xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-amber-500/20 bg-amber-500/10">
+              <FileBarChart2 className="w-3.5 h-3.5 text-amber-400" />
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">Permission request</p>
+            </div>
+            <div className="px-4 py-3.5">
+              <p className="text-sm text-slate-200">
+                Generate the{' '}
+                <span className="font-semibold text-white">
+                  {pendingApproval.type === 'summary' ? 'Executive Summary' : `${pendingApproval.studio ? pendingApproval.studio.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' ' : ''}detailed report`}
+                </span>{' '}
+                from this session? It opens in the report workspace where you can refine and export it.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button onClick={approveGeneration}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                  <Check className="w-3.5 h-3.5" /> Approve & generate
+                </button>
+                <button onClick={() => setPendingApproval(null)}
+                  className="px-4 py-2 rounded-lg border border-[#1e2433] text-slate-400 hover:text-white text-xs font-semibold transition-colors">
+                  Not now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Re-open an already generated report */}
+        {report && !pendingApproval && (
+          <button onClick={() => setViewMode('report')}
+            className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-4 py-2 text-xs font-semibold text-blue-300 transition-colors">
+            <FileBarChart2 className="w-3.5 h-3.5" />
+            View the generated report
+          </button>
+        )}
 
         {sending && (
           <div className="flex gap-3 max-w-[85%]">
@@ -1104,51 +1284,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         )}
       </div>
     </div>
-    {report ? (
-      <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden xl:sticky xl:top-4">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e2433] bg-[#0f1117]">
-          <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
-          <p className="text-xs font-bold text-white flex-1 truncate">
-            {report.kind === 'detailed'
-              ? `Preview · ${(report.document as { studio_name?: string }).studio_name ?? 'Studio deliverable'}`
-              : 'Preview · Executive summary'}
-          </p>
-          <button onClick={() => { setReport(null); setSavedDraftId(null) }} className="text-slate-500 hover:text-white transition-colors p-1" aria-label="Close preview">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {report.kind === 'detailed'
-            ? <StudioOutput document={report.document} />
-            : <SummaryReportView summary={report.summary} />}
-        </div>
-        <div className="border-t border-[#1e2433] p-3 space-y-2">
-          {savedDraftId ? (
-            <>
-              <div className="grid grid-cols-4 gap-2">
-                {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
-                  <button key={fmt} onClick={() => exportDraft(fmt)} disabled={!!exporting}
-                    className="inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-xs font-semibold text-slate-200 transition-colors disabled:opacity-50">
-                    {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                    {fmt.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-              <Link to={`/canvas/${savedDraftId}`}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-xs font-semibold transition-colors">
-                <Pencil className="w-3.5 h-3.5" /> Edit in Canvas
-              </Link>
-            </>
-          ) : (
-            <button onClick={confirmAndPublish} disabled={savingDraft}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50">
-              {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              Confirm output - unlock export & Canvas
-            </button>
-          )}
-        </div>
-      </div>
-    ) : plan ? <PlanRail plan={plan} onFinalize={finalizeSession} finalizing={finalizing} /> : null}
     {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
     </div>
   )
