@@ -118,6 +118,8 @@ export interface ClientProfile {
     availableDocuments: AvailableDocument[]
     /** HC foundations that already exist in the organization (career paths, skills profiles, ...). */
     foundationsInPlace?: string[]
+    /** Files uploaded during onboarding, stored server-side; the advisory grounds its analysis in them. */
+    uploadedFiles?: { evidence_id: string; filename: string }[]
     notes?: string
   }
   /** Studio categories the client flagged as the immediate challenge (strategy | talent | learning | advisory | commercial). */

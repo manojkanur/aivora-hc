@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Building2, BarChart2, AlertTriangle, FileSearch, HelpCircle,
-  LayoutList, CheckSquare, ArrowRight, ArrowLeft, ChevronRight,
+  Building2, BarChart2, AlertTriangle, HelpCircle,
+  LayoutList, ArrowRight, ArrowLeft, ChevronRight,
   Check, Plus, X, Trash2, Sparkles,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
@@ -14,7 +14,6 @@ import { useBriefStore } from '../store/briefStore'
 import { useClientProfileStore } from '../store/clientProfile'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { api, challengeBriefsAPI } from '../lib/api'
-import { hcBriefChatAPI } from '../lib/hcPlatformApi'
 import { useAutosave } from '../hooks/useAutosave'
 import { SaveIndicator } from '../components/ui/SaveIndicator'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
@@ -510,194 +509,6 @@ function StepDesiredOutputs({ value, onChange }: { value: DesiredOutputs; onChan
   )
 }
 
-// ── Step 6: Review ─────────────────────────────────────────────────────────
-
-const ALL_STUDIOS = [
-  { name: 'HC Strategy Charter', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Align HC strategy with business agenda' },
-  { name: 'Org Design Blueprint', area: 'organization-design', href: '/skills', icon: '', description: 'Redesign structures and reporting lines' },
-  { name: 'Workforce Planning', area: 'workforce-planning', href: '/skills', icon: '', description: 'Model headcount and capability gaps' },
-  { name: 'HiPo Studio', area: 'leadership', href: '/hipo-studio', icon: '', description: 'Identify and develop high-potential talent' },
-  { name: 'Succession Planning', area: 'succession', href: '/skills', icon: '', description: 'Build leadership pipeline readiness' },
-  { name: 'Performance Management', area: 'performance', href: '/skills', icon: '', description: 'Design performance frameworks' },
-  { name: 'Employee Experience', area: 'employee-experience', href: '/skills', icon: '', description: 'Map and improve EX touchpoints' },
-  { name: 'Total Rewards', area: 'rewards', href: '/skills', icon: '', description: 'Benchmark and design compensation' },
-  { name: 'Talent Acquisition', area: 'talent-acquisition', href: '/skills', icon: '', description: 'Attract and hire top talent' },
-  { name: 'Learning & Training', area: 'learning-training', href: '/skills', icon: '', description: 'Build learning journeys and curricula' },
-  { name: 'Skills Development', area: 'capability-skills', href: '/skills', icon: '', description: 'Close critical skill gaps' },
-  { name: 'Leadership Development', area: 'leadership', href: '/skills', icon: '', description: 'Develop leadership at all levels' },
-  { name: 'Capability Assessment', area: 'capability-skills', href: '/skills', icon: '', description: 'Assess and map organizational capabilities' },
-  { name: 'Process Excellence', area: 'process-excellence', href: '/skills', icon: '', description: 'Streamline and optimize HC processes' },
-  { name: 'Analytics & Productivity', area: 'analytics-productivity', href: '/skills', icon: '', description: 'Build people analytics dashboards' },
-  { name: 'Mobility Studio', area: 'mobility', href: '/skills', icon: '', description: 'Design internal mobility programs' },
-  { name: 'Culture & Change', area: 'culture-change-readiness', href: '/skills', icon: '', description: 'Assess and shift organizational culture' },
-  { name: 'AI & Digital Transform', area: 'ai-digital-transformation', href: '/skills', icon: '', description: 'Lead AI-enabled HC transformation' },
-  { name: 'Framework Review', area: 'governance-operating-model', href: '/skills', icon: '', description: 'Review governance and operating models' },
-  { name: 'Benchmarking Studio', area: 'analytics-productivity', href: '/skills', icon: '', description: 'Benchmark against industry peers' },
-  { name: 'Deck Generator', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Generate executive-ready presentations' },
-  { name: 'Playbook Studio', area: 'culture-change-readiness', href: '/skills', icon: '', description: 'Create implementation playbooks' },
-  { name: 'Infographic Studio', area: 'analytics-productivity', href: '/skills', icon: '', description: 'Visualize data and insights' },
-  { name: 'Brand Workspace', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Build employer brand strategy' },
-  { name: 'Coaching & Mentoring', area: 'leadership', href: '/skills', icon: '', description: 'Design coaching programs' },
-  { name: 'Early Career', area: 'talent-acquisition', href: '/skills', icon: '', description: 'Build graduate and early career pipelines' },
-  { name: 'Business Plan Studio', area: 'strategy-business-alignment', href: '/skills', icon: '', description: 'Craft HC business cases and plans' },
-]
-
-function CircleProgress({ pct, size = 80, stroke = 7 }: { pct: number; size?: number; stroke?: number }) {
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (pct / 100) * circ
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1e2433" strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke={pct < 40 ? '#64748b' : pct < 70 ? '#f59e0b' : pct < 90 ? '#3b82f6' : '#10b981'}
-        strokeWidth={stroke} strokeLinecap="round"
-        strokeDasharray={circ} strokeDashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
-    </svg>
-  )
-}
-
-function StepReview({ brief, onLaunch, launching, launchError }: { brief: ChallengeBriefData; onLaunch: () => void; launching?: boolean; launchError?: string | null }) {
-  // AI-written recap of everything the client shared, fetched once on arrival.
-  const [aiSummary, setAiSummary] = useState<string | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    hcBriefChatAPI.summarize({ brief: JSON.parse(JSON.stringify(brief)) as Record<string, unknown> })
-      .then(res => { if (!cancelled) setAiSummary(res.data.summary) })
-      .catch(() => { if (!cancelled) setAiSummary('Your brief is saved. Proceed to the AI Advisory to start working on it together.') })
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const sections = [
-    { label: 'Organization', done: brief.organization.organizationName.length > 0, value: brief.organization.organizationName || ' - ', weight: 15 },
-    { label: 'Situation summary', done: brief.businessSituation.situationSummary.length > 10, value: brief.businessSituation.situationSummary.length > 10 ? `${brief.businessSituation.situationSummary.substring(0, 60)}…` : 'Not filled', weight: 20 },
-    { label: 'Strategic drivers', done: brief.businessSituation.strategicDrivers.length > 0, value: brief.businessSituation.strategicDrivers.length > 0 ? `${brief.businessSituation.strategicDrivers.length} driver${brief.businessSituation.strategicDrivers.length > 1 ? 's' : ''}` : 'None selected', weight: 10 },
-    { label: 'HC challenges', done: brief.hcChallenges.selectedAreas.length > 0, value: brief.hcChallenges.selectedAreas.length > 0 ? `${brief.hcChallenges.selectedAreas.length} area${brief.hcChallenges.selectedAreas.length > 1 ? 's' : ''}` : 'None selected', weight: 25 },
-    { label: 'Advisory questions', done: brief.advisoryQuestions.length > 0, value: brief.advisoryQuestions.length > 0 ? `${brief.advisoryQuestions.length} question${brief.advisoryQuestions.length > 1 ? 's' : ''}` : 'None added', weight: 15 },
-    { label: 'Desired outputs', done: brief.desiredOutputs.outputTypes.length > 0, value: brief.desiredOutputs.outputTypes.length > 0 ? `${brief.desiredOutputs.outputTypes.length} format${brief.desiredOutputs.outputTypes.length > 1 ? 's' : ''}` : 'None selected', weight: 15 },
-  ]
-
-  const completionPct = Math.min(100, sections.filter(s => s.done).reduce((a, s) => a + s.weight, 0))
-  const readinessLabel = completionPct < 40 ? 'Basic context' : completionPct < 70 ? 'Advisory ready' : completionPct < 90 ? 'AI ready' : 'Expert review ready'
-  const readinessColor = completionPct < 40 ? 'text-slate-400' : completionPct < 70 ? 'text-amber-400' : completionPct < 90 ? 'text-blue-400' : 'text-emerald-400'
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Brief readiness review</h2>
-        <p className="text-sm text-slate-400 mt-1">Your engagement profile is ready. Select the studios you want to launch.</p>
-      </div>
-
-      {/* Score ring + section cards */}
-      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-5">
-        <div className="flex items-center gap-5 mb-4">
-          <div className="relative flex-shrink-0">
-            <CircleProgress pct={completionPct} size={80} stroke={7} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-lg font-bold text-white leading-none">{completionPct}%</span>
-            </div>
-          </div>
-          <div>
-            <p className={cn('text-base font-bold', readinessColor)}>{readinessLabel}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{sections.filter(s => s.done).length} of {sections.length} sections complete</p>
-            <div className="mt-2 h-1.5 rounded-full bg-[#1e2433] w-40 overflow-hidden">
-              <div className="h-full rounded-full bg-blue-600 transition-all duration-700" style={{ width: `${completionPct}%` }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {sections.map(item => (
-            <div key={item.label} className={cn('flex items-start gap-2.5 px-3 py-2.5 rounded-lg border transition-colors',
-              item.done ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-[#1e2433] bg-[#131720]')}>
-              <div className={cn('w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5',
-                item.done ? 'bg-emerald-500' : 'bg-[#1e2433]')}>
-                {item.done && <Check className="w-2.5 h-2.5 text-white" />}
-              </div>
-              <div className="min-w-0">
-                <p className={cn('text-xs font-semibold', item.done ? 'text-slate-200' : 'text-slate-500')}>{item.label}</p>
-                <p className={cn('text-xs truncate mt-0.5', item.done ? 'text-slate-400' : 'text-slate-600')}>{item.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Brief summary chips */}
-      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Brief snapshot</p>
-        <div className="flex flex-wrap gap-2">
-          {brief.organization.organizationName && (
-            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
-              🏢 {brief.organization.organizationName}
-            </span>
-          )}
-          {brief.organization.industry && (
-            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-[#1e2433] text-slate-300">
-              {brief.organization.industry.replace(/-/g, ' ')}
-            </span>
-          )}
-          {brief.organization.region && (
-            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-[#1e2433] text-slate-300">
-              🌍 {brief.organization.region.toUpperCase()}
-            </span>
-          )}
-          {brief.businessSituation.strategicDrivers.map(d => (
-            <span key={d} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300">
-              {d.replace(/-/g, ' ')}
-            </span>
-          ))}
-          {brief.hcChallenges.selectedAreas.map(a => (
-            <span key={a.area} className={cn('inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border',
-              a.severity === 'critical' ? 'bg-red-500/10 border-red-500/20 text-red-300'
-              : a.severity === 'high' ? 'bg-orange-500/10 border-orange-500/20 text-orange-300'
-              : 'bg-slate-500/10 border-slate-500/20 text-slate-300')}>
-              {a.area.replace(/-/g, ' ')}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* AI recap of what the client shared */}
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-blue-400" />
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-300">Your consultant's read</p>
-        </div>
-        {aiSummary === null ? (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <span className="w-4 h-4 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
-            Reviewing what you shared...
-          </div>
-        ) : (
-          <div className="text-sm text-slate-300 leading-relaxed [&_strong]:text-white space-y-2">
-            {aiSummary.split('\n').filter(Boolean).map((line, i) => (
-              <p key={i} dangerouslySetInnerHTML={{ __html: line.replace(/^[-*]\s*/, '• ').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Proceed CTA */}
-      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-white">Ready to work on this together?</p>
-          <p className="text-xs text-slate-400 mt-0.5">Your brief is saved. The AI Advisory opens pre-briefed on everything above.</p>
-        </div>
-        <Button size="sm" onClick={onLaunch} disabled={launching} rightIcon={<ArrowRight className="w-4 h-4" />}>
-          {launching ? 'Opening...' : 'Proceed to AI Advisory'}
-        </Button>
-      </div>
-      {launchError && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
-          {launchError}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── Step metadata ──────────────────────────────────────────────────────────
 
@@ -708,7 +519,6 @@ const STEPS = [
   { id: 'challenges', shortLabel: 'Challenges', icon: AlertTriangle },
   { id: 'questions', shortLabel: 'Questions', icon: HelpCircle },
   { id: 'outputs', shortLabel: 'Outputs', icon: LayoutList },
-  { id: 'review', shortLabel: 'Review', icon: CheckSquare },
 ]
 
 // ── Brief persistence key ──────────────────────────────────────────────────
@@ -1013,7 +823,6 @@ export default function ChallengeBrief() {
                   />
                 )}
                 {stepIndex === 3 && <StepDesiredOutputs value={brief.desiredOutputs} onChange={v => updateBrief({ ...brief, desiredOutputs: v })} />}
-                {stepIndex === 4 && <StepReview brief={brief} onLaunch={completeBrief} launching={launching} launchError={launchError} />}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -1024,11 +833,18 @@ export default function ChallengeBrief() {
             <div className="flex items-center gap-4">
               <SaveIndicator status={briefSaveStatus} />
               <span className="text-sm text-slate-600 font-medium">Step {stepIndex + 1} of {STEPS.length}</span>
-              {!isLast && (
+              {!isLast ? (
                 <Button size="lg" onClick={advance} rightIcon={<ArrowRight className="w-4 h-4" />}>Save & continue</Button>
+              ) : (
+                <Button size="lg" onClick={completeBrief} disabled={launching} rightIcon={<ArrowRight className="w-4 h-4" />}>
+                  {launching ? 'Opening...' : 'Save & go to AI Advisory'}
+                </Button>
               )}
             </div>
           </div>
+          {launchError && (
+            <p className="text-sm text-red-400 text-right pt-2">{launchError}</p>
+          )}
         </div>
       </div>
     </div>

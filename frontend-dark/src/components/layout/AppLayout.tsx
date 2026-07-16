@@ -13,7 +13,6 @@ import { isAdminUser } from '../../lib/adminAccess'
 import { getInitials } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { TopBar } from './TopBar'
-import { AdvisorBubble } from '../advisor/AdvisorBubble'
 import { ToastContainer, useInsufficientCreditsHandler } from '../ui/Toast'
 import { useConversationInsights } from '../../store/conversationInsights'
 import { useThemeStore } from '../../store/theme'
@@ -493,8 +492,6 @@ export function AppLayout() {
       <AnimatePresence>
         {learningOpen && <LearningCenterPanel onClose={() => setLearningOpen(false)} />}
       </AnimatePresence>
-
-      <AdvisorBubble />
 
       <ToastContainer />
     </div>

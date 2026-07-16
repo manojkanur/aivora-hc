@@ -20,7 +20,6 @@ import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryRepor
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
-import { recommendStudios, signalsFromBriefContent, type StudioRecommendation } from '../lib/briefRecommender'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -69,11 +68,6 @@ function readActiveReviewId(): string | null {
 
 const PROFILE_STORAGE_KEY = 'aivora-advisory-profile-v1'
 
-const PERSONAS = [
-  'CHRO', 'HRBP', 'Consultant', 'Talent Management', 'Organization Development',
-  'Learning', 'Workforce Planning', 'HR Operations', 'Business Leader',
-] as const
-
 function parseProfile(raw: string | null): AdvisoryProfile | null {
   try {
     if (!raw) return null
@@ -90,99 +84,34 @@ function loadStoredProfile(workspaceId: string): AdvisoryProfile | null {
   return null
 }
 
-/** Legacy pre-workspace profile, used only to prefill the intake. */
-function loadLegacyProfile(): AdvisoryProfile | null {
-  try {
-    return parseProfile(localStorage.getItem(PROFILE_STORAGE_KEY))
-  } catch { /* ignore */ }
-  return null
-}
-
 function saveStoredProfile(workspaceId: string, profile: AdvisoryProfile): void {
   try { localStorage.setItem(`${PROFILE_STORAGE_KEY}:${workspaceId}`, JSON.stringify(profile)) } catch { /* ignore */ }
 }
 
-function IntakeCard({ initial, onStart }: { initial: AdvisoryProfile | null; onStart: (p: AdvisoryProfile) => void }) {
-  const [persona, setPersona] = useState<string>(initial?.persona ?? '')
-  const [org, setOrg] = useState(initial?.organization_name ?? '')
-  const [industry, setIndustry] = useState(initial?.industry ?? '')
-  const [region, setRegion] = useState(initial?.region ?? '')
-  const [companySize, setCompanySize] = useState(initial?.company_size ?? '')
-  const [objective, setObjective] = useState(initial?.objective ?? '')
-
-  const start = () => {
-    if (!persona) return
-    onStart({
-      persona,
-      organization_name: org.trim() || undefined,
-      industry: industry.trim() || undefined,
-      region: region.trim() || undefined,
-      company_size: companySize.trim() || undefined,
-      objective: objective.trim() || undefined,
-    })
+/**
+ * Derive the advisory persona from the client onboarding profile instead of
+ * asking again. The strongest signal is the human-capital priority mix; we map
+ * it to the role that most naturally owns that agenda.
+ */
+function derivePersona(clientProfile: unknown): string {
+  const cp = clientProfile as { agenda?: { hcPriorities?: string[] } } | null
+  const hc = cp?.agenda?.hcPriorities ?? []
+  const map: Record<string, string> = {
+    'leadership-development': 'Leadership Development',
+    'succession-planning': 'Talent Management',
+    'talent-acquisition': 'Talent Acquisition',
+    'learning-development': 'Learning',
+    'skills-capability': 'Learning',
+    'workforce-planning': 'Workforce Planning',
+    'organization-design': 'Organization Development',
+    'hr-operating-model': 'HR Operations',
+    'rewards-strategy': 'Total Rewards',
+    'employee-experience': 'Employee Experience',
   }
-
-  const inputCls = 'w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors'
-
-  return (
-    <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] p-7 sm:p-8 space-y-6"
-      >
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
-            <Sparkles className="w-5 h-5 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Set up your advisory session</h1>
-            <p className="text-sm text-slate-400 mt-1.5">Thirty seconds. It shapes every answer you get.</p>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[11px] uppercase tracking-widest font-bold text-slate-500 block mb-2">I work as a <span className="text-blue-400">*</span></label>
-          <div className="flex flex-wrap gap-2">
-            {PERSONAS.map(p => (
-              <button
-                key={p}
-                onClick={() => setPersona(p)}
-                className={
-                  persona === p
-                    ? 'px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.35)] transition-colors'
-                    : 'px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 hover:text-white transition-colors'
-                }
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input value={org} onChange={e => setOrg(e.target.value)} placeholder="Organization (optional)" className={inputCls} />
-          <input value={industry} onChange={e => setIndustry(e.target.value)} placeholder="Industry (optional)" className={inputCls} />
-          <input value={region} onChange={e => setRegion(e.target.value)} placeholder="Region (optional)" className={inputCls} />
-          <input value={companySize} onChange={e => setCompanySize(e.target.value)} placeholder="Company size (optional)" className={inputCls} />
-        </div>
-        <input value={objective} onChange={e => setObjective(e.target.value)} placeholder="What are you trying to achieve? (optional)" className={inputCls} />
-
-        <button
-          onClick={start}
-          disabled={!persona}
-          className={
-            persona
-              ? 'w-full inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] ring-1 ring-blue-500/40 transition-colors'
-              : 'w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 text-slate-500 px-5 py-3 text-sm font-semibold cursor-not-allowed'
-          }
-        >
-          Start advisory session <ArrowRight className="w-4 h-4" />
-        </button>
-      </motion.div>
-    </div>
-  )
+  for (const p of hc) {
+    if (map[p]) return map[p]
+  }
+  return 'CHRO'
 }
 
 // ---------------------------------------------------------------------------
@@ -314,46 +243,6 @@ function BriefingCard({ content }: { content: BriefContent }) {
           {outputs.length > 0 && <span><span className="font-semibold text-slate-400">Wants:</span> {outputs.slice(0, 4).map(slugLabel).join(', ')}</span>}
         </div>
       )}
-    </div>
-  )
-}
-
-const CATEGORY_DOTS: Record<string, string> = {
-  strategy: 'bg-violet-400', talent: 'bg-blue-400', learning: 'bg-emerald-400',
-  advisory: 'bg-amber-400', commercial: 'bg-rose-400',
-}
-
-/** Visible junction: the client's answers -> ranked studios with reasons. */
-function StudioMatchCard({ recs, flagged, onGenerate }: {
-  recs: StudioRecommendation[]
-  flagged: string[]
-  onGenerate: (name: string) => void
-}) {
-  return (
-    <div className="rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-600/10 via-[#131720] to-[#131720] p-4 sm:p-5 space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm font-bold text-white">Studios matched to your answers</p>
-        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
-          From your onboarding + brief{flagged.length > 0 ? ` · focus: ${flagged.join(', ')}` : ''}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {recs.map(r => (
-          <div key={r.id} className="flex items-start gap-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-3">
-            <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5', CATEGORY_DOTS[r.category] ?? 'bg-slate-500')} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">{r.name}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{r.reasons[0] ?? r.description}</p>
-            </div>
-            <button
-              onClick={() => onGenerate(r.name)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition-colors"
-            >
-              Generate
-            </button>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
@@ -679,9 +568,14 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [attachments, setAttachments] = useState<Attachment[]>([])
-  const [plan, setPlan] = useState<ChatPlan | null>(() => loadStoredPlan(workspaceId))
   const getProfileFor = useClientProfileStore(st => st.getProfileFor)
+  // Seed with any evidence the client uploaded during onboarding so the
+  // advisory is grounded in it from the very first message.
+  const [attachments, setAttachments] = useState<Attachment[]>(() => {
+    const cp = getProfileFor(workspaceId) as unknown as { evidence?: { uploadedFiles?: Attachment[] } }
+    return cp?.evidence?.uploadedFiles ?? []
+  })
+  const [plan, setPlan] = useState<ChatPlan | null>(() => loadStoredPlan(workspaceId))
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
   const [viewMode, setViewMode] = useState<'chat' | 'report'>('chat')
@@ -736,18 +630,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
 
-  // Deterministic studio recommendations: brief answers scored by the
-  // recommender, boosted by the categories flagged in onboarding.
-  const flaggedCategories = ((getProfileFor(workspaceId) as unknown as { immediateChallenges?: string[] })?.immediateChallenges ?? [])
-  const studioRecs = useMemo(() => {
-    if (!briefContent) return []
-    const scored = recommendStudios(signalsFromBriefContent(briefContent as unknown as Record<string, unknown>), 10)
-    const boosted = scored
-      .map(r => ({ ...r, score: r.score + (flaggedCategories.includes(r.category) ? 5 : 0) }))
-      .sort((a, b) => b.score - a.score)
-    return boosted.slice(0, 3)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [briefContent, flaggedCategories.join(',')])
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
@@ -827,7 +709,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
       profile,
       client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-      studio_recommendations: studioRecs.map(r => ({ id: r.id, name: r.name, category: r.category, reason: r.reasons[0] ?? '' })),
     }).then(res => {
       setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
     }).catch(() => { /* fall back to the static empty state */ }).finally(() => { setSending(false); setTimeout(() => textareaRef.current?.focus(), 0) })
@@ -901,7 +782,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         profile,
         evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-        studio_recommendations: studioRecs.map(r => ({ id: r.id, name: r.name, category: r.category, reason: r.reasons[0] ?? '' })),
         plan_state: plan,
         report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
         preferences: prefs,
@@ -1129,9 +1009,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       {/* Thread */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
         {briefContent && <BriefingCard content={briefContent} />}
-        {studioRecs.length > 0 && messages.length <= 1 && (
-          <StudioMatchCard recs={studioRecs} flagged={flaggedCategories} onGenerate={name => sendMessage(`Create the ${name} deliverable`)} />
-        )}
         {messages.length === 1 && !sending && (
           <div className="flex flex-wrap gap-2">
             {[
@@ -1700,7 +1577,6 @@ export default function AdvisorChat() {
   const navigate = useNavigate()
   const briefs = useBriefStore(s => s.briefs)
   const [profile, setProfile] = useState<AdvisoryProfile | null>(() => (workspaceId ? loadStoredProfile(workspaceId) : null))
-  const [editingProfile, setEditingProfile] = useState(false)
   const [workspaceName, setWorkspaceName] = useState<string | null>(null)
 
   const hasBrief = useBriefStore(st => st.hasBrief)
@@ -1711,10 +1587,11 @@ export default function AdvisorChat() {
     }
   }, [workspaceId, hasBrief, navigate])
 
+  const getProfileFor = useClientProfileStore(st => st.getProfileFor)
+
   useEffect(() => {
     if (!workspaceId) return
     setProfile(loadStoredProfile(workspaceId))
-    setEditingProfile(false)
     let cancelled = false
     workspacesAPI.get(workspaceId)
       .then(res => { if (!cancelled) setWorkspaceName(res.data?.name ?? null) })
@@ -1722,27 +1599,34 @@ export default function AdvisorChat() {
     return () => { cancelled = true }
   }, [workspaceId, navigate])
 
+  // No manual intake screen: the advisory profile is derived automatically from
+  // what the client already gave us in onboarding + the challenge brief, so the
+  // advisor opens straight into the conversation.
+  useEffect(() => {
+    if (!workspaceId) return
+    if (loadStoredProfile(workspaceId)) return
+    const wsBrief = briefs[workspaceId] ?? null
+    const derived: AdvisoryProfile = {
+      persona: derivePersona(getProfileFor(workspaceId)),
+      organization_name: wsBrief?.organizationName || workspaceName || undefined,
+      industry: wsBrief?.industry || undefined,
+      region: wsBrief?.region || undefined,
+      company_size: wsBrief?.organizationSize || undefined,
+    }
+    saveStoredProfile(workspaceId, derived)
+    setProfile(derived)
+  }, [workspaceId, workspaceName, briefs, getProfileFor])
+
   if (!workspaceId) {
     return <WorkspacePicker />
   }
 
-  const handleStart = (p: AdvisoryProfile) => {
-    saveStoredProfile(workspaceId, p)
-    setProfile(p)
-    setEditingProfile(false)
-  }
-
-  if (!profile || editingProfile) {
-    // Prefill from this workspace's brief, then any legacy global profile.
-    const wsBrief = briefs[workspaceId] ?? null
-    const initial: AdvisoryProfile | null = profile ?? (wsBrief ? {
-      persona: loadLegacyProfile()?.persona ?? '',
-      organization_name: wsBrief.organizationName || workspaceName || undefined,
-      industry: wsBrief.industry || undefined,
-      region: wsBrief.region || undefined,
-      company_size: wsBrief.organizationSize || undefined,
-    } : loadLegacyProfile())
-    return <IntakeCard initial={initial} onStart={handleStart} />
+  if (!profile) {
+    return (
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
+        <span className="w-6 h-6 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+      </div>
+    )
   }
 
   const orgLine = [...new Set([workspaceName, profile.organization_name, profile.industry].filter(Boolean))].join(' · ')
@@ -1766,12 +1650,6 @@ export default function AdvisorChat() {
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               {orgLine && <span className="text-xs text-slate-400 truncate">{orgLine}</span>}
-              <button
-                onClick={() => setEditingProfile(true)}
-                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"
-              >
-                <Pencil className="w-3 h-3" /> Edit
-              </button>
               <Link
                 to={`/onboarding?workspaceId=${workspaceId}&edit=1`}
                 className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-400 transition-colors"

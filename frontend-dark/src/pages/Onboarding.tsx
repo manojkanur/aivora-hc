@@ -2,14 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Target, Users, FileSearch, Shuffle,
-  ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight,
+  Target, Users, FileSearch,
+  ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight, Upload, FileText,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input, Textarea } from '../components/ui/Input'
 import { cn } from '../lib/utils'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { onboardingAPI } from '../lib/api'
+import { hcAiAdvisoryAPI } from '../lib/hcPlatformApi'
 import { useAutosave } from '../hooks/useAutosave'
 import { SaveIndicator } from '../components/ui/SaveIndicator'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
@@ -301,80 +302,93 @@ function StepWorkforce({ value, onChange }: {
 
 // ── Step 4: Evidence & Outputs ─────────────────────────────────────────────
 
-function StepEvidence({ evidence, outputPrefs, onChangeEvidence, onChangeOutputPrefs }: {
+const EVIDENCE_ACCEPT = '.pdf,.docx,.doc,.txt,.md,.pptx,.xlsx,.csv,.png,.jpg,.jpeg'
+
+function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
+  workspaceId: string
   evidence: ClientProfile['evidence']
-  outputPrefs: ClientProfile['outputPreferences']
   onChangeEvidence: (v: ClientProfile['evidence']) => void
-  onChangeOutputPrefs: (v: ClientProfile['outputPreferences']) => void
 }) {
-  const patchOut = <K extends keyof ClientProfile['outputPreferences']>(k: K, v: ClientProfile['outputPreferences'][K]) =>
-    onChangeOutputPrefs({ ...outputPrefs, [k]: v })
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const files = evidence.uploadedFiles ?? []
+
+  const handleFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return
+    setUploading(true)
+    setError(null)
+    const uploaded: { evidence_id: string; filename: string }[] = []
+    for (const file of Array.from(fileList)) {
+      try {
+        const res = await hcAiAdvisoryAPI.uploadEvidence(file)
+        uploaded.push({ evidence_id: res.data.evidence_id, filename: res.data.filename })
+      } catch {
+        setError(`Could not upload "${file.name}". Supported: PDF, Word, PowerPoint, Excel, text and images (up to 10MB each).`)
+      }
+    }
+    if (uploaded.length) {
+      onChangeEvidence({ ...evidence, uploadedFiles: [...files, ...uploaded] })
+    }
+    setUploading(false)
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  const removeFile = (id: string) =>
+    onChangeEvidence({ ...evidence, uploadedFiles: files.filter(f => f.evidence_id !== id) })
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">Available evidence</h2>
-        <p className="text-sm text-slate-400 mt-1">Tag the artefacts you can share; the advisory grounds its analysis in them.</p>
+        <h2 className="text-2xl font-bold text-white">Upload your evidence</h2>
+        <p className="text-sm text-slate-400 mt-1">Add any documents you can share - strategy decks, org charts, HC policies, engagement surveys, exit data, comp bands. The AI Advisory reads and grounds its analysis in them.</p>
       </div>
-      <ChipGroup label="Available evidence" description="Pick what you have access to; this shapes how confident the analysis can be." options={Object.keys(AVAILABLE_DOC_LABELS) as AvailableDocument[]} labels={AVAILABLE_DOC_LABELS} value={evidence.availableDocuments} onChange={next => onChangeEvidence({ ...evidence, availableDocuments: next })} />
-      <ChipGroup label="What is already in place" description="HC foundations that exist today - the advisory builds on these instead of assuming." options={Object.keys(FOUNDATION_LABELS)} labels={FOUNDATION_LABELS} value={evidence.foundationsInPlace ?? []} onChange={next => onChangeEvidence({ ...evidence, foundationsInPlace: next })} />
+
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept={EVIDENCE_ACCEPT}
+        className="hidden"
+        onChange={e => handleFiles(e.target.files)}
+      />
+
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading || !workspaceId}
+        className={cn(
+          'w-full rounded-2xl border-2 border-dashed p-8 flex flex-col items-center justify-center gap-2 transition-colors',
+          uploading ? 'border-blue-500/40 bg-blue-500/5 cursor-wait' : 'border-[#2a3048] bg-[#0c0e14] hover:border-blue-500/50 hover:bg-blue-500/5'
+        )}
+      >
+        {uploading ? (
+          <span className="w-6 h-6 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+        ) : (
+          <Upload className="w-6 h-6 text-blue-400" />
+        )}
+        <p className="text-sm font-semibold text-white">{uploading ? 'Uploading...' : 'Click to upload files'}</p>
+        <p className="text-xs text-slate-500">Multiple files, multiple types - PDF, Word, PowerPoint, Excel, text, images</p>
+      </button>
+
+      {error && <p className="text-xs text-rose-400">{error}</p>}
+
+      {files.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Uploaded ({files.length})</p>
+          {files.map(f => (
+            <div key={f.evidence_id} className="flex items-center gap-3 rounded-xl border border-[#1e2433] bg-[#0f1117] px-3.5 py-2.5">
+              <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <span className="text-sm text-slate-200 truncate flex-1">{f.filename}</span>
+              <button type="button" onClick={() => removeFile(f.evidence_id)} className="text-slate-500 hover:text-rose-400 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Textarea label="Notes about evidence (optional)" rows={3} placeholder="e.g. Engagement survey is 11 months old; comp bands cover GCC only." value={evidence.notes ?? ''} onChange={e => onChangeEvidence({ ...evidence, notes: e.target.value || undefined })} />
-      <p className="text-xs text-slate-600">Output formats and audience are captured in the Challenge Brief, so you will not be asked twice.</p>
-    </div>
-  )
-}
-
-// ── Step 2: Immediate challenge (studio categories) ───────────────────────
-
-const CHALLENGE_CATEGORIES: Array<{ key: string; label: string; blurb: string; dot: string; card: string }> = [
-  { key: 'strategy', label: 'Strategy & Transformation',
-    blurb: 'Aligning HC strategy, operating model and transformation with the business direction.',
-    dot: 'bg-violet-400', card: 'border-violet-500/30 bg-violet-500/5' },
-  { key: 'talent', label: 'Talent & People',
-    blurb: 'Mobility, succession, high-potentials, acquisition and keeping your critical people.',
-    dot: 'bg-blue-400', card: 'border-blue-500/30 bg-blue-500/5' },
-  { key: 'learning', label: 'Learning',
-    blurb: 'Skills, capability building and the learning pathways that close your gaps.',
-    dot: 'bg-emerald-400', card: 'border-emerald-500/30 bg-emerald-500/5' },
-  { key: 'advisory', label: 'Advisory',
-    blurb: 'Diagnostics, maturity assessments and expert guidance on where to act first.',
-    dot: 'bg-amber-400', card: 'border-amber-500/30 bg-amber-500/5' },
-  { key: 'commercial', label: 'Commercial',
-    blurb: 'Workforce cost, productivity, rewards and the business case behind people decisions.',
-    dot: 'bg-rose-400', card: 'border-rose-500/30 bg-rose-500/5' },
-]
-
-function StepImmediateChallenge({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const toggle = (key: string) =>
-    onChange(value.includes(key) ? value.filter(k => k !== key) : [...value, key])
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Where is the immediate challenge?</h2>
-        <p className="text-sm text-slate-400 mt-1">Pick the area(s) that need attention first - this steers which studios and advice come to the front.</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {CHALLENGE_CATEGORIES.map(c => {
-          const active = value.includes(c.key)
-          return (
-            <button key={c.key} type="button" onClick={() => toggle(c.key)}
-              className={cn(
-                'relative text-left rounded-2xl border p-4 transition-all',
-                active ? c.card : 'border-[#1e2433] bg-[#0f1117] hover:border-[#2a3048]'
-              )}>
-              <div className="flex items-center gap-2.5">
-                <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', c.dot)} />
-                <p className={cn('text-sm font-bold', active ? 'text-white' : 'text-slate-300')}>{c.label}</p>
-                {active && (
-                  <span className="ml-auto w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-3 h-3 text-white" />
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{c.blurb}</p>
-            </button>
-          )
-        })}
-      </div>
     </div>
   )
 }
@@ -383,7 +397,6 @@ function StepImmediateChallenge({ value, onChange }: { value: string[]; onChange
 
 const STEPS = [
   { id: 'priorities', shortLabel: 'Priorities', icon: Target },
-  { id: 'challenge', shortLabel: 'Immediate challenge', icon: Shuffle },
   { id: 'workforce', shortLabel: 'Workforce', icon: Users },
   { id: 'evidence', shortLabel: 'Evidence', icon: FileSearch },
 ]
@@ -557,9 +570,8 @@ export default function Onboarding() {
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 {stepIndex === 0 && <StepPriorities value={draft.agenda} onChange={v => setDraft({ ...draft, agenda: v })} />}
-                {stepIndex === 1 && <StepImmediateChallenge value={draft.immediateChallenges ?? []} onChange={v => setDraft({ ...draft, immediateChallenges: v })} />}
-                {stepIndex === 2 && <StepWorkforce value={draft.workforceContext} onChange={v => setDraft({ ...draft, workforceContext: v })} />}
-                {stepIndex === 3 && <StepEvidence evidence={draft.evidence} outputPrefs={draft.outputPreferences} onChangeEvidence={v => setDraft({ ...draft, evidence: v })} onChangeOutputPrefs={v => setDraft({ ...draft, outputPreferences: v })} />}
+                {stepIndex === 1 && <StepWorkforce value={draft.workforceContext} onChange={v => setDraft({ ...draft, workforceContext: v })} />}
+                {stepIndex === 2 && <StepEvidence workspaceId={workspaceId} evidence={draft.evidence} onChangeEvidence={v => setDraft({ ...draft, evidence: v })} />}
               </motion.div>
             </AnimatePresence>
           </div>

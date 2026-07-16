@@ -429,6 +429,8 @@ _DETAILED_REPORT_PROMPT = """You are a senior HC consultant turning a completed 
 
 You will receive the full conversation, the agreed co-work plan, and the client's brief and onboarding profile. Produce the DETAILED REPORT the client confirmed - it must reflect what was actually discussed and decided in the conversation, tailored to this organization. Do not invent facts that contradict the conversation; where you estimate, mark it in the narrative.
 
+GROUND EVERYTHING IN WHAT THE CLIENT ACTUALLY TOLD YOU. The client made specific choices in onboarding and the challenge brief - their business and HC priorities, the workforce challenges they flagged (with severity), their strategic drivers, industry, region, size, the advisory questions they asked, and any evidence they uploaded. Name these choices explicitly in the report and build the analysis directly on them. The executive summary must open by reflecting back their stated situation and priorities in their own terms. Every recommendation must trace to a priority, challenge or question they raised. If they flagged a challenge as critical or high, address it prominently. Never produce generic HC content that ignores their inputs.
+
 FIRST, choose the single most relevant Aivora Studio for this deliverable, based on what the session was actually about:
 - Strategy: HC Strategy Charter, Business Plan, Workforce Planning, Scenario Modelling
 - Talent: Talent Mobility, HIPO Development, Succession Planning, Early Career, Talent Acquisition
@@ -461,7 +463,9 @@ Structure the report like a consulting deliverable: executive summary (narrative
 
 _SUMMARY_REPORT_PROMPT = """You are a senior HC consultant writing a SIMPLE summary report of a completed advisory working session, for a general business audience with no HR jargon.
 
-You will receive the full conversation, the agreed plan, and the client's brief. Produce a short, friendly report: what the situation is, what was agreed, what happens next. Every number and chart must come with a one-line plain-language explanation of what it means.
+You will receive the full conversation, the agreed plan, and the client's brief and onboarding profile. Produce a short, friendly report: what the situation is, what was agreed, what happens next. Every number and chart must come with a one-line plain-language explanation of what it means.
+
+Ground the report in the specific choices the client made in onboarding and the brief - their priorities, the challenges they flagged, their industry and situation. Open by reflecting their own stated situation back to them in plain language, and make sure what you recommend clearly answers what they asked for. Do not write generic content that ignores their inputs.
 
 Respond with ONLY a JSON object:
 {
