@@ -107,9 +107,11 @@ async def generate_spec_report(
     *,
     transcript: str = "",
     context_blocks: list[str] | None = None,
+    model: str = "gpt-4o",
 ) -> dict[str, Any]:
     """Generate a spec-driven StudioOutputDocument. Raises on LLM failure."""
     from app.services.ai_orchestrator import _get_client
+    from app.services.model_settings import completion_params
 
     spec = load_spec(slug)
     if spec is None:
@@ -127,14 +129,13 @@ async def generate_spec_report(
 
     client = _get_client()
     resp = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user_msg},
         ],
-        temperature=0.4,
-        max_tokens=3600,
         response_format={"type": "json_object"},
+        **completion_params(model, temperature=0.4, max_tokens=5000),
     )
     document = json.loads(resp.choices[0].message.content or "{}")
     if not isinstance(document.get("sections"), list) or not document["sections"]:

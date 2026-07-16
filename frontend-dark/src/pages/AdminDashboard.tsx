@@ -100,15 +100,16 @@ type AdminTab = 'skills' | 'categories' | 'llm' | 'users' | 'audit'
 
 // ─── LLM Options ──────────────────────────────────────────────────────────────
 
+// Only models the configured OpenAI key can actually serve. The backend
+// verifies the model with a live test call before saving, so an unavailable
+// model is rejected instead of silently breaking the advisor.
 const LLM_OPTIONS = [
-  { id: 'claude-opus-4-7',          label: 'Claude Opus 4.7',        provider: 'Anthropic', badge: 'Most Capable' },
-  { id: 'claude-sonnet-4-6',        label: 'Claude Sonnet 4.6',      provider: 'Anthropic', badge: 'Balanced'     },
-  { id: 'claude-haiku-4-5',         label: 'Claude Haiku 4.5',       provider: 'Anthropic', badge: 'Fast'        },
-  { id: 'gpt-4o',                   label: 'GPT-4o',                 provider: 'OpenAI',    badge: ''            },
-  { id: 'gpt-4o-mini',              label: 'GPT-4o Mini',            provider: 'OpenAI',    badge: 'Fast'        },
-  { id: 'gemini-2.5-pro',           label: 'Gemini 2.5 Pro',         provider: 'Google',    badge: 'Long Context'},
-  { id: 'gemini-2.5-flash',         label: 'Gemini 2.5 Flash',       provider: 'Google',    badge: 'Fast'        },
-  { id: 'mistral-large',            label: 'Mistral Large',          provider: 'Mistral',   badge: ''            },
+  { id: 'gpt-4o',        label: 'GPT-4o',        provider: 'OpenAI', badge: 'Recommended' },
+  { id: 'gpt-4o-mini',   label: 'GPT-4o Mini',   provider: 'OpenAI', badge: 'Fast'        },
+  { id: 'gpt-4.1',       label: 'GPT-4.1',       provider: 'OpenAI', badge: 'Long Context'},
+  { id: 'gpt-4.1-mini',  label: 'GPT-4.1 Mini',  provider: 'OpenAI', badge: 'Fast'        },
+  { id: 'gpt-5',         label: 'GPT-5',         provider: 'OpenAI', badge: 'Reasoning'   },
+  { id: 'gpt-5-mini',    label: 'GPT-5 Mini',    provider: 'OpenAI', badge: 'Reasoning'   },
 ]
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -1537,10 +1538,11 @@ function CategoryFormModal({ initial, skills, onSave, onClose }: {
 // ─── LLM Configuration Tab ────────────────────────────────────────────────────
 
 function LlmTab({ skills }: { skills: Skill[] }) {
-  const [config, setConfig] = useState<LlmConfig>({ global_model: 'claude-sonnet-4-6', skill_overrides: {} })
+  const [config, setConfig] = useState<LlmConfig>({ global_model: 'gpt-4o', skill_overrides: {} })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -1552,12 +1554,15 @@ function LlmTab({ skills }: { skills: Skill[] }) {
 
   const saveConfig = async () => {
     setSaving(true)
+    setSaveError(null)
     try {
-      await adminAPI.updateLlmConfig(config)
+      const res = await adminAPI.updateLlmConfig(config)
+      if (res.data?.global_model) setConfig(res.data)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } catch {
-      // graceful
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setSaveError(detail || 'Could not save the model configuration.')
     } finally { setSaving(false) }
   }
 
@@ -1585,7 +1590,7 @@ function LlmTab({ skills }: { skills: Skill[] }) {
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">Global LLM Model</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Default model for all studios unless overridden per studio</p>
+            <p className="text-xs text-slate-500 mt-0.5">Drives the AI Advisory chat and report generation. Larger models give more detailed, better-reasoned output.</p>
           </div>
         </div>
 
@@ -1706,7 +1711,9 @@ function LlmTab({ skills }: { skills: Skill[] }) {
       {/* Save */}
       <div className="flex items-center justify-between p-4 rounded-2xl bg-[#0f1117] border border-[#1e2433]">
         <div className="text-sm text-slate-400">
-          Changes apply to all new AI sessions immediately after saving.
+          {saveError
+            ? <span className="text-rose-400">{saveError}</span>
+            : 'Changes apply to all new AI sessions within 30 seconds of saving.'}
         </div>
         <Button onClick={saveConfig} isLoading={saving}
           leftIcon={saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}>

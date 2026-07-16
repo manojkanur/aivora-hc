@@ -6,6 +6,7 @@ from typing import Any
 
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.api.deps import AdminUser, CurrentUser, DBDep
@@ -185,6 +186,57 @@ async def admin_update_skill(
 
     await db.flush()
     return SkillResponse.model_validate(skill)
+
+
+class LlmConfigUpdate(BaseModel):
+    global_model: str | None = None
+    skill_overrides: dict[str, str] | None = None
+
+
+@router.get("/llm-config")
+async def admin_get_llm_config(admin_user: AdminUser, db: DBDep) -> dict[str, Any]:
+    from app.services.model_settings import get_llm_config
+
+    return await get_llm_config(db)
+
+
+@router.patch("/llm-config")
+async def admin_update_llm_config(
+    payload: LlmConfigUpdate,
+    admin_user: AdminUser,
+    db: DBDep,
+) -> dict[str, Any]:
+    from app.config import settings
+    from app.services.model_settings import completion_params, get_llm_config, save_llm_config
+
+    config = await get_llm_config(db)
+    if payload.skill_overrides is not None:
+        config["skill_overrides"] = {k: v for k, v in payload.skill_overrides.items() if v}
+
+    if payload.global_model is not None:
+        model = payload.global_model.strip()
+        if not model or len(model) > 100:
+            raise HTTPException(status_code=400, detail="Invalid model name")
+        # Prove the model is actually servable before saving it, so a typo or
+        # unavailable model can never brick the advisor for every user.
+        if settings.OPENAI_API_KEY and model != config["global_model"]:
+            from app.services.ai_orchestrator import _get_client
+
+            try:
+                await _get_client().chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": "ping"}],
+                    **completion_params(model, temperature=0.0, max_tokens=16),
+                )
+            except Exception as exc:  # noqa: BLE001
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Model '{model}' is not available on the configured API key: {exc}",
+                )
+        config["global_model"] = model
+
+    await save_llm_config(db, config)
+    return config
 
 
 @router.get("/users")

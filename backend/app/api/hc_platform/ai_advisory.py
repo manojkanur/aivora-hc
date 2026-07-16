@@ -517,6 +517,8 @@ async def finalize_report(
 
     if payload.report_type == "detailed" and load_spec(payload.studio):
         try:
+            from app.services.model_settings import get_global_model
+
             document = await generate_spec_report(
                 payload.studio or "",
                 transcript=transcript,
@@ -527,6 +529,7 @@ async def finalize_report(
                     _plan_state_block(payload.plan_state),
                     revise_block,
                 ],
+                model=await get_global_model(db),
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=502, detail=f"Report generation failed: {exc}")
@@ -564,16 +567,18 @@ async def finalize_report(
     system = "\n\n".join(parts)
 
     try:
+        from app.services.model_settings import completion_params, get_global_model
+
+        model = await get_global_model(db)
         client = _get_client()
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": f"WORKING SESSION TRANSCRIPT:\n\n{transcript}\n\nGenerate the {payload.report_type} report now."},
             ],
-            temperature=0.4,
-            max_tokens=3600,
             response_format={"type": "json_object"},
+            **completion_params(model, temperature=0.4, max_tokens=5000),
         )
         import json as _json
         data = _json.loads(resp.choices[0].message.content or "{}")
@@ -964,13 +969,15 @@ async def advisor_chat(
         messages.append({"role": "user", "content": "(open the advisory session)"})
 
     try:
+        from app.services.model_settings import completion_params, get_global_model
+
+        model = await get_global_model(db)
         client = _get_client()
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=messages,
-            temperature=0.55,
-            max_tokens=2800,
             response_format={"type": "json_object"},
+            **completion_params(model, temperature=0.55, max_tokens=4096),
         )
         raw = resp.choices[0].message.content or ""
     except Exception as exc:  # noqa: BLE001

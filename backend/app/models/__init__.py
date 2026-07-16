@@ -138,3 +138,4 @@ from app.models.hc_platform.document_engine import (  # noqa: F401
 from app.models.hc_platform.exports import HcExport  # noqa: F401
 from app.models.hc_platform.linkedin import LinkedInConnection  # noqa: F401
 from app.models.hc_platform.advisory_evidence import AdvisoryEvidence  # noqa: F401
+from app.models.platform_setting import PlatformSetting  # noqa: F401

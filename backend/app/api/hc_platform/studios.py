@@ -60,7 +60,11 @@ async def run_studio_endpoint(
                 "CLIENT BRIEF:\n" + _json.dumps(body.brief, ensure_ascii=True)[:8000]
                 if body.brief else ""
             )
-            output = await generate_spec_report(studio_id, context_blocks=[brief_block])
+            from app.services.model_settings import get_global_model
+
+            output = await generate_spec_report(
+                studio_id, context_blocks=[brief_block], model=await get_global_model(db)
+            )
             await _audit(
                 current_tenant.id,
                 current_user.id,
