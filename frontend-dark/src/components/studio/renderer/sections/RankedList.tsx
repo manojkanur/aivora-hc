@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ListOrdered } from 'lucide-react'
+import { SourceBadge } from './SourceBadge'
 
 type ScoreFormat = 'number' | 'percent' | 'bar'
 
@@ -102,12 +103,7 @@ export function rankedlist({ title, data, footnote }: RankedListProps) {
       <div className="flex items-center gap-2 mb-5">
         <ListOrdered className="w-5 h-5 text-blue-400" />
         <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <span
-          className="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-          title={`Source: ${data?.source || footnote || 'not specified'}`}
-        >
-          ⓘ source
-        </span>
+        <SourceBadge source={data?.source} footnote={footnote} />
       </div>
 
       <ol className="space-y-3">

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { SourceBadge } from './SourceBadge'
 
 export interface HeatmapData {
   rows: string[]
@@ -158,12 +159,7 @@ export function heatmap({
     >
       <div className="flex items-center gap-2 mb-4">
         <h3 className="text-sm font-semibold text-white">{title}</h3>
-        <span
-          className="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-          title={`Source: ${data?.source || footnote || 'not specified'}`}
-        >
-          ⓘ source
-        </span>
+        <SourceBadge source={data?.source} footnote={footnote} />
       </div>
 
       <div className="relative overflow-x-auto">

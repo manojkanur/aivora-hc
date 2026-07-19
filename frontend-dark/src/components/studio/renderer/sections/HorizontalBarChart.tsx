@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
+import { SourceBadge } from './SourceBadge'
 
 export interface HorizontalBarChartData {
   items: Array<{
@@ -150,12 +151,7 @@ export function horizontalbarchart({
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-semibold text-white">{title}</h3>
-          <span
-            className="inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-            title={`Source: ${data?.source || footnote || 'not specified'}`}
-          >
-            ⓘ source
-          </span>
+          <SourceBadge source={data?.source} footnote={footnote} />
         </div>
         {hasSentiment && (
           <div className="hidden sm:flex items-center gap-3 text-[10px] uppercase tracking-wider text-slate-500">

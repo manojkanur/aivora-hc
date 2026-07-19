@@ -21,6 +21,7 @@ import {
   Heart,
   type LucideIcon,
 } from 'lucide-react'
+import { SourceBadge } from './SourceBadge'
 
 type Sentiment = 'good' | 'warning' | 'bad' | 'neutral'
 type Direction = 'up' | 'down' | 'flat'
@@ -208,12 +209,7 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
       <div className="flex items-center gap-2 mb-5">
         <BarChart3 className="w-5 h-5 text-blue-400" />
         <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <span
-          className="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-          title={`Source: ${data?.source || footnote || 'not specified'}`}
-        >
-          ⓘ source
-        </span>
+        <SourceBadge source={data?.source} footnote={footnote} />
       </div>
 
       <div className={`grid grid-cols-1 ${columnsClass[columns]} gap-3 sm:gap-4`}>

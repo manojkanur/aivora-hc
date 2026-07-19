@@ -652,8 +652,20 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       a.download = `advisory-report.${fmt}`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      setError(`Could not export as ${fmt.toUpperCase()}. Try again.`)
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: unknown }; code?: string }
+      // Error responses on a blob request arrive as a Blob; decode the detail.
+      let detail = ''
+      if (e.response?.data instanceof Blob) {
+        try { detail = JSON.parse(await (e.response.data as Blob).text())?.detail ?? '' } catch { /* ignore */ }
+      }
+      if (e.response?.status === 401) {
+        setError('Your session expired. Refresh the page and sign in again, then re-export.')
+      } else if (e.code === 'ECONNABORTED') {
+        setError(`The ${fmt.toUpperCase()} took too long to build. Try again.`)
+      } else {
+        setError(detail || `Could not export as ${fmt.toUpperCase()}. Try again.`)
+      }
     } finally {
       setExporting(null)
     }

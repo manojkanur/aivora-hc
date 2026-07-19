@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Star } from 'lucide-react'
+import { SourceBadge } from './SourceBadge'
 
 type Sentiment = 'good' | 'warning' | 'bad' | 'neutral'
 
@@ -107,12 +108,7 @@ export function comparisontable({
     >
       <div className="flex items-center gap-2 mb-4">
         <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <span
-          className="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-          title={`Source: ${(data as any)?.source || footnote || 'not specified'}`}
-        >
-          ⓘ source
-        </span>
+        <SourceBadge source={(data as any)?.source} footnote={footnote} />
       </div>
 
       <div className="rounded-xl border border-[#1e2433] overflow-hidden">

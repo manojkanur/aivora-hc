@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Gauge, Sparkles, Zap } from 'lucide-react'
+import { SourceBadge } from './SourceBadge'
 
 export interface RecommendationCardsData {
   columns?: 1 | 2 | 3
@@ -161,12 +162,7 @@ export function recommendationcards({
         <span className="text-xs text-slate-500 tabular-nums">
           ({(data.items ?? []).length})
         </span>
-        <span
-          className="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-          title={`Source: ${(data as any)?.source || footnote || 'not specified'}`}
-        >
-          ⓘ source
-        </span>
+        <SourceBadge source={(data as any)?.source} footnote={footnote} />
       </div>
 
       {(data.items ?? []).length === 0 ? (

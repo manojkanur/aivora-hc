@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
+import { SourceBadge } from './SourceBadge'
 
 interface NetworkNode {
   id: string
@@ -227,12 +228,7 @@ export function networkgraph({ title, data, footnote }: NetworkGraphProps) {
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-base sm:text-lg font-semibold text-white">{title}</h3>
-          <span
-            className="inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-            title={`Source: ${data?.source || footnote || 'not specified'}`}
-          >
-            ⓘ source
-          </span>
+          <SourceBadge source={data?.source} footnote={footnote} />
         </div>
         {legendGroups.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">

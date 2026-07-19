@@ -18,6 +18,7 @@ router = APIRouter()
 
 class StudioRunRequest(BaseModel):
     brief: dict[str, Any] | None = None
+    workspace_id: str | None = None
     params: dict[str, Any] | None = None
 
 

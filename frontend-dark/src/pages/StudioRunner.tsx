@@ -1,17 +1,179 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, AlertTriangle, RefreshCw, Download, ChevronDown, FileText, Presentation,
-  Image as ImageIcon, Sheet,
+  Image as ImageIcon, Sheet, Sparkles, Building2, Loader2, Play, Plus,
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
-import { api } from '../lib/api'
+import { api, workspacesAPI } from '../lib/api'
 import { Button } from '../components/ui/Button'
 import { toast } from '../components/ui/Toast'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 import { getStudioById } from '../lib/advisory/questionRouter'
+import type { Studio } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument } from '../components/studio/renderer/StudioRenderer'
+
+interface WorkspaceRow { id: string; name: string; status?: string }
+
+/** Marketplace entry with no workspace: pick which workspace to run the studio in. */
+function StudioWorkspacePicker({ studioId, studioName }: { studioId: string; studioName: string }) {
+  const navigate = useNavigate()
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    workspacesAPI.list()
+      .then(res => {
+        if (cancelled) return
+        const raw: WorkspaceRow[] = res.data?.items ?? res.data ?? []
+        const list = raw.filter(w => !w.status || w.status === 'active')
+        if (list.length === 1) navigate(`/studio/${studioId}/${list[0].id}`, { replace: true })
+        else setWorkspaces(list)
+      })
+      .catch(() => { if (!cancelled) setError(true) })
+    return () => { cancelled = true }
+  }, [navigate, studioId])
+
+  if (error) {
+    return <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4"><p className="text-sm text-slate-400">Could not load your workspaces. Refresh to try again.</p></div>
+  }
+  if (!workspaces) {
+    return <div className="min-h-full bg-[#0c0e14] flex items-center justify-center"><Loader2 className="w-6 h-6 text-blue-400 animate-spin" /></div>
+  }
+  return (
+    <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] p-7 sm:p-8 space-y-6">
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Run {studioName} in a workspace</h1>
+            <p className="text-sm text-slate-400 mt-1.5">The studio uses that workspace's onboarding and challenge brief to ground its analysis.</p>
+          </div>
+        </div>
+        {workspaces.length === 0 ? (
+          <div className="text-center space-y-4">
+            <p className="text-sm text-slate-400">You do not have a workspace yet. Create one first.</p>
+            <Link to="/workspaces" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">
+              <Plus className="w-4 h-4" /> Create workspace
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {workspaces.map(w => (
+              <button key={w.id} onClick={() => navigate(`/studio/${studioId}/${w.id}`)}
+                className="w-full flex items-center gap-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 px-4 py-3 text-left transition-colors">
+                <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                <span className="text-sm font-semibold text-white flex-1 truncate">{w.name}</span>
+                <ArrowLeft className="w-4 h-4 text-slate-500 rotate-180" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const slug = (v: string) => v.replace(/-/g, ' ')
+
+/** Pre-run screen: prefilled workspace summary + analysis + one-click Run. */
+function StudioRunIntro({ studioName, studio, brief, workspaceId, onRun }: {
+  studioName: string
+  studio: Studio
+  brief: WorkspaceBrief | null
+  workspaceId: string
+  onRun: () => void
+}) {
+  const navigate = useNavigate()
+  const [wsName, setWsName] = useState<string | null>(brief?.organizationName ?? null)
+
+  useEffect(() => {
+    if (wsName) return
+    workspacesAPI.get(workspaceId).then(res => setWsName(res.data?.name ?? null)).catch(() => {})
+  }, [workspaceId, wsName])
+
+  const facts = brief ? [
+    { label: 'Organization', value: brief.organizationName },
+    { label: 'Industry', value: slug(brief.industry) },
+    { label: 'Region', value: (brief.region || '').toUpperCase() },
+    { label: 'Size', value: slug(brief.organizationSize) },
+  ].filter(f => f.value) : []
+
+  return (
+    <div className="min-h-full bg-[#0c0e14] px-4 sm:px-6 py-8 sm:py-10">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <button onClick={() => navigate(`/advisor/${workspaceId}`)} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to workspace
+        </button>
+
+        <div className="space-y-2">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-semibold">{studioName}</div>
+          <h1 className="text-3xl font-bold text-white">{studioName}{wsName ? ` for ${wsName}` : ''}</h1>
+          <p className="text-sm text-slate-400">{studio.deliverable}</p>
+        </div>
+
+        {!brief ? (
+          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-5 space-y-3">
+            <p className="text-sm text-amber-200 font-semibold">This workspace has no challenge brief yet.</p>
+            <p className="text-sm text-slate-400">Complete the brief so the studio can ground its analysis in your situation.</p>
+            <Button size="sm" onClick={() => navigate(`/challenge-brief?workspaceId=${workspaceId}`)}>Complete the brief</Button>
+          </div>
+        ) : (
+          <>
+            {/* Prefilled workspace facts */}
+            <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Using this workspace's data</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {facts.map(f => (
+                  <div key={f.label}>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500">{f.label}</p>
+                    <p className="text-sm font-semibold text-white mt-0.5 capitalize">{f.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary + analysis */}
+            <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 space-y-4">
+              {brief.strategicDrivers.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Strategic drivers</p>
+                  <div className="flex flex-wrap gap-2">
+                    {brief.strategicDrivers.map(d => (
+                      <span key={d} className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 capitalize">{slug(d)}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {brief.hcAreas.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Focus areas the studio will address</p>
+                  <div className="flex flex-wrap gap-2">
+                    {brief.hcAreas.map(a => (
+                      <span key={a} className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 capitalize">{slug(a)}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-slate-400 leading-relaxed">
+                {studioName} will analyse {wsName ?? 'this organization'}'s brief and produce a consultant-grade deliverable
+                {brief.hcAreas.length > 0 ? `, focused on ${brief.hcAreas.slice(0, 3).map(slug).join(', ')}` : ''}. Review the inputs above, then run it.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button size="lg" leftIcon={<Play className="w-4 h-4" />} onClick={onRun}>Run studio</Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 interface RunResponse {
   document: StudioOutputDocument
@@ -22,19 +184,6 @@ interface ExportRecord {
   id: string
   status: string
   format: string
-}
-
-// Pick the most recent brief saved in the store. Falls back to null if none.
-function findLatestBrief(briefs: Record<string, WorkspaceBrief>): { workspaceId: string; brief: WorkspaceBrief } | null {
-  const entries = Object.entries(briefs)
-  if (entries.length === 0) return null
-  let latest: { workspaceId: string; brief: WorkspaceBrief } | null = null
-  for (const [workspaceId, brief] of entries) {
-    if (!latest || new Date(brief.completedAt).getTime() > new Date(latest.brief.completedAt).getTime()) {
-      latest = { workspaceId, brief }
-    }
-  }
-  return latest
 }
 
 function StudioSkeleton({ studioName }: { studioName: string }) {
@@ -77,19 +226,22 @@ function StudioSkeleton({ studioName }: { studioName: string }) {
 }
 
 export default function StudioRunner() {
-  const { studioId = '' } = useParams<{ studioId: string }>()
+  const { studioId = '', workspaceId } = useParams<{ studioId: string; workspaceId?: string }>()
   const navigate = useNavigate()
 
   const studio = useMemo(() => getStudioById(studioId), [studioId])
   const studioName = studio?.name ?? studioId
 
   const briefs = useBriefStore(s => s.briefs)
-  const latest = useMemo(() => findLatestBrief(briefs), [briefs])
-  const brief = latest?.brief ?? null
+  // Scope the run to the chosen workspace's brief. No workspaceId means the
+  // studio was opened from the marketplace and the user must pick a workspace.
+  const brief = workspaceId ? (briefs[workspaceId] ?? null) : null
 
   const [doc, setDoc] = useState<StudioOutputDocument | null>(null)
   const [documentId, setDocumentId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Starts on the pre-run screen, not auto-running.
+  const [loading, setLoading] = useState(false)
+  const [hasRun, setHasRun] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -97,12 +249,14 @@ export default function StudioRunner() {
   const runStudio = useCallback(async () => {
     if (!studioId) return
     setLoading(true)
+    setHasRun(true)
     setError(null)
     setDoc(null)
     try {
       const res = await api.post<RunResponse>(
         `/hc-platform/studios/${studioId}/run`,
-        { brief, params: {} },
+        { brief, workspace_id: workspaceId ?? null, params: {} },
+        { timeout: 180000 },
       )
       // Backend may return either { document: {...} } or the document directly.
       const payload = res.data as RunResponse | StudioOutputDocument
@@ -119,11 +273,17 @@ export default function StudioRunner() {
     } finally {
       setLoading(false)
     }
-  }, [studioId, brief])
+  }, [studioId, brief, workspaceId])
 
-  useEffect(() => {
-    runStudio()
-  }, [runStudio])
+  // Marketplace entry with no workspace: let the user choose one.
+  if (studio && !workspaceId) {
+    return <StudioWorkspacePicker studioId={studioId} studioName={studioName} />
+  }
+
+  // Workspace chosen, studio not yet run: show the prefilled summary + analysis.
+  if (studio && !hasRun) {
+    return <StudioRunIntro studioName={studioName} studio={studio} brief={brief} workspaceId={workspaceId!} onRun={runStudio} />
+  }
 
   const downloadExport = useCallback(async (exportId: string, format: string) => {
     // Use the authenticated axios instance so the Bearer token is sent, then
@@ -220,6 +380,10 @@ export default function StudioRunner() {
     }
   }
 
+  // After a run, "back" returns to the originating workspace, not the marketplace.
+  const backTarget = workspaceId ? `/advisor/${workspaceId}` : '/skills'
+  const backLabel = workspaceId ? 'Back to workspace' : 'Back to studios'
+
   if (!studio) {
     return (
       <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4">
@@ -247,8 +411,8 @@ export default function StudioRunner() {
             Something went wrong while running <span className="text-slate-200">{studioName}</span>. Try again, or head back to the studios marketplace.
           </p>
           <div className="flex items-center justify-center gap-2 pt-2">
-            <Button variant="ghost" onClick={() => navigate('/skills')} leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              Back to studios
+            <Button variant="ghost" onClick={() => navigate(backTarget)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              {backLabel}
             </Button>
             <Button onClick={runStudio} leftIcon={<RefreshCw className="w-4 h-4" />}>
               Retry
@@ -265,11 +429,11 @@ export default function StudioRunner() {
       <div className="border-b border-[#1a1e2e] bg-[#0c0e14]/95 backdrop-blur sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-3 max-w-6xl mx-auto flex items-center justify-between gap-3">
           <button
-            onClick={() => navigate('/skills')}
+            onClick={() => navigate(backTarget)}
             className="flex items-center gap-2 text-sm text-slate-400 hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to studios
+            {backLabel}
           </button>
 
           <div className="flex items-center gap-2">

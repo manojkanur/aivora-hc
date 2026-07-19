@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react'
+import { SourceBadge } from './SourceBadge'
 
 export interface RiskFlagItem {
   id: string
@@ -248,12 +249,7 @@ export function riskflagslist({
               ({items.length})
             </span>
           )}
-          <span
-            className="inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-            title={`Source: ${(data as any)?.source || footnote || 'not specified'}`}
-          >
-            ⓘ source
-          </span>
+          <SourceBadge source={(data as any)?.source} footnote={footnote} />
         </div>
         {criticalCount > 0 && (
           <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-rose-500/40 bg-rose-500/15 text-rose-300 text-[10px] font-semibold uppercase tracking-wider tabular-nums">

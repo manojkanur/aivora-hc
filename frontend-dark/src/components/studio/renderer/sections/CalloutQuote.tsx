@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Quote, Lightbulb, AlertTriangle, CheckCircle2, MessageSquare } from 'lucide-react'
+import { SourceBadge } from './SourceBadge'
 
 export interface CalloutQuoteData {
   quote: string
@@ -85,12 +86,7 @@ export function calloutquote({
       <div className="flex items-center gap-2 mb-4">
         <Icon className={`w-4 h-4 ${theme.iconColor}`} />
         <h3 className="text-sm font-semibold text-white">{title}</h3>
-        <span
-          className="inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-          title={`Source: ${(data as any)?.source || footnote || 'not specified'}`}
-        >
-          ⓘ source
-        </span>
+        <SourceBadge source={(data as any)?.source} footnote={footnote} />
         <span
           className={`ml-auto px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${theme.iconColor} bg-white/[0.02] border border-white/[0.04]`}
         >

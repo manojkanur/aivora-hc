@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { SourceBadge } from './SourceBadge'
 
 type Status = 'done' | 'in_progress' | 'planned' | 'blocked'
 
@@ -129,12 +130,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
       <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-semibold text-white">{title}</h3>
-          <span
-            className="inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-            title={`Source: ${data?.source || footnote || 'not specified'}`}
-          >
-            ⓘ source
-          </span>
+          <SourceBadge source={data?.source} footnote={footnote} />
         </div>
         <div className="hidden sm:flex items-center gap-3 text-[10px] uppercase tracking-wider text-slate-500">
           {(Object.keys(STATUS_STYLES) as Status[]).map(s => (

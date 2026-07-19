@@ -486,29 +486,6 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
   )
 }
 
-// ── Step 5: Desired outputs ────────────────────────────────────────────────
-
-function StepDesiredOutputs({ value, onChange }: { value: DesiredOutputs; onChange: (v: DesiredOutputs) => void }) {
-  const p = <K extends keyof DesiredOutputs>(k: K, v: DesiredOutputs[K]) => onChange({ ...value, [k]: v })
-  return (
-    <div className="space-y-6">
-      <div><h2 className="text-2xl font-bold text-white">Desired outputs & AI metadata</h2><p className="text-sm text-slate-400 mt-1">Define what this engagement should produce and how it should be framed.</p></div>
-      <ChipGroup label="Output types" description="Select one or more desired deliverable formats." options={Object.keys(OUTPUT_TYPE_LABELS) as DesiredOutputType[]} labels={OUTPUT_TYPE_LABELS} value={value.outputTypes} onChange={next => p('outputTypes', next)} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <SelectField label="Primary audience" options={Object.keys(ADV_AUDIENCE_LABELS) as AdvisoryAudience[]} labels={ADV_AUDIENCE_LABELS} value={value.primaryAudience} onChange={v => p('primaryAudience', v)} />
-        <SelectField label="Output depth" options={Object.keys(OUTPUT_DEPTH_LABELS) as OutputDepth[]} labels={OUTPUT_DEPTH_LABELS} value={value.outputDepth} onChange={v => p('outputDepth', v)} />
-        <SelectField label="Preferred tone" options={Object.keys(TONE_LABELS) as PreferredTone[]} labels={TONE_LABELS} value={value.preferredTone} onChange={v => p('preferredTone', v)} />
-        <SelectField label="Innovation appetite" options={Object.keys(INNOVATION_LABELS) as InnovationAppetite[]} labels={INNOVATION_LABELS} value={value.innovationAppetite} onChange={v => p('innovationAppetite', v)} />
-        <SelectField label="Implementation orientation" options={Object.keys(IMPL_ORIENT_LABELS) as ImplementationOrientation[]} labels={IMPL_ORIENT_LABELS} value={value.implementationOrientation} onChange={v => p('implementationOrientation', v)} />
-        <SelectField label="Confidentiality" options={Object.keys(BRIEF_CONF_LABELS) as BriefConfidentiality[]} labels={BRIEF_CONF_LABELS} value={value.confidentialityLevel} onChange={v => p('confidentialityLevel', v)} />
-        <div className="sm:col-span-2">
-          <SelectField label="Expected delivery window" options={Object.keys(TIME_HORIZON_LABELS) as TimeHorizon[]} labels={TIME_HORIZON_LABELS} value={value.expectedDeliveryWindow} onChange={v => p('expectedDeliveryWindow', v)} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 
 // ── Step metadata ──────────────────────────────────────────────────────────
 
@@ -518,7 +495,6 @@ const STEPS = [
   { id: 'situation', shortLabel: 'Situation', icon: BarChart2 },
   { id: 'challenges', shortLabel: 'Challenges', icon: AlertTriangle },
   { id: 'questions', shortLabel: 'Questions', icon: HelpCircle },
-  { id: 'outputs', shortLabel: 'Outputs', icon: LayoutList },
 ]
 
 // ── Brief persistence key ──────────────────────────────────────────────────
@@ -822,7 +798,6 @@ export default function ChallengeBrief() {
                     onConstraintsChange={v => updateBrief({ ...brief, constraints: v })}
                   />
                 )}
-                {stepIndex === 3 && <StepDesiredOutputs value={brief.desiredOutputs} onChange={v => updateBrief({ ...brief, desiredOutputs: v })} />}
               </motion.div>
             </AnimatePresence>
           </div>

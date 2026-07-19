@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Clock } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { SourceBadge } from './SourceBadge'
 
 type Sentiment = 'good' | 'warning' | 'bad' | 'neutral'
 
@@ -120,12 +121,7 @@ export function narrativeparagraph({
           <h3 className="text-base sm:text-lg font-semibold text-white tracking-tight">
             {title}
           </h3>
-          <span
-            className="inline-flex items-center text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300 cursor-help"
-            title={`Source: ${(data as any)?.source || footnote || 'not specified'}`}
-          >
-            ⓘ source
-          </span>
+          <SourceBadge source={(data as any)?.source} footnote={footnote} />
         </div>
         {typeof data.readingTimeMin === 'number' && data.readingTimeMin > 0 && (
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#1e2433] bg-[#0c0e14] text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">

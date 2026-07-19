@@ -32,15 +32,31 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+function isTokenExpired(token: string | null): boolean {
+  if (!token) return true
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    if (typeof payload.exp !== 'number') return false
+    return payload.exp * 1000 < Date.now()
+  } catch {
+    return false
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token_dark')
-      localStorage.removeItem('auth_user')
-      localStorage.removeItem('aivora-auth-dark')
-      if (!/\/(login|signup|auth\/callback)$/.test(window.location.pathname)) {
-        window.location.href = '/login'
+      // Only force a logout when the stored token is genuinely missing or
+      // expired. A one-off 401 on a slow request (e.g. an export) must not
+      // wipe a still-valid session and bounce the user to /login mid-work.
+      if (isTokenExpired(readAuthToken())) {
+        localStorage.removeItem('auth_token_dark')
+        localStorage.removeItem('auth_user')
+        localStorage.removeItem('aivora-auth-dark')
+        if (!/\/(login|signup|auth\/callback)$/.test(window.location.pathname)) {
+          window.location.href = '/login'
+        }
       }
     }
     if (error.response?.status === 402) {
@@ -123,8 +139,10 @@ export const exportsAPI = {
   list: (params?: { format?: string; workspace_id?: string }) =>
     api.get('/exports', { params }),
   create: (draftId: string, format: 'pptx' | 'pdf' | 'docx' | 'html', brandKitId?: string) =>
-    api.post('/exports', { draft_id: draftId, format, brand_kit_id: brandKitId }, { responseType: 'blob' }),
-  download: (id: string) => api.get(`/exports/${id}/download`, { responseType: 'blob' }),
+    // Document rendering (PPTX/PDF with images) can take well over the 30s
+    // global timeout, so give exports their own generous budget.
+    api.post('/exports', { draft_id: draftId, format, brand_kit_id: brandKitId }, { responseType: 'blob', timeout: 180000 }),
+  download: (id: string) => api.get(`/exports/${id}/download`, { responseType: 'blob', timeout: 180000 }),
 }
 
 // Challenge Briefs

@@ -76,7 +76,91 @@ function flattenValue(v: unknown): string[] {
   return []
 }
 
+// Turn one StudioOutputDocument section into readable slide elements based on
+// its layout, instead of dumping the raw data object as key:value strings.
+function sectionToElements(section: Record<string, unknown>): SlideElement[] {
+  const title = String(section.title ?? section.id ?? 'Section').replace(/_/g, ' ')
+  const layout = String(section.layout ?? '')
+  const data = (section.data ?? {}) as Record<string, unknown>
+  const els: SlideElement[] = [{ id: uid(), type: 'heading', content: title }]
+
+  const pushBody = (t?: unknown) => { if (t) els.push({ id: uid(), type: 'body', content: String(t) }) }
+  const pushBullets = (arr: unknown) => {
+    if (Array.isArray(arr)) arr.forEach(x => {
+      if (typeof x === 'string') els.push({ id: uid(), type: 'bullet', content: x })
+      else if (x && typeof x === 'object') {
+        const o = x as Record<string, unknown>
+        const label = o.title ?? o.label ?? o.name ?? o.kpi ?? o.activity ?? ''
+        const val = o.value ?? o.description ?? o.rationale ?? o.detail ?? o.mitigation ?? o.target ?? ''
+        els.push({ id: uid(), type: 'bullet', content: [label, val].filter(Boolean).join(': ') })
+      }
+    })
+  }
+
+  switch (layout) {
+    case 'narrative_paragraph':
+      pushBody(data.body); break
+    case 'kpi_grid':
+      pushBullets(data.items ?? data.kpis); break
+    case 'bar_chart':
+    case 'horizontal_bar_chart':
+    case 'ranked_list':
+    case 'recommendation_cards':
+    case 'risk_flags_list':
+      pushBullets(data.items ?? data.cards ?? data.rows); break
+    case 'comparison_table': {
+      const rows = (data.rows ?? []) as Array<Record<string, unknown>>
+      rows.forEach(r => els.push({ id: uid(), type: 'bullet', content: Object.values(r).map(String).join('  ·  ') }))
+      break
+    }
+    case 'timeline': {
+      const horizons = (data.horizons ?? []) as Array<Record<string, unknown>>
+      horizons.forEach(h => {
+        els.push({ id: uid(), type: 'bullet', content: String(h.label ?? '') })
+        pushBullets(h.actions)
+      })
+      break
+    }
+    case 'callout_quote':
+      pushBody(data.quote ?? data.text ?? data.body)
+      if (data.attribution) els.push({ id: uid(), type: 'bullet', content: String(data.attribution) })
+      break
+    default:
+      // Unknown layout: fall back to a compact flatten of the data.
+      flattenValue(data).slice(0, 8).forEach(l => els.push({ id: uid(), type: 'bullet', content: l }))
+  }
+  // A section that yielded only its heading still shows the heading.
+  const footnote = section.footnote
+  if (footnote && String(footnote).trim()) els.push({ id: uid(), type: 'body', content: `Source: ${footnote}` })
+  return els
+}
+
 function draftToSlides(content: Record<string, unknown>): Slide[] {
+  // Preferred path: a StudioOutputDocument with typed sections renders cleanly.
+  const sections = content.sections as Array<Record<string, unknown>> | undefined
+  if (Array.isArray(sections) && sections.length) {
+    const slides: Slide[] = [{
+      id: uid(),
+      elements: [
+        { id: uid(), type: 'label', content: 'HC Advisory' },
+        { id: uid(), type: 'title', content: String(content.title ?? 'Deliverable') },
+        ...(content.subtitle ? [{ id: uid(), type: 'body' as const, content: String(content.subtitle) }] : []),
+      ],
+    }]
+    for (const section of sections) {
+      const els = sectionToElements(section)
+      // Chunk long sections across multiple slides (max ~7 elements each).
+      for (let i = 0; i < els.length; i += 7) {
+        const chunk = i === 0 ? els.slice(0, 7) : [
+          { id: uid(), type: 'heading' as const, content: `${String(section.title ?? '')} (cont.)` },
+          ...els.slice(i, i + 6),
+        ]
+        slides.push({ id: uid(), elements: chunk })
+      }
+    }
+    return slides
+  }
+
   const source = (content.tool_input as Record<string, unknown>) ?? content
   const entries = Object.entries(source).filter(([k]) => !SKIP.has(k))
   if (!entries.length) return []

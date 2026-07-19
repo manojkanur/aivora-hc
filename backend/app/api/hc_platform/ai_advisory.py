@@ -452,6 +452,8 @@ Respond with ONLY a JSON object shaped as a StudioOutputDocument:
 
 Each section: {"id": "<slug>", "title": "...", "layout": "<layout>", "data": {...}, "footnote": "optional source/assumption note"}
 
+SOURCES: when a figure, benchmark or claim in a section is grounded in a real, publicly citable source (an industry report, a public benchmark, a named framework, a regulator or a government programme), put the full source URL in that section's "footnote" (or a "source" field inside data). Only cite sources you are confident exist; a plain "https://..." link is shown to the user as a clickable citation. If a section has no external source (it is derived purely from the client's own inputs), leave the footnote empty or omit it - do NOT write "not specified", and do NOT invent URLs.
+
 ALLOWED layouts and their exact data shapes (ONLY these - never invent layout names like 'infographic'; an infographic request means kpi_grid, bar_chart or timeline visuals):
 - "narrative_paragraph": {"body": "2-4 paragraph markdown-lite text", "highlights": ["phrase to bold", ...]}
 - "kpi_grid": {"columns": 3, "items": [{"label": "...", "value": "42", "unit": "%", "sublabel": "context line"}]}  // 3-6 items
