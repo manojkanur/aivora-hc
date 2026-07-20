@@ -35,70 +35,147 @@ def load_spec(slug: str | None) -> str | None:
 # The spec's "Recommended Output Structure" (section 17), mapped onto the
 # section layouts StudioRenderer actually renders.
 _OUTPUT_CONTRACT = """
-
 === PLATFORM OUTPUT CONTRACT (overrides any formatting guidance above) ===
 
-You are generating the comprehensive deliverable defined in "Recommended Output Structure" above. Respond with ONLY a JSON object (no markdown fence) shaped as a StudioOutputDocument:
+You are generating the comprehensive deliverable defined in "Recommended Output Structure" above. This must read and look like a top-tier consulting deck: rich, varied, dense and quantified - NOT a wall of narrative and tables. Respond with ONLY a JSON object (no markdown fence) shaped as a StudioOutputDocument:
 
 {
   "title": "...",                 // deliverable title including the organization name
   "subtitle": "...",              // one line: deliverable type, organization, scope
-  "sections": [ ... ]             // 10 sections, in this exact order
+  "sections": [ ... ]             // 14 sections, in this exact order
 }
 
 Each section: {"id": "...", "title": "...", "layout": "...", "data": {...}, "footnote": "optional"}
 
-THE 10 SECTIONS (implementing the 19-part recommended structure):
+Every section must earn its place: real numbers, real axes, real matrix cells. Never emit a chart, grid, heatmap or list with placeholder or zero values. The radar_chart, heatmap, kpi_grid, bar_chart, risk_flags_list and callout_quote below are MANDATORY and must each render with fully populated data.
+
+THE 14 SECTIONS (in this exact order, exact ids):
 
 1. id "executive_summary", layout "narrative_paragraph"
-   data: {"body": "Executive summary (2-3 paragraphs) opening with the advisory interpretation per the Advisory Response Opening rule, followed by what the AI understood about the organization and request.", "highlights": ["key phrase", ...]}
+   data: {
+     "body": "Executive summary (2-3 paragraphs) opening with the advisory interpretation per the Advisory Response Opening rule, then what the AI understood about the organization and request, then the headline verdict. Use **bold** on the 3-5 phrases that carry the argument.",
+     "highlights": [{"phrase": "<exact substring copied verbatim from body>", "sentiment": "good|warning|bad|neutral"}]
+   }
+   highlights is a list of OBJECTS; each "phrase" MUST appear verbatim (case-insensitive) inside body or it is dropped. 3-5 highlights.
 
 2. id "diagnosis", layout "narrative_paragraph"
-   data: {"body": "Current-state diagnosis: the mobility problem types identified, the root causes behind them, written specifically for this organization.", "highlights": [...]}
+   data: {
+     "body": "Current-state diagnosis: the problem types identified per the spec's dimensions, the root causes behind them, written specifically for this organization. Reference the maturity radar that follows so the prose and the visual reinforce each other.",
+     "highlights": [{"phrase": "<verbatim substring>", "sentiment": "good|warning|bad|neutral"}]
+   }
+   3-5 highlight objects, same verbatim rule.
 
-3. id "evidence", layout "comparison_table"
-   data: {"columns": [{"key": "item", "label": "Item"}, {"key": "status", "label": "Status"}, {"key": "detail", "label": "Detail"}],
-          "rows": [{"item": "...", "status": "Evidence used | Missing evidence | Assumption", "detail": "..."}]}
-   4-8 rows covering evidence used, missing evidence and assumptions honestly.
+3. id "maturity_radar", layout "radar_chart"
+   data: {
+     "axes": ["<dimension 1>", "<dimension 2>", ...],   // the spec's own maturity dimensions, in order
+     "series": [
+       {"name": "This organization", "values": [<n1>, <n2>, ...], "color": "#3b82f6"},
+       {"name": "Sector benchmark", "values": [<b1>, <b2>, ...]}
+     ],
+     "max": 5,
+     "showLegend": true
+   }
+   GOTCHA: each series "values" list length MUST equal "axes" length, positionally aligned to the axes (index i of values maps to axis i). Use the spec's dimension count. Scores 1-5. The benchmark series must be a defensible sector figure, not a copy of the org.
+   footnote: full https:// URL for the sector benchmark if it comes from a real citable source, else "".
 
-4. id "maturity", layout "kpi_grid"
-   data: {"columns": 3, "items": [
-     {"label": "Mobility Maturity", "value": <1-5>, "unit": "/5", "sublabel": "<level name: Ad Hoc|Emerging|Defined|Integrated|AI-Enabled Marketplace> - one-line rationale"},
-     {"label": "Evidence Quality", "value": "<Strong|Moderate|Limited|Insufficient>", "sublabel": "why"},
-     {"label": "Confidence", "value": "<High|Medium|Low>", "sublabel": "per the confidence calibration rules"}]}
+4. id "evidence", layout "comparison_table"
+   data: {
+     "columns": [{"key": "item", "label": "Item"}, {"key": "status", "label": "Status"}, {"key": "detail", "label": "Detail"}],
+     "rows": [{"item": "...", "status": "Evidence used | Missing evidence | Assumption", "detail": "..."}]
+   }
+   GOTCHA: rows are FLAT DICTS keyed by column "key"; the first column ("item") is the row label. 4-8 rows covering evidence used, missing evidence and assumptions honestly.
+
+5. id "evidence_kpis", layout "kpi_grid"
+   data: {
+     "columns": 3,
+     "items": [
+       {"label": "<headline metric>", "value": <number or string>, "unit": "<%, x, days, $ etc>", "sublabel": "<what it measures + basis>", "icon": "<activity|trending-up|trending-down|users|dollar|target|clock|award|alert|check|gauge|layers|zap|heart>", "delta": {"value": <num>, "direction": "up|down|flat", "sentiment": "good|warning|bad|neutral"}}
+     ]
+   }
+   3-6 headline numbers with REAL values drawn from the client evidence or a citable source. Each item needs label + value; delta is an OBJECT (a bare string delta is silently dropped) - include it only when you have a genuine change/comparison. Put the source URL for externally sourced figures in the footnote.
+   footnote: full https:// URL if the headline numbers are externally sourced, else "".
+
+6. id "maturity", layout "kpi_grid"
+   data: {
+     "columns": 3,
+     "items": [
+       {"label": "Maturity Level", "value": <1-5>, "unit": "/5", "sublabel": "<level name per the spec's scale> - one-line rationale", "icon": "gauge"},
+       {"label": "Evidence Quality", "value": "<Strong|Moderate|Limited|Insufficient>", "sublabel": "why", "icon": "layers"},
+       {"label": "Confidence", "value": "<High|Medium|Low>", "sublabel": "per the confidence calibration rules", "icon": "target"}
+     ]
+   }
    footnote: fuller rationale for the maturity rating.
 
-5. id "target_state", layout "narrative_paragraph"
-   data: {"body": "Recommended target-state model and the framework/solution design: principles, scope, mobility types in scope, employee/manager/HR journeys, matching logic where relevant - tailored to the organization's size and industry per the customization rules.", "highlights": [...]}
+7. id "maturity_heatmap", layout "heatmap"
+   data: {
+     "rows": ["<role or type 1>", "<role or type 2>", ...],
+     "cols": ["<dimension or group 1>", "<dimension or group 2>", ...],
+     "values": [[<0-1>, <0-1>, ...], [<0-1>, <0-1>, ...], ...],
+     "valueFormat": "percent",
+     "colorScale": "sequential"
+   }
+   Build the role x dimension (or type x group) matrix the spec defines. GOTCHA: "values" is a rows x cols matrix - outer length == rows.length, each inner array length == cols.length, positionally aligned; missing cells render blank. With "valueFormat":"percent" pass 0-1 values (they are multiplied by 100). Populate every cell with a defensible readiness/coverage score.
 
-6. id "governance_raci", layout "comparison_table"
-   data: {"columns": [{"key": "activity", "label": "Activity"}, {"key": "chro", "label": "CHRO"}, {"key": "talent", "label": "Talent Mgmt"}, {"key": "hrbp", "label": "HRBP"}, {"key": "manager", "label": "Manager"}, {"key": "employee", "label": "Employee"}],
-          "rows": [{"activity": "...", "chro": "A", "talent": "R", "hrbp": "C", "manager": "R", "employee": "I"}]}
-   6-10 governance activities with R/A/C/I values.
+8. id "target_state", layout "narrative_paragraph"
+   data: {
+     "body": "Recommended target-state model and framework/solution design: principles, scope, types in scope, employee/manager/HR journeys, matching or operating logic where relevant - tailored to the organization's size and industry per the customization rules.",
+     "highlights": [{"phrase": "<verbatim substring>", "sentiment": "good|warning|bad|neutral"}]
+   }
+   Immediately followed by section 9, its comparison_table companion.
 
-7. id "kpis", layout "comparison_table"
-   data: {"columns": [{"key": "kpi", "label": "KPI"}, {"key": "family", "label": "Family"}, {"key": "target", "label": "Target"}, {"key": "cadence", "label": "Cadence"}, {"key": "owner", "label": "Owner"}],
-          "rows": [...]}
-   6-10 KPIs mixing strategic, operational, employee experience, quality/fairness and development families.
+9. id "target_state_comparison", layout "comparison_table"
+   data: {
+     "columns": [{"key": "dimension", "label": "Dimension"}, {"key": "current", "label": "Current State"}, {"key": "target", "label": "Target State"}, {"key": "gap", "label": "Gap / Move", "highlight": true}],
+     "rows": [{"dimension": "...", "current": "...", "target": "...", "gap": "..."}]
+   }
+   5-8 rows mapping current vs target per the spec's dimensions. Flat-dict rows keyed by "key"; first column is the row label; "highlight": true stars the Gap column.
 
-8. id "risks", layout "risk_flags_list"
-   data: {"items": [{"id": "r1", "severity": "critical|high|medium|low", "title": "...", "description": "...", "mitigation": "..."}]}
-   4-6 risks relevant to this organization with concrete mitigations.
+10. id "governance_raci", layout "comparison_table"
+    data: {
+      "columns": [{"key": "activity", "label": "Activity"}, {"key": "chro", "label": "CHRO"}, {"key": "talent", "label": "Talent Mgmt"}, {"key": "hrbp", "label": "HRBP"}, {"key": "manager", "label": "Manager"}, {"key": "employee", "label": "Employee"}],
+      "rows": [{"activity": "...", "chro": "A", "talent": "R", "hrbp": "C", "manager": "R", "employee": "I"}]
+    }
+    6-10 governance activities with R/A/C/I values. Adapt role columns to the roles the spec names if different.
 
-9. id "roadmap", layout "timeline"
-   data: {"horizons": [{"label": "Quick wins (0-3 months)", "actions": [{"title": "...", "owner": "..."}]}, {"label": "Phase 2 (3-6 months)", "actions": [...]}, {"label": "Long-term (6-12+ months)", "actions": [...]}]}
-   Quick wins are the first horizon.
+11. id "kpis", layout "comparison_table"
+    data: {
+      "columns": [{"key": "kpi", "label": "KPI"}, {"key": "family", "label": "Family"}, {"key": "target", "label": "Target"}, {"key": "cadence", "label": "Cadence"}, {"key": "owner", "label": "Owner"}],
+      "rows": [{"kpi": "...", "family": "...", "target": "...", "cadence": "...", "owner": "..."}]
+    }
+    6-10 KPIs mixing strategic, operational, employee experience, quality/fairness and development families. Targets must be concrete numbers.
 
-10. id "next_action", layout "callout_quote"
-    data: {"quote": "The single specific recommended next action, per the Recommended Next Action Logic (never generic).",
-           "attribution": "Confidence: <High|Medium|Low> - one line on why, referencing evidence quality.",
-           "role": "Recommended next action", "emphasis": "insight"}
+12. id "risks", layout "risk_flags_list"
+    data: {
+      "items": [
+        {"id": "r1", "severity": "critical|high|medium|low", "title": "...", "description": "...", "likelihood": "rare|possible|likely|certain", "mitigation": "...", "owner": "..."}
+      ]
+    }
+    4-6 risks relevant to this organization, ordered most severe first, each with a concrete mitigation and an owner.
+
+13. id "roadmap", layout "timeline"
+    data: {
+      "horizons": [
+        {"label": "Quick wins (0-3 months)", "actions": [{"title": "...", "owner": "..."}]},
+        {"label": "Phase 2 (3-6 months)", "actions": [{"title": "...", "owner": "..."}]},
+        {"label": "Long-term (6-12+ months)", "actions": [{"title": "...", "owner": "..."}]}
+      ]
+    }
+    Quick wins are the first horizon (rendered as "now"). Each action has a title and an owner.
+
+14. id "next_action", layout "callout_quote"
+    data: {
+      "quote": "The single specific recommended next action, per the Recommended Next Action Logic (never generic).",
+      "attribution": "Confidence: <High|Medium|Low> - one line on why, referencing evidence quality.",
+      "role": "Recommended next action",
+      "emphasis": "insight"
+    }
 
 RULES:
-- Ground every section in the specific choices the client made in onboarding and the challenge brief (their priorities, flagged challenges and severity, strategic drivers, advisory questions, industry, region, size, uploaded evidence). Name those choices explicitly and build the diagnosis, maturity rating and recommendations directly on them. The executive summary must reflect their stated situation back in their own terms. Never produce generic content that ignores their inputs.
-- ONLY the layouts listed above are valid ("narrative_paragraph", "comparison_table", "kpi_grid", "risk_flags_list", "timeline", "callout_quote"). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual section, express it as a kpi_grid (stat tiles), a comparison_table, or a timeline. Any other layout name will fail to render.
-- Ground everything in the client context provided below (brief, onboarding, conversation). Follow the customization rules for their persona, size, industry and region.
-- Never claim high confidence when evidence is missing.
+- Ground every section in the specific choices the client made in onboarding and the challenge brief (their priorities, flagged challenges and severity, strategic drivers, advisory questions, industry, region, size, uploaded evidence). Name those choices explicitly and build the diagnosis, radar scores, heatmap cells, maturity rating and recommendations directly on them. The executive summary must reflect their stated situation back in their own terms. Never produce generic content that ignores their inputs.
+- ONLY the layouts listed above are valid ("narrative_paragraph", "radar_chart", "comparison_table", "kpi_grid", "heatmap", "risk_flags_list", "timeline", "callout_quote"). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual, express it as a kpi_grid (stat tiles), a radar_chart, a heatmap, a comparison_table or a timeline. Any other layout name will fail to render.
+- Honour the exact data shapes above. Positional-alignment gotchas are load-bearing: radar_chart series values align to axes by index and must match axes length; heatmap values is a rows x cols matrix; kpi_grid delta and narrative_paragraph highlights are OBJECTS (malformed values are silently ignored); comparison_table rows are flat dicts keyed by column key with the first column as the row label.
+- Every mandatory visual (radar_chart, heatmap, evidence_kpis grid, risks list, next_action callout) must appear once and be fully populated with real values - no zeros, no placeholders, no empty cells.
+- Never claim high confidence when evidence is missing. Reflect honest confidence in the maturity grid, the radar benchmark, and the next_action attribution.
 - When a figure or benchmark comes from a real, publicly citable source, put the full source URL in that section's "footnote"; a bare URL is rendered to the user as a clickable citation. If a section has no external source, leave the footnote empty - never write "not specified" and never invent a URL.
 - Plain hyphens only, never em-dashes or smart quotes.
 """
@@ -137,7 +214,7 @@ async def generate_spec_report(
             {"role": "user", "content": user_msg},
         ],
         response_format={"type": "json_object"},
-        **completion_params(model, temperature=0.4, max_tokens=5000),
+        **completion_params(model, temperature=0.4, max_tokens=8000),
     )
     document = json.loads(resp.choices[0].message.content or "{}")
     if not isinstance(document.get("sections"), list) or not document["sections"]:
@@ -157,9 +234,13 @@ async def generate_spec_report(
 _SECTION_TITLES = {
     "executive_summary": "Executive Summary",
     "diagnosis": "Current-State Diagnosis & Root Causes",
+    "maturity_radar": "Maturity Radar vs Sector Benchmark",
     "evidence": "Evidence, Gaps & Assumptions",
-    "maturity": "Mobility Maturity Assessment",
+    "evidence_kpis": "Headline Metrics",
+    "maturity": "Maturity Assessment",
+    "maturity_heatmap": "Readiness Heatmap",
     "target_state": "Target-State Model & Framework Design",
+    "target_state_comparison": "Current vs Target State",
     "governance_raci": "Governance & RACI",
     "kpis": "KPIs & Success Measures",
     "risks": "Risks & Mitigations",

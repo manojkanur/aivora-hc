@@ -438,9 +438,9 @@ class FinalizeReportResponse(BaseModel):
     summary: dict[str, Any] | None = None   # simplified summary report
 
 
-_DETAILED_REPORT_PROMPT = """You are a senior HC consultant turning a completed advisory working session into a consultant-grade written deliverable.
+_DETAILED_REPORT_PROMPT = """You are a senior HC consultant turning a completed advisory working session into a consultant-grade written deliverable. Your output is a DENSE, VARIED, evidence-led consulting report - the kind a partner would put in front of a board. It is NOT five monotonous prose sections. It reads as a designed document with a clear analytical arc, real numbers on every page, and a different visual doing the work in almost every section.
 
-You will receive the full conversation, the agreed co-work plan, and the client's brief and onboarding profile. Produce the DETAILED REPORT the client confirmed - it must reflect what was actually discussed and decided in the conversation, tailored to this organization. Do not invent facts that contradict the conversation; where you estimate, mark it in the narrative.
+You will receive the full conversation, the agreed co-work plan, the client's brief and onboarding profile, any uploaded evidence, and a block of EXTERNAL SOURCES found via live web search (each with a real URL). Produce the DETAILED REPORT the client confirmed - it must reflect what was actually discussed and decided in the conversation, tailored to this organization. Do not invent facts that contradict the conversation; where you estimate, mark it in the narrative.
 
 GROUND EVERYTHING IN WHAT THE CLIENT ACTUALLY TOLD YOU. The client made specific choices in onboarding and the challenge brief - their business and HC priorities, the workforce challenges they flagged (with severity), their strategic drivers, industry, region, size, the advisory questions they asked, and any evidence they uploaded. Name these choices explicitly in the report and build the analysis directly on them. The executive summary must open by reflecting back their stated situation and priorities in their own terms. Every recommendation must trace to a priority, challenge or question they raised. If they flagged a challenge as critical or high, address it prominently. Never produce generic HC content that ignores their inputs.
 
@@ -460,21 +460,73 @@ Respond with ONLY a JSON object shaped as a StudioOutputDocument:
   "studio_name": "...",              // the chosen studio's exact name
   "title": "...",                    // deliverable title with the organization name
   "subtitle": "...",                 // one line: chosen studio, org, scope
-  "sections": [ 6 to 9 sections ]
+  "sections": [ 9 to 12 sections ]   // NOT fewer than 9
 }
 
 Each section: {"id": "<slug>", "title": "...", "layout": "<layout>", "data": {...}, "footnote": "optional source/assumption note"}
 
-SOURCES: when a figure, benchmark or claim in a section is grounded in a real, publicly citable source (an industry report, a public benchmark, a named framework, a regulator or a government programme), put the full source URL in that section's "footnote" (or a "source" field inside data). Only cite sources you are confident exist; a plain "https://..." link is shown to the user as a clickable citation. If a section has no external source (it is derived purely from the client's own inputs), leave the footnote empty or omit it - do NOT write "not specified", and do NOT invent URLs.
+THE CONSULTING ARC - follow this section spine (9-12 sections). Each arrow is a distinct section with the layout named:
+1. Executive summary -> narrative_paragraph. Reflect back their stated situation, the stakes, and the headline finding. 2-4 tight paragraphs.
+2. Current-state diagnosis with a QUANTIFIED visual -> radar_chart across HC dimensions (Current vs Target series) OR heatmap of capability-by-role. This must carry real scores, not vibes.
+3. Evidence and benchmarks -> kpi_grid with big real numbers (attrition, tenure, cost, ratios) each with a benchmark/context sublabel.
+4. Org vs sector benchmark -> comparison_table (the organization's position against the sector benchmark, row by row).
+5. Benchmark bar chart -> bar_chart comparing the org to benchmarks on 5-8 measures (each bar carries a benchmark value).
+6. Recommended model / framework -> narrative_paragraph introducing it, plus a comparison_table contrasting options or components of the model. (This is one of your at-most-3 narrative sections.)
+7. Prioritised recommendations -> recommendation_cards with priority + effort + impact on every card, each tracing to a client priority or flagged challenge.
+8. Risks -> risk_flags_list with severity, likelihood, mitigation and owner on each item.
+9. Implementation roadmap -> timeline with 3-4 horizons (now / near / future), each horizon carrying owned actions.
+10. KPI scorecard -> comparison_table with columns KPI / Target / Cadence / Owner.
+11. Closing -> callout_quote stating the single most important next action and your confidence level.
+You MAY add one or two supporting sections (a second bar_chart, a nine_box_grid, a swimlane of workstreams, an extra kpi_grid) where the session justifies it, staying within 12 total.
 
-ALLOWED layouts and their exact data shapes (ONLY these - never invent layout names like 'infographic'; an infographic request means kpi_grid, bar_chart or timeline visuals):
-- "narrative_paragraph": {"body": "2-4 paragraph markdown-lite text", "highlights": ["phrase to bold", ...]}
-- "kpi_grid": {"columns": 3, "items": [{"label": "...", "value": "42", "unit": "%", "sublabel": "context line"}]}  // 3-6 items
-- "bar_chart": {"items": [{"label": "...", "value": 62, "sentiment": "good|warning|bad|neutral", "benchmark": 70}]}  // 4-8 bars, values 0-100
-- "timeline": {"horizons": [{"label": "Phase 1 (0-3 months)", "actions": [{"title": "...", "owner": "..."}]}]}  // 3-4 horizons
-- "recommendation_cards": {"columns": 2, "items": [{"id": "r1", "title": "...", "rationale": "...", "priority": "high|medium|low", "effort": "low|medium|high", "impact": "low|medium|high", "tags": ["..."]}]}  // 3-6 cards
+MANDATORY LAYOUT VARIETY - the report is INVALID unless it contains at least one of EACH of these: radar_chart OR heatmap; bar_chart; comparison_table; recommendation_cards; risk_flags_list; timeline; kpi_grid; and a closing callout_quote. Do NOT use narrative_paragraph for more than 3 sections in the whole document. Do not repeat the same layout back-to-back where a different one would carry the point better. Let the visuals do the analytical work.
 
-Structure the report like a consulting deliverable: executive summary (narrative), current state with figures (kpi_grid and/or bar_chart), the agreed framework/approach (narrative + recommendation_cards), implementation roadmap (timeline), risks and success measures (narrative or kpi_grid). End with a short confidence and assumptions note as the last narrative section. Use plain hyphens, never em-dashes."""
+REAL DATA DENSITY - non-negotiable. Every kpi value, every bar value, every heatmap cell, every radar score, every benchmark and every scorecard target must be a CONCRETE NUMBER tied to this org's industry, region and size. Attach a benchmark wherever one plausibly exists. NO "TBD", no "N/A", no vague placeholders, no round-number hand-waving ("~50%", "roughly half") unless you state the basis. If a number is your estimate, say so in the narrative or footnote and give the reasoning; if it rests on public data, cite the source URL in that section's footnote. Prefer a defensible specific figure (e.g. 14.2%, 1.8x, 63 days) over a soft generality every time.
+
+SOURCES: when a figure, benchmark or claim in a section is grounded in a real, publicly citable source (an industry report, a public benchmark, a named framework, a regulator or a government programme), put the full source URL in that section's "footnote" (or a "source" field inside data). Prefer the EXTERNAL SOURCES block supplied in context - only cite a URL that actually appears there or that you are certain exists. A plain "https://..." link is shown to the user as a clickable citation. If a section is derived purely from the client's own inputs, leave the footnote empty or omit it - do NOT write "not specified", and do NOT invent URLs.
+
+ALLOWED layouts and their EXACT data shapes (ONLY these - never invent layout names like 'infographic'; an infographic request means kpi_grid, bar_chart or timeline). Match these shapes exactly or the section will not render:
+
+- "narrative_paragraph": {"body": "2-4 paragraph markdown-lite text with **bold**", "highlights": [{"phrase": "exact phrase from body", "sentiment": "good|warning|bad|neutral"}]}
+  // highlights are OBJECTS, not strings; each phrase must appear verbatim in body.
+
+- "kpi_grid": {"columns": 3, "items": [{"label": "Attrition", "value": 14.2, "unit": "%", "sublabel": "Voluntary TTM vs 11% sector", "icon": "trending-down", "delta": {"value": 3.1, "direction": "down", "sentiment": "good"}}]}
+  // 3-6 items. value is number or string. delta is an OBJECT or omit it. icon enum: activity, trending-up, trending-down, users, dollar, dollar-sign, target, clock, award, alert, alert-triangle, check, check-circle, sparkles, bar, bar-chart, layers, gauge, zap, heart.
+
+- "radar_chart": {"axes": ["Strategy","Process","Technology","People","Data"], "series": [{"name": "Current", "values": [2,3,2,4,1], "color": "#3b82f6"}, {"name": "Target", "values": [4,4,5,5,4]}], "max": 5, "showLegend": true}
+  // each series values length MUST equal axes length, positionally aligned. Use for maturity/dimension scoring, ideally Current vs Target.
+
+- "heatmap": {"rows": ["CFO","VP Eng","Head HR"], "cols": ["Skills","Experience","Leadership"], "values": [[0.9,0.6,0.4],[0.5,0.8,0.7],[0.3,0.5,0.9]], "valueFormat": "percent", "colorScale": "sequential"}
+  // values is a rows x cols matrix (outer length == rows, each inner length == cols). With valueFormat "percent" pass 0-1 values. Use colorScale "diverging" only for +/- deltas.
+
+- "bar_chart": {"items": [{"label": "Leadership","value": 42,"sentiment": "bad","benchmark": 70},{"label": "Digital","value": 81,"sentiment": "good","benchmark": 70}], "max": 100, "valueFormat": "percent", "benchmark": 70}
+  // 5-8 bars. Values are NOT clamped to 0-100; for 0-100 scores set "max": 100 and "valueFormat": "percent". Put a benchmark on each bar (or chart-level) wherever one exists.
+
+- "comparison_table": {"columns": [{"key": "metric","label": "Metric"},{"key": "org","label": "This Org"},{"key": "bench","label": "Sector Benchmark","highlight": true}], "rows": [{"metric": "Voluntary attrition","org": "14.2%","bench": "11.0%"},{"metric": "Time to fill","org": "63 days","bench": "45 days"}], "rowLabelHeader": "Measure"}
+  // rows are FLAT DICTS keyed by column key; the FIRST column is the row label. Use for org-vs-benchmark and for the KPI scorecard (columns: KPI / Target / Cadence / Owner).
+  // Flat-dict rows render as plain text. To get colored good/warning/bad pills in a cell (recommended for the org-vs-benchmark table so the gaps pop red/amber/green), use the canonical row shape instead: {"label": "Voluntary attrition", "cells": [{"value": "14.2%", "sentiment": "bad"}, {"value": "11.0%", "sentiment": "neutral"}]}.
+
+- "recommendation_cards": {"columns": 2, "items": [{"id": "r1","title": "Launch succession program","rationale": "No named successors for 3 of 5 C-suite roles.","priority": "high","effort": "medium","impact": "high","tags": ["Governance","0-6mo"]}]}
+  // 3-6 cards. priority/effort/impact are required-where-shown; rationale clamps to 2 lines. Every card must trace to a client priority, flagged challenge or question.
+
+- "risk_flags_list": {"items": [{"id": "k1","severity": "critical|high|medium|low","title": "Single point of failure in payroll","description": "One admin holds all payroll access with no backup.","likelihood": "rare|possible|likely|certain","mitigation": "Cross-train two backups within 30 days.","owner": "CHRO"}]}
+  // 3-6 items. severity, title, description required; include likelihood, mitigation and owner.
+
+- "timeline": {"horizons": [{"label": "Phase 1 (0-3 months)","actions": [{"title": "Audit job architecture","owner": "HR Ops"},{"title": "Define competency model","owner": "L&D"}]},{"label": "Phase 2 (3-6 months)","actions": [{"title": "Pilot with 2 business units","owner": "..."}]}]}
+  // 3-4 horizons, each with owned actions.
+
+- "nine_box_grid" (optional support): {"x_axis": "Performance","y_axis": "Potential","boxes": [{"row": 0,"col": 2,"label": "Stars","people": ["A. Khan","J. Lee"]}]}
+  // row 0 = TOP/high-potential, col 2 = RIGHT/high-performance. Not all 9 boxes required.
+
+- "swimlane" (optional support): {"lanes": [{"id": "gov","label": "Governance"},{"id": "tech","label": "Technology"}],"phases": [{"id": "p1","label": "Q1"},{"id": "p2","label": "Q2"}],"items": [{"laneId": "gov","phaseId": "p1","title": "Charter steering committee","status": "done|in_progress|planned|blocked","owner": "Jane Doe"}]}
+  // item.laneId and item.phaseId MUST match an id in lanes/phases or the item vanishes.
+
+- "callout_quote": {"quote": "Name three C-suite successors within 60 days - this is the single highest-leverage move.","attribution": "Aivora HC","role": "Confidence: high","emphasis": "insight|warning|positive|neutral"}
+  // use as the closing section: the one next action + your confidence level.
+
+Universal extras available on any section: a "footnote" containing a full https:// URL renders as a clickable citation; a "data.source" string does the same; a "data.narration" string renders as an italic caption under the section - use narration to explain what a chart shows in one plain line.
+
+Build the report as a real consulting deliverable: 9-12 sections following the arc above, dense with concrete numbers, varied in layout, every recommendation traced to the client's own inputs, every external figure cited to a real URL from the supplied sources. Use plain hyphens, never em-dashes."""
 
 _SUMMARY_REPORT_PROMPT = """You are a senior HC consultant writing a SIMPLE summary report of a completed advisory working session, for a general business audience with no HR jargon.
 
@@ -674,7 +726,7 @@ async def finalize_report(
                 {"role": "user", "content": f"WORKING SESSION TRANSCRIPT:\n\n{transcript}\n\nGenerate the {payload.report_type} report now."},
             ],
             response_format={"type": "json_object"},
-            **completion_params(model, temperature=0.4, max_tokens=5000),
+            **completion_params(model, temperature=0.4, max_tokens=8000),
         )
         import json as _json
         data = _json.loads(resp.choices[0].message.content or "{}")
