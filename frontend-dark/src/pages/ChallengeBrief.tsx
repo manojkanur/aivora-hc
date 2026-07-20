@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Building2, BarChart2, AlertTriangle, HelpCircle,
   LayoutList, ArrowRight, ArrowLeft, ChevronRight,
-  Check, Plus, X, Trash2, Sparkles,
+  Check, Plus, X, Trash2, Sparkles, ClipboardCheck,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input, Textarea } from '../components/ui/Input'
@@ -14,6 +14,7 @@ import { useBriefStore } from '../store/briefStore'
 import { useClientProfileStore } from '../store/clientProfile'
 import { useOnboardingCompletions } from '../store/onboardingCompletions'
 import { api, challengeBriefsAPI } from '../lib/api'
+import { hcBriefChatAPI } from '../lib/hcPlatformApi'
 import { useAutosave } from '../hooks/useAutosave'
 import { SaveIndicator } from '../components/ui/SaveIndicator'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
@@ -487,6 +488,104 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
 }
 
 
+// ── Step 4: Summary ─────────────────────────────────────────────────────────
+
+function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2.5 border-b border-[#1a1e2e] last:border-0">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 sm:w-40 flex-shrink-0 pt-0.5">{label}</p>
+      <div className="text-sm text-slate-200 flex-1 min-w-0">{children}</div>
+    </div>
+  )
+}
+
+function Chips({ items, tone = 'slate' }: { items: string[]; tone?: 'slate' | 'blue' | 'amber' }) {
+  if (!items.length) return <span className="text-slate-500">None</span>
+  const cls = tone === 'blue'
+    ? 'bg-blue-500/10 border-blue-500/20 text-blue-300'
+    : tone === 'amber'
+      ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+      : 'bg-[#1e2433] border-[#2a3048] text-slate-300'
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((t, i) => <span key={i} className={cn('text-xs px-2.5 py-1 rounded-full border capitalize', cls)}>{t}</span>)}
+    </div>
+  )
+}
+
+function StepBriefSummary({ brief, onboarding, workspaceName }: {
+  brief: ChallengeBriefData
+  onboarding: { agenda?: { businessPriorities?: string[]; hcPriorities?: string[] }; evidence?: { uploadedFiles?: { filename: string }[]; notes?: string } } | null
+  workspaceName: string | null
+}) {
+  const [aiNote, setAiNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    hcBriefChatAPI.summarize({ brief: JSON.parse(JSON.stringify(brief)) as Record<string, unknown>, workspace_name: workspaceName })
+      .then(res => { if (!cancelled) setAiNote(res.data.summary) })
+      .catch(() => { if (!cancelled) setAiNote('Your brief is saved. Open the AI Advisory to start working on it together.') })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const org = brief.organization
+  const drivers = brief.businessSituation.strategicDrivers.map(d => STRATEGIC_DRIVER_LABELS[d] ?? d)
+  const areas = brief.hcChallenges.selectedAreas.map(a => `${HC_AREA_LABELS[a.area] ?? a.area} (${SEVERITY_LABELS[a.severity] ?? a.severity})`)
+  const questions = brief.advisoryQuestions.map(q => q.questionText).filter(Boolean)
+  const bizPriorities = (onboarding?.agenda?.businessPriorities ?? []).map(p => p.replace(/-/g, ' '))
+  const hcPriorities = (onboarding?.agenda?.hcPriorities ?? []).map(p => p.replace(/-/g, ' '))
+  const files = onboarding?.evidence?.uploadedFiles ?? []
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Review what we collected</h2>
+        <p className="text-sm text-slate-400 mt-1">Here is everything the AI Advisory will start from. Go back to change anything, or open the advisory when it looks right.</p>
+      </div>
+
+      {/* AI consultant note */}
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-blue-400" />
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-300">Your consultant's read</p>
+        </div>
+        {aiNote === null ? (
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <span className="w-4 h-4 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+            Reviewing what you shared...
+          </div>
+        ) : (
+          <div className="text-sm text-slate-300 leading-relaxed [&_strong]:text-white space-y-2">
+            {aiNote.split('\n').filter(Boolean).map((line, i) => (
+              <p key={i} dangerouslySetInnerHTML={{ __html: line.replace(/^[-*]\s*/, '• ').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Structured data recap */}
+      <div className="rounded-xl border border-[#1a1e2e] bg-[#0a0c12] p-5">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Engagement profile</p>
+        <SummaryRow label="Organization">{[workspaceName || org.organizationName, ORG_INDUSTRY_LABELS[org.industry], ORG_REGION_LABELS[org.region], ORG_SIZE_LABELS[org.organizationSize]].filter(Boolean).join(' · ')}</SummaryRow>
+        <SummaryRow label="Situation">{brief.businessSituation.situationSummary || <span className="text-slate-500">Not provided</span>}</SummaryRow>
+        <SummaryRow label="Strategic drivers"><Chips items={drivers} tone="amber" /></SummaryRow>
+        {bizPriorities.length > 0 && <SummaryRow label="Business priorities"><Chips items={bizPriorities} /></SummaryRow>}
+        {hcPriorities.length > 0 && <SummaryRow label="HC priorities"><Chips items={hcPriorities} /></SummaryRow>}
+        <SummaryRow label="Challenges"><Chips items={areas} tone="blue" /></SummaryRow>
+        <SummaryRow label="Questions">
+          {questions.length ? (
+            <ul className="list-disc pl-4 space-y-1">{questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+          ) : <span className="text-slate-500">The consultant will propose these</span>}
+        </SummaryRow>
+        <SummaryRow label="Evidence">
+          {files.length ? <Chips items={files.map(f => f.filename)} /> : <span className="text-slate-500">None uploaded</span>}
+        </SummaryRow>
+      </div>
+    </div>
+  )
+}
+
 // ── Step metadata ──────────────────────────────────────────────────────────
 
 // Org context is carried over from the workspace + onboarding, so the brief
@@ -495,6 +594,7 @@ const STEPS = [
   { id: 'situation', shortLabel: 'Situation', icon: BarChart2 },
   { id: 'challenges', shortLabel: 'Challenges', icon: AlertTriangle },
   { id: 'questions', shortLabel: 'Questions', icon: HelpCircle },
+  { id: 'summary', shortLabel: 'Summary', icon: ClipboardCheck },
 ]
 
 // ── Brief persistence key ──────────────────────────────────────────────────
@@ -796,6 +896,13 @@ export default function ChallengeBrief() {
                     selectedAreas={brief.hcChallenges.selectedAreas.map(a => a.area)}
                     onQuestionsChange={v => updateBrief({ ...brief, advisoryQuestions: v })}
                     onConstraintsChange={v => updateBrief({ ...brief, constraints: v })}
+                  />
+                )}
+                {stepIndex === 3 && (
+                  <StepBriefSummary
+                    brief={brief}
+                    onboarding={workspaceId ? getProfileFor(workspaceId) : getProfileFor('_unscoped')}
+                    workspaceName={brief.organization.organizationName || null}
                   />
                 )}
               </motion.div>
