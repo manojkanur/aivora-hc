@@ -1082,6 +1082,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
         <AnimatePresence initial={false}>
           {messages.map(m => (
+            // Skip the empty assistant placeholder while it waits for the first
+            // streamed token - the typing dots below stand in until text arrives.
+            m.role === 'assistant' && m.content.length === 0 ? null : (
             <motion.div
               key={m.id}
               initial={{ opacity: 0, y: 6 }}
@@ -1106,6 +1109,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 </div>
               )}
             </motion.div>
+            )
           ))}
         </AnimatePresence>
 
@@ -1147,7 +1151,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           </button>
         )}
 
-        {sending && (
+        {/* Typing dots only until the first streamed token arrives; once the
+            assistant bubble has text, it shows the stream itself (no double indicator). */}
+        {sending && !(messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content.length > 0) && (
           <div className="flex gap-3 max-w-[85%]">
             <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-4 h-4 text-blue-400" />
