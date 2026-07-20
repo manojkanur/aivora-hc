@@ -275,16 +275,6 @@ export default function StudioRunner() {
     }
   }, [studioId, brief, workspaceId])
 
-  // Marketplace entry with no workspace: let the user choose one.
-  if (studio && !workspaceId) {
-    return <StudioWorkspacePicker studioId={studioId} studioName={studioName} />
-  }
-
-  // Workspace chosen, studio not yet run: show the prefilled summary + analysis.
-  if (studio && !hasRun) {
-    return <StudioRunIntro studioName={studioName} studio={studio} brief={brief} workspaceId={workspaceId!} onRun={runStudio} />
-  }
-
   const downloadExport = useCallback(async (exportId: string, format: string) => {
     // Use the authenticated axios instance so the Bearer token is sent, then
     // turn the blob into an object URL and trigger a download.
@@ -383,6 +373,16 @@ export default function StudioRunner() {
   // After a run, "back" returns to the originating workspace, not the marketplace.
   const backTarget = workspaceId ? `/advisor/${workspaceId}` : '/skills'
   const backLabel = workspaceId ? 'Back to workspace' : 'Back to studios'
+
+  // Conditional screens live AFTER all hooks to keep hook order stable.
+  // Marketplace entry with no workspace: let the user choose one.
+  if (studio && !workspaceId) {
+    return <StudioWorkspacePicker studioId={studioId} studioName={studioName} />
+  }
+  // Workspace chosen, studio not yet run: show the prefilled summary + analysis.
+  if (studio && !hasRun) {
+    return <StudioRunIntro studioName={studioName} studio={studio} brief={brief} workspaceId={workspaceId!} onRun={runStudio} />
+  }
 
   if (!studio) {
     return (

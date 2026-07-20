@@ -278,9 +278,9 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
                 </div>
               )}
 
-              <div className="relative mt-3 flex items-center justify-between gap-2">
+              <div className="relative mt-3 flex items-start justify-between gap-2">
                 {item.sublabel ? (
-                  <div className="text-xs text-slate-400 truncate">{item.sublabel}</div>
+                  <div className="text-xs text-slate-400 leading-relaxed">{item.sublabel}</div>
                 ) : (
                   <div />
                 )}

@@ -1,0 +1,69 @@
+/*
+ * Light "paper" theme for the AI Advisory / studio report.
+ *
+ * The app UI is dark, but a report should read like a printed consulting
+ * deliverable, so we scope a light palette to `.report-paper` and remap the
+ * dark card/text colors the section components use. This keeps every section
+ * component untouched while giving the whole document a clean, professional,
+ * McKinsey-style look that also exports well to PDF.
+ *
+ * Selectors use attribute-substring matching on Tailwind's arbitrary-value
+ * classes (e.g. `bg-[#131720]`) so we do not have to edit each section.
+ */
+
+.report-paper {
+  --rp-ink: #0f172a;        /* near-black text */
+  --rp-ink-soft: #475569;   /* secondary text */
+  --rp-ink-faint: #94a3b8;  /* captions */
+  --rp-line: #e2e8f0;       /* hairlines / borders */
+  --rp-card: #ffffff;       /* card surface */
+  --rp-panel: #f8fafc;      /* subtle inset panel */
+  --rp-accent: #1d4ed8;     /* primary accent (blue) */
+  background: #ffffff;
+  color: var(--rp-ink);
+}
+
+/* Surfaces ------------------------------------------------------------------ */
+.report-paper [class*="bg-[#131720]"],
+.report-paper [class*="bg-[#0f1117]"],
+.report-paper [class*="bg-[#1a1e2e]"] { background-color: var(--rp-card) !important; }
+
+.report-paper [class*="bg-[#0c0e14]"],
+.report-paper [class*="bg-[#1e2433]"] { background-color: var(--rp-panel) !important; }
+
+/* Borders ------------------------------------------------------------------- */
+.report-paper [class*="border-[#1e2433]"],
+.report-paper [class*="border-[#1a1e2e]"],
+.report-paper [class*="border-[#2a3145]"],
+.report-paper [class*="border-[#2a3048]"] { border-color: var(--rp-line) !important; }
+
+/* Text ---------------------------------------------------------------------- */
+.report-paper .text-white,
+.report-paper [class*="text-slate-100"],
+.report-paper [class*="text-slate-200"] { color: var(--rp-ink) !important; }
+
+.report-paper [class*="text-slate-300"],
+.report-paper [class*="text-slate-400"] { color: var(--rp-ink-soft) !important; }
+
+.report-paper [class*="text-slate-500"],
+.report-paper [class*="text-slate-600"],
+.report-paper [class*="text-slate-700"] { color: var(--rp-ink-faint) !important; }
+
+/* Cards get a soft shadow + crisp border for the paper feel */
+.report-paper [class*="rounded-2xl"][class*="border"] {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+/* Tables read cleaner on light */
+.report-paper th { background-color: var(--rp-panel) !important; color: var(--rp-ink) !important; }
+.report-paper td, .report-paper th { border-color: var(--rp-line) !important; }
+
+/* Keep colored accent chips (blue/emerald/amber/rose severity tints) legible on white */
+.report-paper [class*="text-blue-400"] { color: var(--rp-accent) !important; }
+.report-paper [class*="text-emerald-400"] { color: #059669 !important; }
+.report-paper [class*="text-amber-400"], .report-paper [class*="text-amber-300"] { color: #b45309 !important; }
+.report-paper [class*="text-rose-400"], .report-paper [class*="text-red-300"] { color: #dc2626 !important; }
+.report-paper [class*="text-red-400"] { color: #dc2626 !important; }
+
+/* Links (source citations) */
+.report-paper a { color: var(--rp-accent) !important; }

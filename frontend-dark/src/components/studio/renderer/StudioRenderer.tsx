@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Pencil, Loader2 } from 'lucide-react'
+import './report-paper.css'
 
 // Rich section renderers — used for the canonical layout names the backend emits.
 import KpiGrid from './sections/KpiGrid'
@@ -37,6 +38,7 @@ export interface StudioOutputSection {
 
 export interface StudioOutputDocument {
   studio_id: string
+  studio_name?: string
   title: string
   subtitle: string
   sections: StudioOutputSection[]
@@ -255,36 +257,35 @@ function SectionShell({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 + index * 0.04, duration: 0.4, ease: 'easeOut' }}
-      className="space-y-3"
+      className="space-y-4 scroll-mt-6"
     >
       {section.title && (
-        <div className="flex items-baseline justify-between gap-3">
-          <h2
-            className="text-lg sm:text-xl font-semibold text-white tracking-tight"
-            style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
-          >
-            {section.title}
-          </h2>
-          <div className="flex items-center gap-3">
-            {onRegenerate && (
-              <button
-                onClick={handleRegenerate}
-                disabled={busy}
-                className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-[#1e2433] text-slate-400 hover:text-white hover:border-blue-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
-                title="Regenerate this section with an optional hint"
-              >
-                {busy ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Pencil className="w-3 h-3" />
-                )}
-                Regenerate
-              </button>
-            )}
-            <div className="text-[10px] uppercase tracking-widest text-slate-600 tabular-nums">
+        <div className="flex items-start justify-between gap-3 border-b border-[#1e2433] pb-2.5">
+          <div className="flex items-baseline gap-3 min-w-0">
+            <span
+              className="text-sm font-bold tabular-nums text-blue-400 flex-shrink-0"
+              style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
+            >
               {String(index + 1).padStart(2, '0')}
-            </div>
+            </span>
+            <h2
+              className="text-xl sm:text-2xl font-bold text-white tracking-tight"
+              style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
+            >
+              {section.title}
+            </h2>
           </div>
+          {onRegenerate && (
+            <button
+              onClick={handleRegenerate}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-[#1e2433] text-slate-400 hover:text-white hover:border-blue-500/40 disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+              title="Regenerate this section with an optional hint"
+            >
+              {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Pencil className="w-3 h-3" />}
+              Regenerate
+            </button>
+          )}
         </div>
       )}
       {renderLayout(section)}
@@ -308,34 +309,46 @@ export default function StudioOutput({ document, onRegenerateSection }: StudioOu
     typeof document.studio_id === 'string' &&
     document.studio_id.startsWith('ai_advisory:')
 
+  const studioLabel = (document.studio_name || String(document.studio_id || '').split(':').pop() || 'Advisory Report')
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c: string) => c.toUpperCase())
+  const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+
   return (
-    <div className="min-h-full bg-[#0c0e14] font-[Inter]">
-      <div className="px-4 sm:px-6 py-8 sm:py-10 max-w-6xl mx-auto space-y-8">
-        {/* Document header */}
+    <div className="report-paper min-h-full font-[Inter]">
+      <div className="px-5 sm:px-10 py-10 sm:py-14 max-w-5xl mx-auto space-y-10">
+        {/* Cover block */}
         <motion.header
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="space-y-2"
+          className="border-b-2 border-slate-900/90 pb-7"
         >
-          <div className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-semibold">
-            {document.studio_id}
+          <div className="flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">
+            <span className="inline-block w-6 h-[2px] bg-blue-700" />
+            {studioLabel}
           </div>
           <h1
-            className="text-3xl sm:text-4xl font-bold text-white tracking-tight"
+            className="mt-4 text-3xl sm:text-[2.6rem] leading-[1.1] font-bold text-slate-900 tracking-tight"
             style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
           >
             {document.title}
           </h1>
           {document.subtitle && (
-            <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-3xl">
+            <p className="mt-3 text-base text-slate-600 leading-relaxed max-w-3xl">
               {document.subtitle}
             </p>
           )}
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-slate-500">
+            <span className="font-semibold text-slate-700">Aivora HC Advisory</span>
+            <span>{today}</span>
+            <span>{document.sections.length} sections</span>
+            <span className="uppercase tracking-wider">Confidential</span>
+          </div>
         </motion.header>
 
         {/* Sections */}
-        <div className="space-y-6">
+        <div className="space-y-10">
           {document.sections.map((section, i) => (
             <SectionShell
               key={section.id}
@@ -344,6 +357,12 @@ export default function StudioOutput({ document, onRegenerateSection }: StudioOu
               onRegenerate={showRegen ? onRegenerateSection : undefined}
             />
           ))}
+        </div>
+
+        {/* Footer */}
+        <div className="pt-6 border-t border-slate-200 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>{document.title}</span>
+          <span>Generated by Aivora HC · {today}</span>
         </div>
       </div>
     </div>
