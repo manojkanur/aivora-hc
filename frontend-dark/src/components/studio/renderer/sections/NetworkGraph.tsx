@@ -227,7 +227,7 @@ export function networkgraph({ title, data, footnote }: NetworkGraphProps) {
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="text-base sm:text-lg font-semibold text-white">{title}</h3>
+          {title && <h3 className="text-base sm:text-lg font-semibold text-white">{title}</h3>}
           <SourceBadge source={data?.source} footnote={footnote} />
         </div>
         {legendGroups.length > 0 && (

@@ -98,7 +98,7 @@ export function radarchart({ title, data, footnote }: RadarChartProps) {
       className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
     >
       <div className="mb-4 flex items-center gap-2">
-        <h3 className="text-base font-semibold text-white">{title}</h3>
+        {title && <h3 className="text-base font-semibold text-white">{title}</h3>}
         <SourceBadge source={data?.source} footnote={footnote} />
       </div>
 

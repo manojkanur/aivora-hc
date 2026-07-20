@@ -208,7 +208,7 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
     >
       <div className="flex items-center gap-2 mb-5">
         <BarChart3 className="w-5 h-5 text-blue-400" />
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        {title && <h3 className="text-lg font-semibold text-white">{title}</h3>}
         <SourceBadge source={data?.source} footnote={footnote} />
       </div>
 

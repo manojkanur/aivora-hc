@@ -107,7 +107,7 @@ export function comparisontable({
       className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
     >
       <div className="flex items-center gap-2 mb-4">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        {title && <h3 className="text-lg font-semibold text-white">{title}</h3>}
         <SourceBadge source={(data as any)?.source} footnote={footnote} />
       </div>
 

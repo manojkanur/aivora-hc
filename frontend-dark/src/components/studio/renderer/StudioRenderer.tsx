@@ -46,7 +46,9 @@ export interface StudioOutputDocument {
 
 function renderLayout(section: StudioOutputSection) {
   const { layout, title, data, footnote } = section
-  const t = title
+  // SectionShell already renders the numbered section header, so inner components
+  // must NOT repeat the title. Pass empty so their own h3 is suppressed.
+  const t = ""
   const f = footnote
 
   switch (layout) {
@@ -272,7 +274,7 @@ function SectionShell({
               className="text-xl sm:text-2xl font-bold text-white tracking-tight"
               style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
             >
-              {section.title}
+              {section.title.replace(/^\s*\d+[.)]\s*/, '')}
             </h2>
           </div>
           {onRegenerate && (

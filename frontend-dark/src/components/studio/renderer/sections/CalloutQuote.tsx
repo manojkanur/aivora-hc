@@ -85,7 +85,7 @@ export function calloutquote({
       {/* Title row */}
       <div className="flex items-center gap-2 mb-4">
         <Icon className={`w-4 h-4 ${theme.iconColor}`} />
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        {title && <h3 className="text-sm font-semibold text-white">{title}</h3>}
         <SourceBadge source={(data as any)?.source} footnote={footnote} />
         <span
           className={`ml-auto px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${theme.iconColor} bg-white/[0.02] border border-white/[0.04]`}

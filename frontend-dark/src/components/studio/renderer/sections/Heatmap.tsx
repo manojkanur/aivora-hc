@@ -158,7 +158,7 @@ export function heatmap({
       className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-6"
     >
       <div className="flex items-center gap-2 mb-4">
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        {title && <h3 className="text-sm font-semibold text-white">{title}</h3>}
         <SourceBadge source={data?.source} footnote={footnote} />
       </div>
 
