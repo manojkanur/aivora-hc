@@ -21,15 +21,56 @@ _SPEC_META = {
 }
 
 
+def _norm(slug: str | None) -> str | None:
+    return slug.strip().lower().replace("_", "-") if slug else None
+
+
 def load_spec(slug: str | None) -> str | None:
-    """Full master instruction for a studio slug, or None if it has no spec."""
-    if not slug:
+    """On-disk master instruction for a studio slug (file fallback only).
+
+    The primary source is the admin-editable ``report_spec`` on the skill row -
+    resolved by ``resolve_spec``. This function is kept for the synchronous
+    file-only fallback and for the cheap "does a spec exist" checks.
+    """
+    key = _norm(slug)
+    if not key:
         return None
-    key = slug.strip().lower().replace("_", "-")
     if key not in _SPEC_CACHE:
         path = _PROMPTS_DIR / f"{key}.md"
         _SPEC_CACHE[key] = path.read_text() if path.exists() else None
     return _SPEC_CACHE[key]
+
+
+def invalidate_spec_cache(slug: str | None = None) -> None:
+    """Drop the file-spec cache (all, or one slug) after an admin edit."""
+    if slug is None:
+        _SPEC_CACHE.clear()
+    else:
+        _SPEC_CACHE.pop(_norm(slug) or "", None)
+
+
+async def resolve_spec(db: Any, slug: str | None) -> str | None:
+    """The studio's report master instruction, DB-first then file.
+
+    Priority: the admin-editable ``skill_registry.report_spec`` for this slug,
+    then the on-disk ``studio_prompts/{slug}.md``. Returns None if the studio has
+    no spec at all (caller then uses the generic report contract).
+    """
+    key = _norm(slug)
+    if not key:
+        return None
+    try:
+        from sqlalchemy import select
+        from app.models.skill import SkillRegistry
+
+        row = (
+            await db.execute(select(SkillRegistry.report_spec).where(SkillRegistry.slug == key))
+        ).scalar_one_or_none()
+        if row and row.strip():
+            return row
+    except Exception:  # noqa: BLE001 - never let a DB hiccup block report generation
+        pass
+    return load_spec(key)
 
 
 # The spec's "Recommended Output Structure" (section 17), mapped onto the
@@ -187,12 +228,18 @@ async def generate_spec_report(
     transcript: str = "",
     context_blocks: list[str] | None = None,
     model: str = "gpt-4o",
+    spec: str | None = None,
 ) -> dict[str, Any]:
-    """Generate a spec-driven StudioOutputDocument. Raises on LLM failure."""
+    """Generate a spec-driven StudioOutputDocument. Raises on LLM failure.
+
+    ``spec`` is the studio's master instruction; pass the DB-resolved one when
+    available, else it falls back to the on-disk file for this slug.
+    """
     from app.services.ai_orchestrator import _get_client
     from app.services.model_settings import completion_params
 
-    spec = load_spec(slug)
+    if spec is None:
+        spec = load_spec(slug)
     if spec is None:
         raise LookupError(f"No spec registered for studio {slug!r}")
 

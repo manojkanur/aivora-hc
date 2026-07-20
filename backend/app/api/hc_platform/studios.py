@@ -49,11 +49,12 @@ async def run_studio_endpoint(
     db: DBDep,
 ) -> dict[str, Any]:
     """Run the builder registered for ``studio_id`` and return its StudioOutputDocument."""
-    # Spec-backed studios generate from their client-authored master
-    # instruction; the coded builder remains as fallback so runs never 500.
-    from app.services.hc_platform.spec_studio import generate_spec_report, load_spec
+    # Spec-backed studios generate from their master instruction (admin-editable
+    # report_spec, else the on-disk file); the coded builder remains as fallback.
+    from app.services.hc_platform.spec_studio import generate_spec_report, resolve_spec
 
-    if load_spec(studio_id):
+    resolved_spec = await resolve_spec(db, studio_id)
+    if resolved_spec:
         try:
             import json as _json
 
@@ -64,7 +65,7 @@ async def run_studio_endpoint(
             from app.services.model_settings import get_global_model
 
             output = await generate_spec_report(
-                studio_id, context_blocks=[brief_block], model=await get_global_model(db)
+                studio_id, spec=resolved_spec, context_blocks=[brief_block], model=await get_global_model(db)
             )
             await _audit(
                 current_tenant.id,

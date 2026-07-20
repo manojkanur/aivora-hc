@@ -154,6 +154,8 @@ async def admin_list_skills(admin_user: AdminUser, db: DBDep) -> list[dict[str, 
             "sort_order": skill.sort_order,
             "created_at": skill.created_at.isoformat() if skill.created_at else None,
             "job_count": job_count,
+            "report_spec": skill.report_spec,
+            "has_report_spec": bool(skill.report_spec),
         }
         output.append(s_dict)
     return output
@@ -175,6 +177,12 @@ async def admin_update_skill(
         skill.name = payload.name
     if payload.description is not None:
         skill.description = payload.description
+    if payload.report_spec is not None:
+        # Empty string clears the custom spec (studio reverts to the generic contract).
+        skill.report_spec = payload.report_spec.strip() or None
+        # Bust the in-memory spec cache so the new spec takes effect immediately.
+        from app.services.hc_platform import spec_studio
+        spec_studio.invalidate_spec_cache(skill.slug)
     if payload.tier is not None:
         skill.tier = payload.tier
     if payload.credit_cost is not None:

@@ -34,6 +34,10 @@ class SkillRegistry(UUIDBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Admin-editable master instruction that drives this studio's report (the
+    # "skill file"). When set, the report generator uses it; otherwise the studio
+    # falls back to the generic report contract. Seeded from studio_prompts/.
+    report_spec: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tier: Mapped[SkillTier] = mapped_column(
         Enum(SkillTier, name="skill_tier_enum"), nullable=False, default=SkillTier.starter

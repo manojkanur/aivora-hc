@@ -637,8 +637,11 @@ async def finalize_report(
         for m in payload.messages[-40:]
     )[:60000]
 
-    # Spec-backed studios: the client-authored master instruction is the engine.
-    from app.services.hc_platform.spec_studio import generate_spec_report, load_spec
+    # Spec-backed studios: the studio's master instruction (admin-editable
+    # report_spec, else the on-disk file) is the engine.
+    from app.services.hc_platform.spec_studio import generate_spec_report, resolve_spec
+
+    resolved_spec = await resolve_spec(db, payload.studio) if payload.report_type == "detailed" else None
 
     revise_block = ""
     if payload.report_state:
@@ -659,12 +662,13 @@ async def finalize_report(
     # Uploaded documents (e.g. PDFs) so the report can cite them by name.
     evidence_ctx = await _evidence_block(db, payload.evidence_ids, current_tenant.id)
 
-    if payload.report_type == "detailed" and load_spec(payload.studio):
+    if payload.report_type == "detailed" and resolved_spec:
         try:
             from app.services.model_settings import get_global_model
 
             document = await generate_spec_report(
                 payload.studio or "",
+                spec=resolved_spec,
                 transcript=transcript,
                 context_blocks=[
                     _brief_context_block(payload.brief),

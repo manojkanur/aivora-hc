@@ -15,6 +15,7 @@ class SkillResponse(BaseModel):
     name: str
     category: str
     description: str | None
+    report_spec: str | None = None
     icon: str | None
     tier: SkillTier
     credit_cost: int
@@ -44,6 +45,7 @@ class SkillStateUpdate(BaseModel):
 class SkillUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    report_spec: str | None = None  # the studio's report master instruction (skill file)
     tier: SkillTier | None = None
     credit_cost: int | None = None
     status: SkillStatus | None = None

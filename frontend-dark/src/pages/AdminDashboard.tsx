@@ -30,11 +30,15 @@ interface AdminStats {
 interface Skill {
   id: string
   name: string
+  slug?: string
   category: string
   tier: 'starter' | 'professional' | 'enterprise' | 'advisory'
   credit_cost: number
   enabled: boolean
   instructions?: string
+  /** The studio's report master instruction (the "skill file" that drives report generation). */
+  report_spec?: string
+  has_report_spec?: boolean
   llm_model?: string
   is_custom?: boolean
   description?: string
@@ -280,10 +284,11 @@ function InstructionEditPanel({ skill, onClose, onSave }: {
   onSave: (id: string, instructions: string) => Promise<void>
 }) {
   const defaultText = getDefaultInstruction(skill.name)
-  const [text, setText] = useState(skill.instructions || defaultText)
+  // Edit the report_spec (the "skill file") that actually drives report generation.
+  const [text, setText] = useState(skill.report_spec || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const isDefault = text === defaultText && !skill.instructions
+  const isDefault = !skill.report_spec && !text
 
   const handleSave = async () => {
     setSaving(true)
@@ -309,7 +314,7 @@ function InstructionEditPanel({ skill, onClose, onSave }: {
           className="w-full max-w-2xl rounded-2xl border border-[#1e2433] bg-[#131720] shadow-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
             <div>
-              <p className="text-xs text-blue-400 font-semibold uppercase tracking-widest mb-0.5">Studio Instructions</p>
+              <p className="text-xs text-blue-400 font-semibold uppercase tracking-widest mb-0.5">Report Spec (Skill File)</p>
               <h3 className="text-base font-bold text-white">{skill.name}</h3>
             </div>
             <button type="button" onClick={onClose}
@@ -318,28 +323,22 @@ function InstructionEditPanel({ skill, onClose, onSave }: {
             </button>
           </div>
           <div className="p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">These instructions define how the AI behaves in this studio.</p>
-              <button type="button" onClick={() => setText(defaultText)}
-                className="flex-shrink-0 ml-3 text-xs px-2.5 py-1 rounded-lg border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors font-semibold">
-                Load default
-              </button>
-            </div>
+            <p className="text-xs text-slate-500">This is the master instruction that drives this studio's report. Edit it to change the studio's expertise, dimensions, KPIs and framing. Leave empty to use the platform's generic report contract.</p>
             {isDefault && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/8 border border-blue-500/20 rounded-lg">
-                <BookOpen className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                <span className="text-xs text-blue-300">Showing Aivora default for this studio type. Edit to customise.</span>
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/8 border border-amber-500/20 rounded-lg">
+                <BookOpen className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <span className="text-xs text-amber-300">No custom report spec set. This studio uses the generic report contract until you add one.</span>
               </div>
             )}
             <Textarea value={text} onChange={e => setText(e.target.value)}
-              placeholder="Enter studio system instructions…" rows={12} className="font-mono text-xs" />
+              placeholder="Enter the studio's report spec (markdown)…" rows={14} className="font-mono text-xs" />
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-slate-600">{text.length} characters</span>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}
                   leftIcon={saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}>
-                  {saved ? 'Saved!' : saving ? 'Saving…' : 'Save instructions'}
+                  {saved ? 'Saved!' : saving ? 'Saving…' : 'Save report spec'}
                 </Button>
               </div>
             </div>
@@ -879,9 +878,9 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
     setSkills(prev => prev.map(s => s.id === id ? { ...s, credit_cost } : s))
   }
 
-  const handleSaveInstructions = async (id: string, instructions: string) => {
-    await adminAPI.updateSkill(id, { instructions })
-    setSkills(prev => prev.map(s => s.id === id ? { ...s, instructions } : s))
+  const handleSaveInstructions = async (id: string, report_spec: string) => {
+    await adminAPI.updateSkill(id, { report_spec })
+    setSkills(prev => prev.map(s => s.id === id ? { ...s, report_spec, has_report_spec: !!report_spec.trim() } : s))
   }
 
   const handleCreate = async (data: Omit<Skill, 'id' | 'enabled'>) => {
