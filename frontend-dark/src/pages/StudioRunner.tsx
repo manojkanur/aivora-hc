@@ -28,9 +28,9 @@ function StudioWorkspacePicker({ studioId, studioName }: { studioId: string; stu
       .then(res => {
         if (cancelled) return
         const raw: WorkspaceRow[] = res.data?.items ?? res.data ?? []
-        const list = raw.filter(w => !w.status || w.status === 'active')
-        if (list.length === 1) navigate(`/studio/${studioId}/${list[0].id}`, { replace: true })
-        else setWorkspaces(list)
+        // Always let the user pick the workspace explicitly - even with one
+        // workspace, we show it as a selectable card rather than auto-forwarding.
+        setWorkspaces(raw.filter(w => !w.status || w.status === 'active'))
       })
       .catch(() => { if (!cancelled) setError(true) })
     return () => { cancelled = true }
