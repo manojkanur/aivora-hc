@@ -787,47 +787,63 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setMessages(next)
     setDraft('')
     setSending(true)
-    try {
-      const payload = {
-        messages: next.map(m => ({ role: m.role, content: m.content })),
-        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
-        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
-        profile,
-        evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
-        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-        plan_state: plan,
-        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
-        preferences: prefs,
-      }
-      const res = await hcAiAdvisoryAPI.chat(payload)
-      const reply = res.data.reply
-      const nextPlan = res.data.plan ?? null
-      const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, id: `a-${Date.now()}`, plan: planChanged && nextPlan ? nextPlan : undefined }])
+    const payload = {
+      messages: next.map(m => ({ role: m.role, content: m.content })),
+      brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
+      context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+      profile,
+      evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
+      client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+      plan_state: plan,
+      report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
+      preferences: prefs,
+    }
+
+    // Apply the structured result (plan / finalize / studio) once the reply is complete.
+    const applyResult = (reply: string, nextPlan: ChatPlan | null, finalize: 'summary' | 'detailed' | null, studio: string | null) => {
       setPlan(nextPlan)
       try {
         if (nextPlan) localStorage.setItem(`${PLAN_STORAGE_KEY}:${workspaceId}`, JSON.stringify(nextPlan))
         else localStorage.removeItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
       } catch { /* ignore */ }
-      // The user confirmed in the conversation - the deliverable follows automatically.
-      const confirmed = res.data.finalize
-      if (confirmed === 'summary' || confirmed === 'detailed') {
+      if (finalize === 'summary' || finalize === 'detailed') {
         const history = [...next, { role: 'assistant' as const, content: reply, id: `a-${Date.now()}` }]
-        if (viewMode === 'report') {
-          // The user is editing an open report - regenerate without re-asking.
-          void finalizeSession(confirmed, history, nextPlan, res.data.studio ?? null)
-        } else {
-          // Claude-style permission request: nothing generates until approved.
-          setPendingApproval({ type: confirmed, studio: res.data.studio ?? null, history, plan: nextPlan })
-        }
+        if (viewMode === 'report') void finalizeSession(finalize, history, nextPlan, studio)
+        else setPendingApproval({ type: finalize, studio, history, plan: nextPlan })
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'The advisor is unavailable right now.'
-      setError(msg)
-      // Rollback the user message stays; user can retry.
+    }
+
+    const assistantId = `a-${Date.now()}`
+    try {
+      // Streaming path: tokens append live into a placeholder assistant bubble.
+      setMessages(prev => [...prev, { role: 'assistant', content: '', id: assistantId }])
+      let acc = ''
+      const meta = await hcAiAdvisoryAPI.chatStream(payload, (tok) => {
+        acc += tok
+        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
+      })
+      const nextPlan = meta.plan ?? null
+      const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc, plan: planChanged && nextPlan ? nextPlan : undefined } : m))
+      applyResult(acc, nextPlan, meta.finalize, meta.studio)
+    } catch {
+      // Fallback: non-streaming JSON chat if the stream fails.
+      try {
+        const res = await hcAiAdvisoryAPI.chat(payload)
+        const reply = res.data.reply
+        const nextPlan = res.data.plan ?? null
+        const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
+        setMessages(prev => {
+          const withoutPlaceholder = prev.filter(m => m.id !== assistantId)
+          return [...withoutPlaceholder, { role: 'assistant', content: reply, id: assistantId, plan: planChanged && nextPlan ? nextPlan : undefined }]
+        })
+        applyResult(reply, nextPlan, res.data.finalize ?? null, res.data.studio ?? null)
+      } catch (err: unknown) {
+        setMessages(prev => prev.filter(m => m.id !== assistantId))
+        setError(err instanceof Error ? err.message : 'The advisor is unavailable right now.')
+      }
     } finally {
       setSending(false)
-      // Keep the cursor in the composer so the conversation flows without clicking.
       setTimeout(() => textareaRef.current?.focus(), 0)
     }
   }

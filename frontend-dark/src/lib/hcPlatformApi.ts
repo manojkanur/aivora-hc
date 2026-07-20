@@ -1259,6 +1259,51 @@ export const hcAiAdvisoryAPI = {
     preferences?: { length?: string; style?: string; instructions?: string } | null
     studio_recommendations?: Array<{ id: string; name: string; category: string; reason: string }>
   }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null; studio?: string | null }>(`${HC_BASE}/ai-advisory/chat`, body),
+  /**
+   * Streaming chat: streams the reply text token-by-token, then resolves with
+   * the structured {plan, finalize, studio} meta. Calls onToken for each chunk.
+   */
+  chatStream: async (
+    body: Record<string, unknown>,
+    onToken: (t: string) => void,
+    signal?: AbortSignal,
+  ): Promise<{ plan: ChatPlan | null; finalize: 'summary' | 'detailed' | null; studio: string | null }> => {
+    let token: string | null = localStorage.getItem('auth_token_dark')
+    if (!token) {
+      try { token = JSON.parse(localStorage.getItem('aivora-auth-dark') || '{}')?.state?.token ?? null } catch { token = null }
+    }
+    const res = await fetch(`/api/v1${HC_BASE}/ai-advisory/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+      signal,
+    })
+    if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`)
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let meta = { plan: null as ChatPlan | null, finalize: null as 'summary' | 'detailed' | null, studio: null as string | null }
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const m = line.match(/^data: (.*)$/s)
+        if (!m) continue
+        const payload = m[1]
+        if (payload === '[DONE]') continue
+        try {
+          const evt = JSON.parse(payload)
+          if (evt.token) onToken(evt.token as string)
+          else if (evt.meta) meta = evt.meta
+          else if (evt.error) throw new Error(evt.error as string)
+        } catch { /* ignore malformed frame */ }
+      }
+    }
+    return meta
+  },
   uploadEvidence: (file: File) => {
     const form = new FormData()
     form.append('file', file)

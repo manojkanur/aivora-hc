@@ -1005,6 +1005,38 @@ async def _evidence_block(db: Any, evidence_ids: list[str], tenant_id: uuid.UUID
     )
 
 
+async def _build_chat_messages(payload: "ChatRequest", db: Any, tenant_id: uuid.UUID) -> list[dict[str, str]]:
+    """Assemble the system prompt + trimmed history for an advisor turn.
+
+    Shared by the JSON /chat endpoint and the streaming /chat/stream endpoint so
+    both see the exact same grounding.
+    """
+    brief_ctx = _brief_context_block(payload.brief)
+    where_ctx = _context_block(payload.context)
+    profile_ctx = _profile_block(payload.profile)
+    evidence_ctx = await _evidence_block(db, payload.evidence_ids, tenant_id)
+    onboarding_ctx = _onboarding_block(payload.client_profile)
+    kb_ctx = await _kb_block(db)
+    plan_ctx = _plan_state_block(payload.plan_state)
+    report_ctx = _report_state_block(payload.report_state)
+    prefs_ctx = _prefs_block(payload.preferences)
+    recs_ctx = _recs_block(payload.studio_recommendations)
+    system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
+    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx, prefs_ctx, recs_ctx):
+        if part:
+            system_parts.append(part)
+    system = "\n\n".join(system_parts)
+
+    trimmed = payload.messages[-40:]
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    for m in trimmed:
+        role = m.role if m.role in ("user", "assistant") else "user"
+        messages.append({"role": role, "content": m.content})
+    if not payload.messages:
+        messages.append({"role": "user", "content": "(open the advisory session)"})
+    return messages
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def advisor_chat(
     payload: ChatRequest,
@@ -1029,31 +1061,7 @@ async def advisor_chat(
             followup_questions=[],
         )
 
-    brief_ctx = _brief_context_block(payload.brief)
-    where_ctx = _context_block(payload.context)
-    profile_ctx = _profile_block(payload.profile)
-    evidence_ctx = await _evidence_block(db, payload.evidence_ids, current_tenant.id)
-    onboarding_ctx = _onboarding_block(payload.client_profile)
-    kb_ctx = await _kb_block(db)
-    plan_ctx = _plan_state_block(payload.plan_state)
-    report_ctx = _report_state_block(payload.report_state)
-    prefs_ctx = _prefs_block(payload.preferences)
-    recs_ctx = _recs_block(payload.studio_recommendations)
-    system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
-    for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx, prefs_ctx, recs_ctx):
-        if part:
-            system_parts.append(part)
-    system = "\n\n".join(system_parts)
-
-    # Trim to the last 20 messages so long conversations do not blow the token budget.
-    trimmed = payload.messages[-40:]
-    messages = [{"role": "system", "content": system}]
-    for m in trimmed:
-        role = m.role if m.role in ("user", "assistant") else "user"
-        messages.append({"role": role, "content": m.content})
-    if not payload.messages:
-        # Session opener: the client just arrived from completing the brief.
-        messages.append({"role": "user", "content": "(open the advisory session)"})
+    messages = await _build_chat_messages(payload, db, current_tenant.id)
 
     try:
         from app.services.model_settings import completion_params, get_global_model
@@ -1111,3 +1119,112 @@ async def advisor_chat(
     if not reply:
         reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
     return ChatResponse(reply=reply, followup_questions=[], plan=plan, finalize=finalize, studio=studio_slug)
+
+
+_STREAM_REPLY_SUFFIX = (
+    "\n\nIMPORTANT FOR THIS TURN: reply with your advice as plain conversational text only "
+    "(markdown allowed). Do NOT wrap it in JSON. Just talk to the client."
+)
+
+_STRUCTURE_PROMPT = (
+    "You are a silent post-processor. Given the advisor's latest reply and the conversation, output "
+    "ONLY a JSON object {\"plan\": {\"title\": str, \"steps\": [{\"title\": str, \"status\": "
+    "\"pending|in_progress|done\", \"note\": str}]} | null, \"finalize\": \"summary\"|\"detailed\"|null, "
+    "\"studio\": \"<slug>\"|null}. Set plan only if the advisor laid out or updated a multi-step plan. "
+    "Set finalize only if the advisor and client just agreed to generate a summary or detailed report. "
+    "Set studio to the single most relevant studio slug if a specific deliverable is being produced, else null."
+)
+
+
+@router.post("/chat/stream")
+async def advisor_chat_stream(
+    payload: ChatRequest,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+):
+    """Streaming variant of /chat.
+
+    Streams the reply text token-by-token as Server-Sent Events, then emits one
+    final `meta` event carrying the structured {plan, finalize, studio} decided
+    from the same context. The client renders tokens live and applies meta at the
+    end. Falls back cleanly: on any error the client can retry the JSON /chat.
+    """
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    from app.services.model_settings import completion_params, get_global_model
+    from fastapi.responses import StreamingResponse
+
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(status_code=503, detail="Advisor needs the OpenAI key configured.")
+
+    messages = await _build_chat_messages(payload, db, current_tenant.id)
+    # Ask for plain text (not JSON) so we can stream it straight to the user.
+    messages[0] = {"role": "system", "content": messages[0]["content"] + _STREAM_REPLY_SUFFIX}
+    model = await get_global_model(db)
+    client = _get_client()
+
+    async def event_stream():
+        import json as _json
+
+        collected: list[str] = []
+        try:
+            stream = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=True,
+                **completion_params(model, temperature=0.55, max_tokens=4096),
+            )
+            async for chunk in stream:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    collected.append(delta)
+                    yield f"data: {_json.dumps({'token': delta})}\n\n"
+        except Exception as exc:  # noqa: BLE001
+            yield f"data: {_json.dumps({'error': str(exc)[:200]})}\n\n"
+            return
+
+        reply = _clean("".join(collected))
+
+        # Second, fast pass to extract structure from the same context.
+        plan = None
+        finalize = None
+        studio_slug = None
+        try:
+            struct_messages = [
+                {"role": "system", "content": _STRUCTURE_PROMPT},
+                {"role": "user", "content": f"CONVERSATION SO FAR:\n{_json.dumps([{ 'role': m.role, 'content': m.content } for m in payload.messages[-8:]], ensure_ascii=True)[:6000]}\n\nADVISOR REPLY:\n{reply[:4000]}"},
+            ]
+            sresp = await client.chat.completions.create(
+                model=model,
+                messages=struct_messages,
+                response_format={"type": "json_object"},
+                **completion_params(model, temperature=0.0, max_tokens=800),
+            )
+            data = _json.loads(sresp.choices[0].message.content or "{}")
+            raw_plan = data.get("plan")
+            if isinstance(raw_plan, dict) and raw_plan.get("title"):
+                steps = [
+                    {"title": _clean(str(s.get("title") or ""))[:120],
+                     "status": s.get("status") if s.get("status") in ("pending", "in_progress", "done") else "pending",
+                     "note": _clean(str(s.get("note"))) if s.get("note") else None}
+                    for s in (raw_plan.get("steps") or [])
+                    if isinstance(s, dict) and s.get("title")
+                ][:8]
+                plan = {"title": _clean(str(raw_plan["title"]))[:160], "steps": steps}
+            if data.get("finalize") in ("summary", "detailed"):
+                finalize = data["finalize"]
+            rs = data.get("studio")
+            if isinstance(rs, str) and rs.strip():
+                studio_slug = rs.strip().lower().replace("_", "-")
+        except Exception:  # noqa: BLE001
+            pass
+
+        yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': finalize, 'studio': studio_slug}})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
