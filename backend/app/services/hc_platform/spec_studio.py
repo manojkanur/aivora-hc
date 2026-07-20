@@ -124,7 +124,7 @@ async def generate_spec_report(
         system += "\n\n=== CLIENT CONTEXT ===\n\n" + "\n\n".join(b for b in context_blocks if b)
 
     user_msg = (
-        f"WORKING SESSION TRANSCRIPT:\n\n{transcript[:20000]}\n\nGenerate the comprehensive deliverable now."
+        f"WORKING SESSION TRANSCRIPT:\n\n{transcript[:50000]}\n\nGenerate the comprehensive deliverable now."
         if transcript
         else "No conversation transcript - generate the comprehensive deliverable directly from the client context, stating the additional assumptions this forces."
     )

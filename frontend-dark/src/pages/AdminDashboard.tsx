@@ -104,12 +104,12 @@ type AdminTab = 'skills' | 'categories' | 'llm' | 'users' | 'audit'
 // verifies the model with a live test call before saving, so an unavailable
 // model is rejected instead of silently breaking the advisor.
 const LLM_OPTIONS = [
-  { id: 'gpt-4o',        label: 'GPT-4o',        provider: 'OpenAI', badge: 'Recommended' },
-  { id: 'gpt-4o-mini',   label: 'GPT-4o Mini',   provider: 'OpenAI', badge: 'Fast'        },
-  { id: 'gpt-4.1',       label: 'GPT-4.1',       provider: 'OpenAI', badge: 'Long Context'},
-  { id: 'gpt-4.1-mini',  label: 'GPT-4.1 Mini',  provider: 'OpenAI', badge: 'Fast'        },
-  { id: 'gpt-5',         label: 'GPT-5',         provider: 'OpenAI', badge: 'Reasoning'   },
-  { id: 'gpt-5-mini',    label: 'GPT-5 Mini',    provider: 'OpenAI', badge: 'Reasoning'   },
+  { id: 'gpt-5.1',       label: 'GPT-5.1',       provider: 'OpenAI', badge: 'Recommended' },
+  { id: 'gpt-5.2',       label: 'GPT-5.2',       provider: 'OpenAI', badge: 'Deepest'      },
+  { id: 'gpt-5',         label: 'GPT-5',         provider: 'OpenAI', badge: 'Reasoning'    },
+  { id: 'gpt-5-mini',    label: 'GPT-5 Mini',    provider: 'OpenAI', badge: 'Fast'         },
+  { id: 'gpt-4.1',       label: 'GPT-4.1',       provider: 'OpenAI', badge: 'Long Context' },
+  { id: 'gpt-4o',        label: 'GPT-4o',        provider: 'OpenAI', badge: ''             },
 ]
 
 const PROVIDER_COLORS: Record<string, string> = {

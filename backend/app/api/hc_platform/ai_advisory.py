@@ -290,6 +290,14 @@ class ChatResponse(BaseModel):
 
 _ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant embedded inside the Aivora HC platform, advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
 
+HOW TO CONVERSE (this matters as much as what you say):
+- Be a real consultant in dialogue, never a scripted bot. Every reply is shaped by THIS client's specific onboarding, brief and what they just said - reference their actual organisation, industry, flagged challenges and words. Never give generic, boilerplate, or one-size-fits-all answers.
+- Reason before you answer. Think through their situation, connect the dots between their brief and their question, and lead with a genuine point of view - not a hedged list of everything possible.
+- Vary your response shape to the moment: sometimes a sharp two-line answer, sometimes a structured plan, sometimes a single probing question back. Do not force the same template every turn.
+- Ask a clarifying question only when the answer genuinely changes your advice, and ask ONE at a time - do not interrogate.
+- Sound human: contractions, plain language, no corporate filler, no "As an AI", no restating their question back to them.
+- Build on the conversation so far; do not repeat what you already said or re-introduce yourself.
+
 You have TWO jobs:
 1. **Advise on Human Capital** - read the situation, ask sharp clarifying questions when needed, and give a real point of view with specific next moves.
 2. **Guide them around the platform** - help them pick the right Studio, understand the output of the one they just ran, or troubleshoot the flow. You know the platform.
@@ -399,9 +407,13 @@ def _onboarding_block(client_profile: dict[str, Any] | None) -> str:
         return ""
     try:
         import json as _json
+        # Serialise the WHOLE onboarding profile. This is the client's own input
+        # and every field matters, so we do not truncate it - a modern context
+        # window comfortably holds the full profile plus the brief and evidence.
         return (
-            "ONBOARDING PROFILE (captured during client onboarding - treat as established fact):\n"
-            + _json.dumps(client_profile, ensure_ascii=True)[:4000]
+            "ONBOARDING PROFILE (captured during client onboarding - treat as established fact, "
+            "and reflect these exact choices in your analysis; never ignore any of them):\n"
+            + _json.dumps(client_profile, ensure_ascii=True, indent=2)
         )
     except Exception:  # noqa: BLE001
         return ""
@@ -416,6 +428,7 @@ class FinalizeReportRequest(BaseModel):
     brief: dict[str, Any] | None = None
     client_profile: dict[str, Any] | None = None
     profile: AdvisoryProfile | None = None
+    evidence_ids: list[str] = []  # uploaded documents to cite in the report
     context: ChatContext | None = None
 
 
@@ -487,6 +500,68 @@ Respond with ONLY a JSON object:
 Keep language simple and human. No jargon, no acronyms without spelling them out. Use plain hyphens, never em-dashes."""
 
 
+# Web search model that returns answers grounded in live internet sources with
+# real URLs. Used to gather citable external benchmarks for reports.
+_SEARCH_MODEL = "gpt-4o-search-preview"
+
+
+async def _gather_web_sources(query: str) -> str:
+    """Search the live web for citable sources relevant to the engagement.
+
+    Returns a context block of findings, each with a real source URL, or an
+    empty string if search is unavailable. The report generator is told to cite
+    these URLs (which render as clickable citations) when a claim rests on
+    external data. Best-effort: never raises into the report path.
+    """
+    try:
+        from app.services.ai_orchestrator import _get_client
+
+        client = _get_client()
+        resp = await client.chat.completions.create(
+            model=_SEARCH_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a research assistant for an HC consulting report. Find 3-5 recent, "
+                        "credible, publicly citable sources (industry reports, benchmarks, regulators, "
+                        "reputable publications) relevant to the query. For each, give one factual "
+                        "sentence and the full source URL. Only include sources you actually found. "
+                        "Format each as: FINDING: <one sentence> URL: <https url>"
+                    ),
+                },
+                {"role": "user", "content": query[:1500]},
+            ],
+            max_tokens=900,
+        )
+        text = (resp.choices[0].message.content or "").strip()
+        if not text or "URL:" not in text and "http" not in text:
+            return ""
+        return (
+            "EXTERNAL SOURCES (found via live web search - each has a real URL). When a figure, "
+            "benchmark or claim in the report rests on one of these, put its URL in that section's "
+            '"footnote" so it renders as a clickable citation. Only cite a URL that appears below; '
+            "never invent one:\n\n" + _clean(text)
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _search_query_from_context(brief: dict[str, Any] | None, studio: str | None) -> str:
+    """Build a focused web-search query from the client's brief."""
+    if not brief:
+        return f"HC benchmarks and best practices for {studio or 'human capital strategy'}"
+    industry = brief.get("industry") or ""
+    region = brief.get("region") or ""
+    areas = brief.get("hcAreas") or brief.get("hc_areas") or []
+    drivers = brief.get("strategicDrivers") or brief.get("strategic_drivers") or []
+    topic = ", ".join(str(a).replace("-", " ") for a in (list(areas) + list(drivers))[:4])
+    return (
+        f"Recent HC / people benchmarks, statistics and best-practice sources for the "
+        f"{industry} sector in {region}, focused on {topic or studio or 'human capital strategy'}."
+    )
+
+
 @router.post("/finalize-report", response_model=FinalizeReportResponse)
 async def finalize_report(
     payload: FinalizeReportRequest,
@@ -507,8 +582,8 @@ async def finalize_report(
 
     transcript = "\n\n".join(
         f"{'CLIENT' if m.role == 'user' else 'ADVISOR'}: {m.content}"
-        for m in payload.messages[-30:]
-    )[:24000]
+        for m in payload.messages[-40:]
+    )[:60000]
 
     # Spec-backed studios: the client-authored master instruction is the engine.
     from app.services.hc_platform.spec_studio import generate_spec_report, load_spec
@@ -520,6 +595,17 @@ async def finalize_report(
             "CURRENT REPORT TO REVISE (apply the changes requested in the transcript; keep everything "
             "else consistent with this version):\n" + _json.dumps(payload.report_state, ensure_ascii=True)[:12000]
         )
+
+    # Gather citable external sources from the live web so the report can back
+    # its benchmarks with real URLs. Best-effort and skipped for revisions.
+    web_sources = ""
+    if not payload.report_state:
+        web_sources = await _gather_web_sources(
+            _search_query_from_context(payload.brief, payload.studio)
+        )
+
+    # Uploaded documents (e.g. PDFs) so the report can cite them by name.
+    evidence_ctx = await _evidence_block(db, payload.evidence_ids, current_tenant.id)
 
     if payload.report_type == "detailed" and load_spec(payload.studio):
         try:
@@ -533,6 +619,8 @@ async def finalize_report(
                     _profile_block(payload.profile),
                     _onboarding_block(payload.client_profile),
                     _plan_state_block(payload.plan_state),
+                    evidence_ctx,
+                    web_sources,
                     revise_block,
                 ],
                 model=await get_global_model(db),
@@ -566,6 +654,8 @@ async def finalize_report(
         _profile_block(payload.profile),
         _onboarding_block(payload.client_profile),
         _plan_state_block(payload.plan_state),
+        evidence_ctx,
+        web_sources,
         revise_block,
     ):
         if block:
@@ -738,28 +828,19 @@ def _profile_block(profile: "AdvisoryProfile | None") -> str:
 def _brief_context_block(brief: dict[str, Any] | None) -> str:
     if not brief:
         return "The user has not filled in a brief yet. If it becomes relevant, ask a few grounding questions early."
-    parts: list[str] = []
-    org = brief.get("organizationName") or brief.get("organization_name")
-    industry = brief.get("industry")
-    size = brief.get("organizationSize") or brief.get("organization_size")
-    region = brief.get("region")
-    maturity = brief.get("maturityStage") or brief.get("maturity_stage")
-    drivers = brief.get("strategicDrivers") or brief.get("strategic_drivers") or []
-    areas = brief.get("hcAreas") or brief.get("hc_areas") or []
-
-    if org:      parts.append(f"Organisation: {org}")
-    if industry: parts.append(f"Industry: {industry}")
-    if size:     parts.append(f"Size: {size}")
-    if region:   parts.append(f"Region: {region}")
-    if maturity: parts.append(f"Maturity stage: {maturity}")
-    if isinstance(drivers, list) and drivers:
-        parts.append("Strategic drivers: " + ", ".join(str(d) for d in drivers[:5]))
-    if isinstance(areas, list) and areas:
-        parts.append("HC priorities they flagged: " + ", ".join(str(a) for a in areas[:6]))
-
-    if not parts:
-        return "The user has not filled in a brief yet. If it becomes relevant, ask a few grounding questions early."
-    return "Context on the user's organisation:\n" + "\n".join(f"- {p}" for p in parts)
+    try:
+        import json as _json
+        # The brief can be either the thin workspace-brief shape (flat keys) or
+        # the full ChallengeBriefData object (nested). Serialise the whole thing
+        # so nothing the client entered - situation summary, per-challenge
+        # severities, advisory questions, constraints - is ever dropped.
+        body = _json.dumps(brief, ensure_ascii=True, indent=2)
+        return (
+            "CHALLENGE BRIEF (the client's own words - every field is established fact and must be "
+            "reflected in your analysis; do not drop or generalise away any detail):\n" + body
+        )
+    except Exception:  # noqa: BLE001
+        return "The user has not filled in a brief yet."
 
 
 _TYPO_MAP = str.maketrans({"—": "-", "–": "-", "−": "-", "‘": "'", "’": "'", "“": '"', "”": '"', "…": "...", " ": " "})
@@ -773,7 +854,7 @@ def _clean(text: str) -> str:
 # Evidence uploads: extract text from a document so chat can ground answers in it
 # ---------------------------------------------------------------------------
 
-_EVIDENCE_MAX_CHARS = 15_000
+_EVIDENCE_MAX_CHARS = 40_000
 _EVIDENCE_MAX_BYTES = 10 * 1024 * 1024  # reject uploads larger than 10 MB
 _PPTX_ENTRY_MAX_BYTES = 5 * 1024 * 1024  # cap decompressed size per slide XML
 
@@ -890,7 +971,7 @@ def _sanitize_evidence_text(text: str) -> str:
 async def _evidence_block(db: Any, evidence_ids: list[str], tenant_id: uuid.UUID) -> str:
     if not evidence_ids:
         return ""
-    requested = evidence_ids[:5]
+    requested = evidence_ids[:12]
     parsed: dict[str, uuid.UUID] = {}
     for eid in requested:
         try:
@@ -965,7 +1046,7 @@ async def advisor_chat(
     system = "\n\n".join(system_parts)
 
     # Trim to the last 20 messages so long conversations do not blow the token budget.
-    trimmed = payload.messages[-20:]
+    trimmed = payload.messages[-40:]
     messages = [{"role": "system", "content": system}]
     for m in trimmed:
         role = m.role if m.role in ("user", "assistant") else "user"

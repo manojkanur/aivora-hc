@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.platform_setting import PlatformSetting
 
 LLM_CONFIG_KEY = "llm_config"
-DEFAULT_GLOBAL_MODEL = "gpt-4o"
+DEFAULT_GLOBAL_MODEL = "gpt-5.1"
 
 _CACHE_TTL_SECONDS = 30.0
 _cache: dict[str, tuple[float, dict[str, Any]]] = {}
@@ -78,12 +78,29 @@ async def get_global_model(db: AsyncSession) -> str:
     return config["global_model"]
 
 
-def completion_params(model: str, *, temperature: float, max_tokens: int) -> dict[str, Any]:
+def is_reasoning_model(model: str) -> bool:
+    """gpt-5.x and the o-series are reasoning models with a different API shape."""
+    return model.startswith(("o1", "o3", "o4", "gpt-5"))
+
+
+def completion_params(
+    model: str,
+    *,
+    temperature: float,
+    max_tokens: int,
+    reasoning_effort: str | None = None,
+) -> dict[str, Any]:
     """Sampling params adjusted per model family.
 
     Reasoning models (o-series, gpt-5 family) reject `temperature` and take
-    `max_completion_tokens` instead of `max_tokens`.
+    `max_completion_tokens` instead of `max_tokens`. They also spend part of the
+    completion budget on hidden reasoning tokens, so we give them extra headroom
+    on top of the requested output size or the visible answer can come back
+    empty. `reasoning_effort` (low|medium|high) trades latency for depth.
     """
-    if model.startswith(("o1", "o3", "o4", "gpt-5")):
-        return {"max_completion_tokens": max_tokens}
+    if is_reasoning_model(model):
+        params: dict[str, Any] = {"max_completion_tokens": max_tokens + 4000}
+        if reasoning_effort:
+            params["reasoning_effort"] = reasoning_effort
+        return params
     return {"temperature": temperature, "max_tokens": max_tokens}

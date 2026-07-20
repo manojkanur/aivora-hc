@@ -742,6 +742,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
         profile,
+        evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
         context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
       })
       setSavedDraftId(null)

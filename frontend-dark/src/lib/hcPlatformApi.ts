@@ -1275,9 +1275,10 @@ export const hcAiAdvisoryAPI = {
     brief?: Record<string, unknown> | null
     client_profile?: Record<string, unknown> | null
     profile?: AdvisoryProfile | null
+    evidence_ids?: string[]
     context?: { workspace_id?: string; workspace_name?: string } | null
   }) => post<{ report_type: string; document?: Record<string, unknown> | null; summary?: SummaryReport | null }>(
-    `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 180000 },
+    `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 240000 },
   ),
 }
 
