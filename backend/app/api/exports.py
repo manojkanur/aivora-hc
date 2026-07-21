@@ -116,21 +116,29 @@ async def create_export(
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     draft_content = draft.content or {}
 
+    # Layout-aware path: when the draft is a StudioOutputDocument (typed sections),
+    # render each section by its layout - real tables, KPI tiles, embedded charts -
+    # so the export matches the on-screen report. Otherwise use the legacy v2 path.
+    from app.services.hc_platform import report_export as rx
+
+    use_layout_aware = rx.is_studio_document(draft_content)
+
+    stub = f"export_{str(payload.draft_id)[:8]}_{timestamp}"
     if fmt == ExportFormat.pptx:
-        content_bytes = generate_pptx(draft_content, brand_kit_data)
-        filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.pptx"
+        content_bytes = rx.build_pptx(draft_content) if use_layout_aware else generate_pptx(draft_content, brand_kit_data)
+        filename = f"{stub}.pptx"
         media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     elif fmt == ExportFormat.pdf:
-        content_bytes = generate_pdf(draft_content, brand_kit_data)
-        filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.pdf"
+        content_bytes = rx.build_pdf(draft_content) if use_layout_aware else generate_pdf(draft_content, brand_kit_data)
+        filename = f"{stub}.pdf"
         media_type = "application/pdf"
     elif fmt == ExportFormat.html:
-        content_bytes = generate_html(draft_content, brand_kit_data)
-        filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.html"
+        content_bytes = rx.build_html(draft_content) if use_layout_aware else generate_html(draft_content, brand_kit_data)
+        filename = f"{stub}.html"
         media_type = "text/html; charset=utf-8"
     else:
-        content_bytes = generate_docx(draft_content, brand_kit_data)
-        filename = f"export_{str(payload.draft_id)[:8]}_{timestamp}.docx"
+        content_bytes = rx.build_docx(draft_content) if use_layout_aware else generate_docx(draft_content, brand_kit_data)
+        filename = f"{stub}.docx"
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
     # Record export in DB
