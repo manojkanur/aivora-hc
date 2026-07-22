@@ -1284,3 +1284,184 @@ async def advisor_chat_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Advisory session persistence (server-side chat + report + revision trail)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SessionSaveRequest(BaseModel):
+    messages: list[dict[str, Any]] | None = None
+    plan: dict[str, Any] | None = None
+    selected_skill: str | None = None
+    saved_draft_id: str | None = None
+
+
+class ReportSaveRequest(BaseModel):
+    report_document: dict[str, Any]
+    report_kind: str = "detailed"
+    note: str | None = None  # what changed (the user's edit prompt), stored on the revision
+
+
+async def _get_or_create_session(db: Any, tenant_id: uuid.UUID, workspace_id: uuid.UUID):
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    row = (
+        await db.execute(select(AdvisorySession).where(AdvisorySession.workspace_id == workspace_id))
+    ).scalar_one_or_none()
+    if row is None:
+        row = AdvisorySession(tenant_id=tenant_id, workspace_id=workspace_id, messages=[])
+        db.add(row)
+        await db.flush()
+    return row
+
+
+def _session_dict(s) -> dict[str, Any]:
+    return {
+        "workspace_id": str(s.workspace_id),
+        "messages": s.messages or [],
+        "report_document": s.report_document,
+        "report_kind": s.report_kind,
+        "plan": s.plan,
+        "selected_skill": s.selected_skill,
+        "saved_draft_id": str(s.saved_draft_id) if s.saved_draft_id else None,
+    }
+
+
+@router.get("/session/{workspace_id}")
+async def get_advisory_session(
+    workspace_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """The persisted advisory session for a workspace (chat, report, plan, skill)."""
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    row = (
+        await db.execute(
+            select(AdvisorySession).where(
+                AdvisorySession.workspace_id == workspace_id,
+                AdvisorySession.tenant_id == current_tenant.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return {"workspace_id": str(workspace_id), "messages": [], "report_document": None,
+                "report_kind": None, "plan": None, "selected_skill": None, "saved_draft_id": None}
+    return _session_dict(row)
+
+
+@router.put("/session/{workspace_id}")
+async def save_advisory_session(
+    workspace_id: uuid.UUID,
+    payload: SessionSaveRequest,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Autosave chat / plan / selected skill for a workspace's advisory session."""
+    s = await _get_or_create_session(db, current_tenant.id, workspace_id)
+    if payload.messages is not None:
+        s.messages = payload.messages[-200:]
+    if payload.plan is not None:
+        s.plan = payload.plan
+    if payload.selected_skill is not None:
+        s.selected_skill = payload.selected_skill.strip() or None
+    if payload.saved_draft_id is not None:
+        try:
+            s.saved_draft_id = uuid.UUID(payload.saved_draft_id)
+        except (ValueError, TypeError):
+            s.saved_draft_id = None
+    await db.flush()
+    return {"ok": True}
+
+
+@router.put("/session/{workspace_id}/report")
+async def save_advisory_report(
+    workspace_id: uuid.UUID,
+    payload: ReportSaveRequest,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Persist the current report document and snapshot a revision for the undo trail."""
+    from app.models.hc_platform.advisory_session import AdvisoryRevision
+
+    s = await _get_or_create_session(db, current_tenant.id, workspace_id)
+    s.report_document = payload.report_document
+    s.report_kind = payload.report_kind
+    await db.flush()
+
+    last = (
+        await db.execute(
+            select(AdvisoryRevision).where(AdvisoryRevision.session_id == s.id)
+            .order_by(AdvisoryRevision.version.desc()).limit(1)
+        )
+    ).scalar_one_or_none()
+    version = (last.version + 1) if last else 1
+    db.add(AdvisoryRevision(
+        session_id=s.id, version=version, report_kind=payload.report_kind,
+        report_document=payload.report_document, note=(payload.note or "")[:400],
+    ))
+    await db.flush()
+    return {"ok": True, "version": version}
+
+
+@router.get("/session/{workspace_id}/revisions")
+async def list_advisory_revisions(
+    workspace_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> list[dict[str, Any]]:
+    """The report revision trail for a workspace (newest first)."""
+    from app.models.hc_platform.advisory_session import AdvisorySession, AdvisoryRevision
+
+    s = (
+        await db.execute(
+            select(AdvisorySession).where(
+                AdvisorySession.workspace_id == workspace_id,
+                AdvisorySession.tenant_id == current_tenant.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if s is None:
+        return []
+    rows = (
+        await db.execute(
+            select(AdvisoryRevision).where(AdvisoryRevision.session_id == s.id)
+            .order_by(AdvisoryRevision.version.desc())
+        )
+    ).scalars().all()
+    return [
+        {"version": r.version, "report_kind": r.report_kind, "note": r.note,
+         "created_at": r.created_at.isoformat() if r.created_at else None,
+         "report_document": r.report_document}
+        for r in rows
+    ]
+
+
+@router.post("/session/{workspace_id}/clear")
+async def clear_advisory_session(
+    workspace_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Reset the conversation (keeps revisions for history)."""
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    s = (
+        await db.execute(
+            select(AdvisorySession).where(
+                AdvisorySession.workspace_id == workspace_id,
+                AdvisorySession.tenant_id == current_tenant.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if s is not None:
+        s.messages = []
+        s.plan = None
+        await db.flush()
+    return {"ok": True}
