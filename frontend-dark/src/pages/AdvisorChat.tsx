@@ -1216,7 +1216,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
         {/* Thread */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto py-5">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-5">
+          <div className="w-full px-5 sm:px-8 space-y-5">
           {briefContent && <BriefingCard content={briefContent} />}
           {messages.length === 1 && !sending && (
             <div className="flex flex-wrap gap-2">
@@ -1319,7 +1319,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
         {/* Composer */}
         <div className="border-t border-[#1e2433] bg-[#0f1117] py-3.5">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 relative">
+          <div className="w-full px-5 sm:px-8 relative">
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
