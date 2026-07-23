@@ -1324,29 +1324,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               </button>
             </div>
           )}
-          {(selectedSkillObj || attachments.length > 0) && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {/* Selected studio: shown as a chip in the typing area, Claude-style */}
-              {selectedSkillObj && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/15 text-blue-300 text-[11px] font-semibold px-2.5 py-1">
-                  <LayoutGrid className="w-3 h-3" />
-                  <span className="max-w-[200px] truncate">{selectedSkillObj.name}</span>
-                  <button onClick={() => setSelectedSkill(null)} className="hover:text-white transition-colors" aria-label="Clear studio">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
-              {attachments.map(a => (
-                <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
-                  <Paperclip className="w-3 h-3" />
-                  <span className="max-w-[180px] truncate">{a.filename}</span>
-                  <button onClick={() => removeAttachment(a.evidence_id)} className="hover:text-white transition-colors" aria-label={`Remove ${a.filename}`}>
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
           {/* Slash-command studio menu - floats ABOVE the composer so the full
               list (all 27) is reachable and scrollable, never clipped. */}
           {slashOpen && (
@@ -1372,7 +1349,31 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               </div>
             </div>
           )}
-          <div className="flex items-end gap-2 rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
+          <div className="flex flex-col rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
+            {/* Attached context (studio + evidence) - inside the input box, above the text */}
+            {(selectedSkillObj || attachments.length > 0) && (
+              <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-0.5">
+                {selectedSkillObj && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/15 text-blue-300 text-[11px] font-semibold px-2.5 py-1">
+                    <LayoutGrid className="w-3 h-3" />
+                    <span className="max-w-[200px] truncate">{selectedSkillObj.name}</span>
+                    <button onClick={() => setSelectedSkill(null)} className="hover:text-white transition-colors" aria-label="Clear studio">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {attachments.map(a => (
+                  <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
+                    <Paperclip className="w-3 h-3" />
+                    <span className="max-w-[180px] truncate">{a.filename}</span>
+                    <button onClick={() => removeAttachment(a.evidence_id)} className="hover:text-white transition-colors" aria-label={`Remove ${a.filename}`}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-2">
             <input ref={fileInputRef} type="file" accept={EVIDENCE_ACCEPT} className="hidden" onChange={handleFilePicked} />
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading || sending} title="Attach evidence"
               className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
@@ -1401,6 +1402,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
+            </div>
           </div>
           </div>
         </div>
