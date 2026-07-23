@@ -1133,11 +1133,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   return (
-    <div className={cn('grid gap-4 items-start',
+    <div className={cn('grid gap-4 items-start w-full',
       hasReportPane ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
         : planActive ? 'lg:grid-cols-[minmax(0,1fr)_320px]'
-        // Single-column: centre a comfortable-width chat card, not a full-bleed strip.
-        : 'grid-cols-1 max-w-4xl mx-auto')}>
+        : 'grid-cols-1')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
       <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden w-full">
         {/* Toolbar: threads + active studio chip (set via /slash command) + report toggle */}
@@ -1979,7 +1978,7 @@ export default function AdvisorChat() {
   const orgLine = [...new Set([workspaceName, profile.organization_name, profile.industry].filter(Boolean))].join(' · ')
 
   return (
-    <div className="px-4 sm:px-6 pt-3 pb-4 space-y-3">
+    <div className="px-4 sm:px-6 pt-3 pb-4 space-y-3 max-w-6xl mx-auto w-full">
       {/* Slim single-row header: identity + inline actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
