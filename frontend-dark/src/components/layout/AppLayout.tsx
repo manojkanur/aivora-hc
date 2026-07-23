@@ -253,10 +253,11 @@ function ProductTour({ onClose }: { onClose: () => void }) {
   )
 }
 
-function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearningClick }: {
+function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, onLearningClick }: {
   onClose?: () => void
   onStartTour: () => void
   collapsed?: boolean
+  pinned?: boolean
   onToggleCollapse?: () => void
   onLearningClick?: () => void
 }) {
@@ -322,11 +323,11 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
               {onToggleCollapse && (
                 <button
                   onClick={onToggleCollapse}
-                  title="Collapse sidebar"
-                  aria-label="Collapse sidebar"
+                  title={pinned ? 'Unpin sidebar (collapse to a hover rail)' : 'Pin sidebar open'}
+                  aria-label={pinned ? 'Unpin sidebar' : 'Pin sidebar open'}
                   className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/5 text-slate-600 hover:text-slate-300 transition-colors"
                 >
-                  <PanelLeftClose className="w-4 h-4" />
+                  {pinned ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
                 </button>
               )}
               {onClose && (
@@ -433,10 +434,26 @@ function Sidebar({ onClose, onStartTour, collapsed, onToggleCollapse, onLearning
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // Pinned-open vs collapsed rail. Persisted; defaults to collapsed so the
+  // workspace (chat, canvas) gets full width - Claude-style. The collapsed rail
+  // expands on hover without pushing content.
+  const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
+    try { return localStorage.getItem('aivora-sidebar-pinned') === '1' } catch { return false }
+  })
+  const [hovering, setHovering] = useState(false)
   const [tourActive, setTourActive] = useState(false)
   const [learningOpen, setLearningOpen] = useState(false)
   useInsufficientCreditsHandler()
+
+  const togglePinned = () => setSidebarPinned(v => {
+    const next = !v
+    try { localStorage.setItem('aivora-sidebar-pinned', next ? '1' : '0') } catch { /* ignore */ }
+    return next
+  })
+
+  // Expanded when pinned open, OR while hovering the collapsed rail.
+  const expanded = sidebarPinned || hovering
+  const railCollapsed = !expanded
 
   useEffect(() => {
     const handler = () => { if (window.innerWidth >= 1024) setSidebarOpen(false) }
@@ -446,19 +463,32 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen bg-[#0c0e14] overflow-hidden">
-      {/* Desktop sidebar — animates width on collapse */}
-      <motion.div
-        animate={{ width: sidebarCollapsed ? 60 : 264 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-        className="hidden lg:flex lg:flex-col flex-shrink-0 border-r border-[#1a1e2e] overflow-hidden"
+      {/* Desktop sidebar - the LAYOUT column reserves only the rail width (60px)
+          when not pinned, so content keeps full width; the sidebar itself
+          expands as a floating overlay on hover. */}
+      <div
+        className="hidden lg:block flex-shrink-0 relative z-30"
+        style={{ width: sidebarPinned ? 264 : 60 }}
+        onMouseEnter={() => !sidebarPinned && setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
       >
-        <Sidebar
-          onStartTour={() => setTourActive(true)}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(v => !v)}
-          onLearningClick={() => setLearningOpen(true)}
-        />
-      </motion.div>
+        <motion.div
+          animate={{ width: expanded ? 264 : 60 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+          className={cn(
+            'absolute left-0 top-0 h-full flex flex-col border-r border-[#1a1e2e] overflow-hidden bg-[#0c0e14]',
+            !sidebarPinned && expanded && 'shadow-[8px_0_32px_rgba(0,0,0,0.55)]',
+          )}
+        >
+          <Sidebar
+            onStartTour={() => setTourActive(true)}
+            collapsed={railCollapsed}
+            pinned={sidebarPinned}
+            onToggleCollapse={togglePinned}
+            onLearningClick={() => setLearningOpen(true)}
+          />
+        </motion.div>
+      </div>
 
       {/* Mobile sidebar overlay */}
       <AnimatePresence>

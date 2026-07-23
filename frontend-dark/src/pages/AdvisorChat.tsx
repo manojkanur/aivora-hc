@@ -654,6 +654,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [exporting, setExporting] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [slashIdx, setSlashIdx] = useState(0)   // highlighted item in the slash menu
+  const [planExpanded, setPlanExpanded] = useState(false)   // compact plan box -> full steps on click
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1012,8 +1013,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   // report is generated we treat the plan as background and collapse it.
   const planActive = !!plan && !report && plan.steps.some(s => s.status !== 'done')
   const hasReportPane = reportOpen && (report || finalizing)
-  // Right rail is present when there is a report/generation OR a live plan to track.
-  const hasRightRail = hasReportPane || planActive
 
   // A "generate report" affordance surfaces once there is a plan or enough conversation.
   const canGenerate = messages.filter(m => m.role === 'user').length >= 1 || !!plan
@@ -1039,7 +1038,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   return (
-    <div className={cn('grid gap-4 items-start', hasRightRail ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : 'grid-cols-1')}>
+    <div className={cn('grid gap-4 items-start',
+      hasReportPane ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
+        : planActive ? 'lg:grid-cols-[minmax(0,1fr)_320px]'
+        : 'grid-cols-1')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
       <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
         {/* Toolbar: active studio chip (set via /slash command) + report toggle */}
@@ -1256,24 +1258,47 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         </div>
       </div>
 
-      {/* ─────────────────── RIGHT: live plan progress (while working, no report yet) ─────────────────── */}
-      {planActive && !hasReportPane && plan && (
-        <div className="flex flex-col max-h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e2433]">
-            <ListChecks className="w-4 h-4 text-blue-400 flex-shrink-0" />
-            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex-1">Working plan</p>
-            <span className="text-xs font-bold text-blue-400 tabular-nums">
-              {plan.steps.filter(s => s.status === 'done').length}/{plan.steps.length}
-            </span>
+      {/* ─────── RIGHT: minimal working-plan box (while working, no report yet) ─────── */}
+      {planActive && !hasReportPane && plan && (() => {
+        const done = plan.steps.filter(s => s.status === 'done').length
+        const active = plan.steps.find(s => s.status === 'in_progress')
+        const pct = plan.steps.length ? Math.round((done / plan.steps.length) * 100) : 0
+        return (
+          <div className="self-start rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
+            {/* Compact header: title + N/M */}
+            <button onClick={() => setPlanExpanded(v => !v)}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors">
+              <span className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+                <ListChecks className="w-4 h-4 text-blue-400" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] uppercase tracking-widest font-bold text-slate-500">Working plan</span>
+                <span className="block text-sm font-semibold text-white truncate">{plan.title}</span>
+              </span>
+              <span className="text-sm font-bold text-blue-400 tabular-nums flex-shrink-0">{done}/{plan.steps.length}</span>
+              <ChevronDown className={cn('w-4 h-4 text-slate-500 flex-shrink-0 transition-transform', planExpanded && 'rotate-180')} />
+            </button>
+            {/* Progress bar */}
+            <div className="px-4 pb-3">
+              <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+                <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
+                  animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} />
+              </div>
+              {!planExpanded && active && (
+                <p className="text-[11px] text-slate-500 mt-2 truncate">
+                  <span className="text-blue-400 font-medium">Now:</span> {active.title}
+                </p>
+              )}
+            </div>
+            {/* Expanded step detail (optional) */}
+            {planExpanded && (
+              <div className="px-4 pb-4 border-t border-[#161b28] pt-3 max-h-[50vh] overflow-y-auto">
+                <PlanCardInline plan={plan} />
+              </div>
+            )}
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <PlanCardInline plan={plan} />
-            <p className="text-[11px] text-slate-500 leading-relaxed mt-3">
-              The advisor works this plan step by step. When you are ready, use <span className="font-semibold text-slate-300">Turn this into a report</span> below the chat.
-            </p>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ─────────────────── RIGHT: live report canvas ─────────────────── */}
       {hasReportPane && (
