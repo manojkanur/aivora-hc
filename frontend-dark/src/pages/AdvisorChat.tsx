@@ -1364,7 +1364,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               </div>
               <div className="max-h-[min(45vh,22rem)] overflow-y-auto overscroll-contain">
                 {slashResults.map((s, i) => (
-                  <button key={s.slug} onMouseEnter={() => setSlashIdx(i)} onClick={() => pickStudioSlash(s)}
+                  <button key={s.slug}
+                    ref={el => { if (i === slashIdx && el) el.scrollIntoView({ block: 'nearest' }) }}
+                    onMouseEnter={() => setSlashIdx(i)} onClick={() => pickStudioSlash(s)}
                     className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',
                       i === slashIdx ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
                     <span className="w-7 h-7 rounded-lg bg-[#131720] border border-[#1e2433] flex items-center justify-center flex-shrink-0">
