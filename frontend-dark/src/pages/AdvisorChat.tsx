@@ -1135,8 +1135,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     <div className={cn('grid gap-4 items-start w-full',
       // Report open: full width, two big panes.
       hasReportPane ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
-        // Plan rail open: chat fills the space, plan is a fixed right column.
-        : planActive ? 'lg:grid-cols-[minmax(0,1fr)_300px]'
+        // Plan rail open: a comfortable chat column + fixed plan column, the pair
+        // centred so the chat content fills its panel (no internal gap).
+        : planActive ? 'lg:grid-cols-[minmax(0,52rem)_300px] justify-center max-w-[57rem] mx-auto'
         // Just the conversation: a centred, comfortable reading column.
         : 'grid-cols-1 max-w-3xl mx-auto')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
@@ -1217,7 +1218,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
         {/* Thread */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto py-5">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-5">
+          <div className="w-full px-4 sm:px-6 space-y-5">
           {briefContent && <BriefingCard content={briefContent} />}
           {messages.length === 1 && !sending && (
             <div className="flex flex-wrap gap-2">
@@ -1320,7 +1321,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
         {/* Composer */}
         <div className="border-t border-[#1e2433] bg-[#0f1117] py-3.5">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 relative">
+          <div className="w-full px-4 sm:px-6 relative">
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
