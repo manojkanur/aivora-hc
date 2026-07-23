@@ -1221,8 +1221,11 @@ async def advisor_chat(
 
 
 _STREAM_REPLY_SUFFIX = (
-    "\n\nIMPORTANT FOR THIS TURN: reply with your advice as plain conversational text only "
-    "(markdown allowed). Do NOT wrap it in JSON. Just talk to the client."
+    "\n\n=== OUTPUT OVERRIDE FOR THIS TURN (HIGHEST PRIORITY) ===\n"
+    "IGNORE any earlier instruction about returning JSON. For THIS turn you MUST reply with your "
+    "advice as PLAIN conversational markdown text ONLY. Do NOT output a JSON object. Do NOT output "
+    "the keys \"reply\", \"plan\", \"finalize\" or \"studio\". Do NOT wrap anything in braces. Your very "
+    "first character must be the first word of your advice to the client, never '{'. Just talk to the client."
 )
 
 _STRUCTURE_PROMPT = (
@@ -1265,8 +1268,38 @@ async def advisor_chat_stream(
 
     async def event_stream():
         import json as _json
+        import re as _re
 
         collected: list[str] = []
+        # Defensive JSON guard: if the model disobeys and emits the {"reply": ...}
+        # envelope anyway, we must NOT stream the raw JSON to the user. We hold
+        # output until we can tell whether it is a JSON envelope; if it is, we
+        # stream only the decoded "reply" text.
+        buffer = ""
+        mode = "detect"   # detect -> plain | json
+        json_emitted_len = 0
+
+        def _extract_reply_prefix(buf: str) -> str:
+            """Best-effort: decode as much of the JSON "reply" string as is available."""
+            m = _re.search(r'"reply"\s*:\s*"', buf)
+            if not m:
+                return ""
+            rest = buf[m.end():]
+            out = []
+            i = 0
+            while i < len(rest):
+                c = rest[i]
+                if c == "\\" and i + 1 < len(rest):
+                    nxt = rest[i + 1]
+                    out.append({"n": "\n", "t": "\t", '"': '"', "\\": "\\", "/": "/", "r": "\r"}.get(nxt, nxt))
+                    i += 2
+                    continue
+                if c == '"':  # end of the reply string
+                    break
+                out.append(c)
+                i += 1
+            return "".join(out)
+
         try:
             stream = await client.chat.completions.create(
                 model=model,
@@ -1276,19 +1309,87 @@ async def advisor_chat_stream(
             )
             async for chunk in stream:
                 delta = chunk.choices[0].delta.content if chunk.choices else None
-                if delta:
-                    collected.append(delta)
+                if not delta:
+                    continue
+                collected.append(delta)
+
+                if mode == "detect":
+                    buffer += delta
+                    stripped = buffer.lstrip()
+                    if not stripped:
+                        continue
+                    if stripped[0] == "{":
+                        mode = "json"  # envelope detected; switch to decode mode
+                    elif len(stripped) >= 1:
+                        # Plain text: flush what we buffered, then stream live.
+                        mode = "plain"
+                        yield f"data: {_json.dumps({'token': buffer})}\n\n"
+                        buffer = ""
+                        continue
+                    else:
+                        continue
+
+                if mode == "plain":
                     yield f"data: {_json.dumps({'token': delta})}\n\n"
+                elif mode == "json":
+                    buffer += delta
+                    decoded = _extract_reply_prefix(buffer)
+                    if len(decoded) > json_emitted_len:
+                        new_text = decoded[json_emitted_len:]
+                        json_emitted_len = len(decoded)
+                        yield f"data: {_json.dumps({'token': new_text})}\n\n"
         except Exception as exc:  # noqa: BLE001
             yield f"data: {_json.dumps({'error': str(exc)[:200]})}\n\n"
             return
 
-        reply = _clean("".join(collected))
+        raw = "".join(collected)
+        # If we ended still in detect mode (very short reply) flush the buffer.
+        if mode == "detect" and buffer:
+            yield f"data: {_json.dumps({'token': buffer})}\n\n"
+        # Recover the reply text: from decoded JSON if the envelope was emitted,
+        # else from the raw plain text.
+        if mode == "json":
+            try:
+                reply = _clean(str(_json.loads(raw).get("reply") or _extract_reply_prefix(raw)))
+            except Exception:  # noqa: BLE001
+                reply = _clean(_extract_reply_prefix(raw))
+        else:
+            reply = _clean(raw)
 
-        # Second, fast pass to extract structure from the same context.
         plan = None
         finalize = None
         studio_slug = None
+
+        def _coerce_plan(raw_plan):
+            if isinstance(raw_plan, dict) and raw_plan.get("title"):
+                steps = [
+                    {"title": _clean(str(s.get("title") or ""))[:120],
+                     "status": s.get("status") if s.get("status") in ("pending", "in_progress", "done") else "pending",
+                     "note": _clean(str(s.get("note"))) if s.get("note") else None}
+                    for s in (raw_plan.get("steps") or [])
+                    if isinstance(s, dict) and s.get("title")
+                ][:8]
+                return {"title": _clean(str(raw_plan["title"]))[:160], "steps": steps}
+            return None
+
+        # Fast path: the model already emitted the full envelope - reuse its
+        # plan/finalize/studio instead of a second round-trip.
+        if mode == "json":
+            try:
+                env = _json.loads(raw)
+                plan = _coerce_plan(env.get("plan"))
+                if env.get("finalize") in ("summary", "detailed"):
+                    finalize = env["finalize"]
+                rs = env.get("studio")
+                if isinstance(rs, str) and rs.strip():
+                    studio_slug = rs.strip().lower().replace("_", "-")
+                yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': finalize, 'studio': studio_slug}})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            except Exception:  # noqa: BLE001
+                pass
+
+        # Otherwise, a second fast pass to extract structure from the same context.
         try:
             struct_messages = [
                 {"role": "system", "content": _STRUCTURE_PROMPT},
@@ -1301,16 +1402,7 @@ async def advisor_chat_stream(
                 **completion_params(model, temperature=0.0, max_tokens=800),
             )
             data = _json.loads(sresp.choices[0].message.content or "{}")
-            raw_plan = data.get("plan")
-            if isinstance(raw_plan, dict) and raw_plan.get("title"):
-                steps = [
-                    {"title": _clean(str(s.get("title") or ""))[:120],
-                     "status": s.get("status") if s.get("status") in ("pending", "in_progress", "done") else "pending",
-                     "note": _clean(str(s.get("note"))) if s.get("note") else None}
-                    for s in (raw_plan.get("steps") or [])
-                    if isinstance(s, dict) and s.get("title")
-                ][:8]
-                plan = {"title": _clean(str(raw_plan["title"]))[:160], "steps": steps}
+            plan = _coerce_plan(data.get("plan"))
             if data.get("finalize") in ("summary", "detailed"):
                 finalize = data["finalize"]
             rs = data.get("studio")

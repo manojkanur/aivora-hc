@@ -496,7 +496,6 @@ function PlanCardInline({ plan }: { plan: ChatPlan }) {
                 {st.title}
                 {st.status === 'in_progress' && <span className="ml-2 text-[10px] font-medium text-blue-400">in progress</span>}
               </p>
-              {st.note && <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{st.note}</p>}
             </div>
           </div>
         ))}
