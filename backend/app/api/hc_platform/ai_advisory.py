@@ -557,43 +557,81 @@ Keep language simple and human. No jargon, no acronyms without spelling them out
 _SEARCH_MODEL = "gpt-4o-search-preview"
 
 
-async def _gather_web_sources(query: str) -> str:
-    """Search the live web for citable sources relevant to the engagement.
-
-    Returns a context block of findings, each with a real source URL, or an
-    empty string if search is unavailable. The report generator is told to cite
-    these URLs (which render as clickable citations) when a claim rests on
-    external data. Best-effort: never raises into the report path.
-    """
+async def _web_search_one(client: Any, query: str, angle: str) -> str:
+    """One live web-search pass on a single research angle. Best-effort."""
     try:
-        from app.services.ai_orchestrator import _get_client
-
-        client = _get_client()
         resp = await client.chat.completions.create(
             model=_SEARCH_MODEL,
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "You are a research assistant for an HC consulting report. Find 3-5 recent, "
+                        "You are a research assistant for a senior HC consulting report. Find 3-4 recent, "
                         "credible, publicly citable sources (industry reports, benchmarks, regulators, "
-                        "reputable publications) relevant to the query. For each, give one factual "
-                        "sentence and the full source URL. Only include sources you actually found. "
-                        "Format each as: FINDING: <one sentence> URL: <https url>"
+                        "reputable publications, peer-reviewed or government data) that address the angle "
+                        "below. For each, give one factual, quantified sentence and the full source URL. "
+                        "Only include sources you actually found. Format each as: "
+                        "FINDING: <one factual sentence> URL: <https url>"
                     ),
                 },
-                {"role": "user", "content": query[:1500]},
+                {"role": "user", "content": f"ANGLE: {angle}\n\nCONTEXT: {query[:1200]}"},
             ],
-            max_tokens=900,
+            max_tokens=700,
         )
-        text = (resp.choices[0].message.content or "").strip()
-        if not text or "URL:" not in text and "http" not in text:
+        return (resp.choices[0].message.content or "").strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+async def _gather_web_sources(query: str) -> str:
+    """Deep-research gather: several angled live web searches, merged into one
+    citable evidence block.
+
+    Runs multiple searches in parallel (benchmarks/statistics, regional and
+    regulatory context, and best-practice/case-study evidence) so the report
+    rests on a broad, varied source base rather than a single query. Returns a
+    context block of findings, each with a real source URL, or an empty string
+    if search is unavailable. Best-effort: never raises into the report path.
+    """
+    try:
+        import asyncio
+
+        from app.services.ai_orchestrator import _get_client
+
+        client = _get_client()
+        angles = [
+            "Quantified benchmarks, statistics and market data for this challenge.",
+            "Regional, regulatory and sector-specific context, requirements and norms.",
+            "Best practices, frameworks and comparable case studies from credible organisations.",
+        ]
+        results = await asyncio.gather(
+            *[_web_search_one(client, query, a) for a in angles],
+            return_exceptions=True,
+        )
+        blocks: list[str] = []
+        seen_urls: set[str] = set()
+        for r in results:
+            if not isinstance(r, str) or not r:
+                continue
+            # De-duplicate findings by URL across the angles.
+            for line in r.splitlines():
+                if "http" not in line:
+                    if line.strip():
+                        blocks.append(line.strip())
+                    continue
+                url_key = line.split("URL:")[-1].strip() if "URL:" in line else line
+                if url_key in seen_urls:
+                    continue
+                seen_urls.add(url_key)
+                blocks.append(line.strip())
+        text = "\n".join(b for b in blocks if b).strip()
+        if not text or ("URL:" not in text and "http" not in text):
             return ""
         return (
-            "EXTERNAL SOURCES (found via live web search - each has a real URL). When a figure, "
-            "benchmark or claim in the report rests on one of these, put its URL in that section's "
-            '"footnote" so it renders as a clickable citation. Only cite a URL that appears below; '
-            "never invent one:\n\n" + _clean(text)
+            "EXTERNAL SOURCES (found via multi-angle live web search - each has a real URL). When a "
+            "figure, benchmark or claim in the report rests on one of these, put its URL in that "
+            'section\'s "footnote" so it renders as a clickable citation. Only cite a URL that appears '
+            "below; never invent one:\n\n" + _clean(text)
         )
     except Exception:  # noqa: BLE001
         return ""

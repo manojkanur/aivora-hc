@@ -5,6 +5,7 @@ import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
   MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
   Check, Circle, CircleDot, ListChecks, FileBarChart2, SlidersHorizontal, Download,
+  ChevronDown, Search, History, Wand2, PanelRightClose, PanelRightOpen,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -16,7 +17,7 @@ import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
-import { hcAiAdvisoryAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport } from '../lib/hcPlatformApi'
+import { hcAiAdvisoryAPI, hcSkillsAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport, type AdvisorySkill, type AdvisoryRevisionRow } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
@@ -561,49 +562,363 @@ function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize
   )
 }
 
+// ---------------------------------------------------------------------------
+// Skill picker: all 27 studio skills, with an AI-suggested default at the top.
+// ---------------------------------------------------------------------------
+
+function SkillPicker({
+  skills, selected, suggestedSlug, onSelect, onClose,
+}: {
+  skills: AdvisorySkill[]
+  selected: string | null
+  suggestedSlug: string | null
+  onSelect: (slug: string | null) => void
+  onClose: () => void
+}) {
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? skills.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+    : skills
+  const suggested = suggestedSlug ? skills.find(s => s.slug === suggestedSlug) : null
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-20" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border border-[#1e2433] bg-[#131720] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-[#1e2433]">
+          <h2 className="text-base font-bold text-white">Choose the studio for this report</h2>
+          <p className="text-xs text-slate-500 mt-1">The advisor uses the studio's expert skill file to structure the deliverable.</p>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3 py-2 focus-within:border-blue-500/40 transition-colors">
+            <Search className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search studios..."
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none" />
+          </div>
+        </div>
+        <div className="max-h-[50vh] overflow-y-auto p-2">
+          {suggested && !q && (
+            <>
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-bold text-blue-400">Suggested for your brief</p>
+              <SkillRow skill={suggested} active={selected === suggested.slug} suggested onClick={() => { onSelect(suggested.slug); onClose() }} />
+              <p className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-600">All studios</p>
+            </>
+          )}
+          {filtered.map(s => (
+            <SkillRow key={s.slug} skill={s} active={selected === s.slug} onClick={() => { onSelect(s.slug); onClose() }} />
+          ))}
+          {filtered.length === 0 && <p className="px-3 py-6 text-center text-xs text-slate-500">No studios match "{query}".</p>}
+        </div>
+        <div className="px-5 py-3 border-t border-[#1e2433] flex items-center justify-between">
+          <button onClick={() => { onSelect(null); onClose() }} className="text-[11px] text-slate-500 hover:text-white transition-colors">
+            Let the advisor decide
+          </button>
+          <button onClick={onClose} className="text-[11px] text-slate-400 hover:text-white transition-colors">Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SkillRow({ skill, active, suggested, onClick }: { skill: AdvisorySkill; active: boolean; suggested?: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className={cn(
+      'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+      active ? 'bg-blue-600/15 border border-blue-500/40' : 'border border-transparent hover:bg-white/5',
+    )}>
+      <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+        suggested ? 'bg-blue-500/15 border border-blue-500/30' : 'bg-[#0c0e14] border border-[#1e2433]')}>
+        <LayoutGrid className={cn('w-4 h-4', suggested ? 'text-blue-400' : 'text-slate-500')} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-white truncate">{skill.name}</span>
+        <span className="block text-[11px] text-slate-500 capitalize truncate">{skill.category.replace(/[-_]/g, ' ')}</span>
+      </span>
+      {active && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Claude-style tool-call approval card. Nothing generates until approved.
+// ---------------------------------------------------------------------------
+
+function ApprovalCard({
+  studioName, orgName, reportType, onApprove, onEdit, onCancel,
+}: {
+  studioName: string
+  orgName: string
+  reportType: 'summary' | 'detailed'
+  onApprove: () => void
+  onEdit: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="max-w-xl rounded-2xl border border-blue-500/30 bg-[#0c0e14] overflow-hidden shadow-[0_2px_20px_rgba(37,99,235,0.15)]">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1e2433] bg-blue-500/5">
+        <Wand2 className="w-3.5 h-3.5 text-blue-400" />
+        <p className="text-[11px] font-bold uppercase tracking-wider text-blue-300">Deep research + report</p>
+      </div>
+      <div className="px-4 py-3.5">
+        <p className="text-sm text-slate-200 leading-relaxed">
+          I'll research and generate the{' '}
+          <span className="font-semibold text-white">{studioName}</span>{' '}
+          {reportType === 'summary' ? 'executive summary' : 'report'} for{' '}
+          <span className="font-semibold text-white">{orgName}</span>, using your challenge brief, onboarding and any uploaded evidence.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <button onClick={onApprove}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+            <Check className="w-3.5 h-3.5" /> Approve
+          </button>
+          <button onClick={onEdit}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
+            <Pencil className="w-3.5 h-3.5" /> Change studio
+          </button>
+          <button onClick={onCancel}
+            className="px-4 py-2 rounded-lg border border-transparent text-slate-500 hover:text-white text-xs font-semibold transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// The single-screen advisory workspace: chat on the left, live report on the
+// right. One conversation drives everything - generating, refining, exporting.
+// All state persists server-side per workspace with a revision trail.
+// ---------------------------------------------------------------------------
+
 function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: AdvisoryProfile; workspaceId: string; workspaceName: string | null }) {
   const briefs = useBriefStore(s => s.briefs)
   const brief = briefs[workspaceId] ?? null
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadStoredChat(workspaceId))
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const getProfileFor = useClientProfileStore(st => st.getProfileFor)
-  // Seed with any evidence the client uploaded during onboarding so the
-  // advisory is grounded in it from the very first message.
   const [attachments, setAttachments] = useState<Attachment[]>(() => {
     const cp = getProfileFor(workspaceId) as unknown as { evidence?: { uploadedFiles?: Attachment[] } }
     return cp?.evidence?.uploadedFiles ?? []
   })
-  const [plan, setPlan] = useState<ChatPlan | null>(() => loadStoredPlan(workspaceId))
+  const [plan, setPlan] = useState<ChatPlan | null>(null)
   const [report, setReport] = useState<SessionReport | null>(null)
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
-  const [viewMode, setViewMode] = useState<'chat' | 'report'>('chat')
-  const [pendingApproval, setPendingApproval] = useState<{ type: 'summary' | 'detailed'; studio: string | null; history: ChatMessage[]; plan: ChatPlan | null } | null>(null)
+  const [pendingApproval, setPendingApproval] = useState<{ type: 'summary' | 'detailed'; studio: string | null } | null>(null)
 
-  // Chat-based editing after approval runs as a FRESH session, separate from
-  // the main conversation.
-  const [editMessages, setEditMessages] = useState<ChatMessage[]>([])
-  const [editDraft, setEditDraft] = useState('')
-  const [editSending, setEditSending] = useState(false)
+  // Skill picker
+  const [skills, setSkills] = useState<AdvisorySkill[]>([])
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
+  const [suggestedSkill, setSuggestedSkill] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Report side controls
+  const [reportOpen, setReportOpen] = useState(false)   // whether the right panel is expanded (mobile / user toggle)
+  const [revisions, setRevisions] = useState<AdvisoryRevisionRow[]>([])
+  const [revsOpen, setRevsOpen] = useState(false)
+  const [refineDraft, setRefineDraft] = useState('')
+  const [refining, setRefining] = useState(false)
+
+  const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
+  const [briefLoaded, setBriefLoaded] = useState(false)
+  const [sessionLoaded, setSessionLoaded] = useState(false)
+
+  const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
+  const [prefsOpen, setPrefsOpen] = useState(false)
+  const [exporting, setExporting] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const openedRef = useRef(false)
+  const hydratedRef = useRef(false)
+
+  const savePrefs = (p: ChatPrefs) => {
+    setPrefs(p)
+    try { localStorage.setItem(`${PREFS_STORAGE_KEY}:${workspaceId}`, JSON.stringify(p)) } catch { /* ignore */ }
+  }
+
+  const selectedSkillObj = selectedSkill ? skills.find(s => s.slug === selectedSkill) ?? null : null
+  const orgName = brief?.organizationName || briefContent?.organization?.organizationName || workspaceName || 'your organisation'
+
+  // ── Load the studio skill catalogue (all 27) ──
+  useEffect(() => {
+    let cancelled = false
+    hcSkillsAPI.list().then(res => { if (!cancelled) setSkills(Array.isArray(res.data) ? res.data : []) }).catch(() => { /* non-fatal */ })
+    return () => { cancelled = true }
+  }, [])
+
+  // ── Pull the full server-side brief ──
+  useEffect(() => {
+    let cancelled = false
+    challengeBriefsAPI.list().then(res => {
+      if (cancelled) return
+      const raw = (Array.isArray(res.data) ? res.data : res.data?.briefs ?? []) as Array<Record<string, unknown>>
+      const mine = raw
+        .filter(b => b.workspace_id === workspaceId && b.content)
+        .sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')))
+      if (mine.length > 0) setBriefContent(mine[0].content as BriefContent)
+      setBriefLoaded(true)
+    }).catch(() => setBriefLoaded(true))
+    return () => { cancelled = true }
+  }, [workspaceId])
+
+  // ── Hydrate the persisted session (chat, plan, report, skill) from the server ──
+  useEffect(() => {
+    let cancelled = false
+    hcAiAdvisoryAPI.getSession(workspaceId).then(res => {
+      if (cancelled) return
+      const s = res.data
+      if (Array.isArray(s.messages) && s.messages.length > 0) {
+        setMessages(s.messages.map((m, i) => ({ role: m.role, content: m.content, id: m.id ?? `h-${i}`, plan: m.plan ?? undefined })))
+        openedRef.current = true
+      }
+      if (s.plan) setPlan(s.plan)
+      if (s.selected_skill) setSelectedSkill(s.selected_skill)
+      if (s.saved_draft_id) setSavedDraftId(s.saved_draft_id)
+      if (s.report_document) {
+        if (s.report_kind === 'summary') {
+          const sr = (s.report_document as { summary_report?: SummaryReport }).summary_report ?? (s.report_document as unknown as SummaryReport)
+          setReport({ kind: 'summary', summary: sr })
+        } else {
+          setReport({ kind: 'detailed', document: s.report_document as unknown as StudioOutputDocument })
+        }
+        setReportOpen(true)
+      }
+    }).catch(() => { /* fresh session */ }).finally(() => { if (!cancelled) { setSessionLoaded(true); hydratedRef.current = true } })
+    return () => { cancelled = true }
+  }, [workspaceId])
+
+  // ── Autosave chat / plan / skill to the server (debounced) ──
+  useEffect(() => {
+    if (!hydratedRef.current) return
+    const t = setTimeout(() => {
+      void hcAiAdvisoryAPI.saveSession(workspaceId, {
+        messages: messages.map(m => ({ role: m.role, content: m.content, id: m.id, plan: m.plan ?? null })),
+        plan,
+        selected_skill: selectedSkill,
+        saved_draft_id: savedDraftId,
+      }).catch(() => { /* best-effort */ })
+    }, 900)
+    return () => clearTimeout(t)
+  }, [workspaceId, messages, plan, selectedSkill, savedDraftId])
+
+  // ── Fresh session: the advisor opens the conversation itself ──
+  useEffect(() => {
+    if (openedRef.current || !briefLoaded || !sessionLoaded || messages.length > 0) return
+    openedRef.current = true
+    setSending(true)
+    hcAiAdvisoryAPI.chat({
+      messages: [],
+      brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
+      context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+      profile,
+      client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+    }).then(res => {
+      setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
+    }).catch(() => { /* fall back to static empty state */ }).finally(() => { setSending(false); setTimeout(() => textareaRef.current?.focus(), 0) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, briefLoaded, sessionLoaded])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, sending])
+
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+  }, [draft])
+
+  // ── Report generation ──
+  const finalizeSession = async (
+    type: 'summary' | 'detailed',
+    history?: ChatMessage[],
+    planOverride?: ChatPlan | null,
+    studioSlug?: string | null,
+    note?: string,
+  ) => {
+    const msgs = history ?? messages
+    if (finalizing || msgs.length === 0) return
+    setError(null)
+    setFinalizing(type)
+    setReportOpen(true)
+    try {
+      const res = await hcAiAdvisoryAPI.finalizeReport({
+        studio: studioSlug ?? selectedSkill ?? null,
+        messages: msgs.map(m => ({ role: m.role, content: m.content })),
+        report_type: type,
+        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
+        plan_state: planOverride !== undefined ? planOverride : plan,
+        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
+        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
+        profile,
+        evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
+        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+      })
+      setSavedDraftId(null)
+      let nextReport: SessionReport | null = null
+      if (type === 'detailed' && res.data.document) {
+        nextReport = { kind: 'detailed', document: res.data.document as unknown as StudioOutputDocument }
+      } else if (type === 'summary' && res.data.summary) {
+        nextReport = { kind: 'summary', summary: res.data.summary }
+      }
+      if (!nextReport) { setError('The report came back empty. Try again.'); return }
+      setReport(nextReport)
+      // Persist the report + snapshot a revision.
+      const docForSave = nextReport.kind === 'detailed'
+        ? (nextReport.document as unknown as Record<string, unknown>)
+        : ({ studio_id: 'ai_advisory:executive_summary', title: nextReport.summary.title, subtitle: nextReport.summary.subtitle ?? '', summary_report: nextReport.summary } as Record<string, unknown>)
+      void hcAiAdvisoryAPI.saveReport(workspaceId, {
+        report_document: docForSave, report_kind: type, note: note ?? 'Generated from the advisory session',
+      }).then(() => { void refreshRevisions() }).catch(() => { /* best-effort */ })
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : 'Could not generate the report. Try again.')
+    } finally {
+      setFinalizing(null)
+    }
+  }
+
+  const refreshRevisions = async () => {
+    try {
+      const res = await hcAiAdvisoryAPI.listRevisions(workspaceId)
+      setRevisions(Array.isArray(res.data) ? res.data : [])
+    } catch { /* ignore */ }
+  }
+
+  const restoreRevision = (r: AdvisoryRevisionRow) => {
+    if (r.report_kind === 'summary') {
+      const sr = (r.report_document as { summary_report?: SummaryReport }).summary_report ?? (r.report_document as unknown as SummaryReport)
+      setReport({ kind: 'summary', summary: sr })
+    } else {
+      setReport({ kind: 'detailed', document: r.report_document as unknown as StudioOutputDocument })
+    }
+    setSavedDraftId(null)
+    setRevsOpen(false)
+  }
 
   const approveGeneration = () => {
     if (!pendingApproval) return
     const p = pendingApproval
     setPendingApproval(null)
-    setEditMessages([])
-    setViewMode('report')
-    void finalizeSession(p.type, p.history, p.plan, p.studio)
+    void finalizeSession(p.type, messages, plan, p.studio ?? selectedSkill)
   }
 
-  const sendEditMessage = async (content: string) => {
+  // ── Refine the open report through the same chat ──
+  const sendRefine = async (content: string) => {
     const clean = content.trim()
-    if (!clean || editSending || finalizing) return
+    if (!clean || refining || finalizing || !report) return
     setError(null)
-    const next = [...editMessages, { role: 'user' as const, content: clean, id: `eu-${Date.now()}` }]
-    setEditMessages(next)
-    setEditDraft('')
-    setEditSending(true)
+    setRefineDraft('')
+    // Push the refine ask into the visible thread so history stays coherent.
+    const askMsg: ChatMessage = { role: 'user', content: clean, id: `ru-${Date.now()}` }
+    const next = [...messages, askMsg]
+    setMessages(next)
+    setRefining(true)
     try {
       const res = await hcAiAdvisoryAPI.chat({
         messages: next.map(m => ({ role: m.role, content: m.content })),
@@ -611,67 +926,21 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
         profile,
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
+        report_state: (report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>,
         preferences: prefs,
       })
-      const withReply = [...next, { role: 'assistant' as const, content: res.data.reply, id: `ea-${Date.now()}` }]
-      setEditMessages(withReply)
-      const confirmed = res.data.finalize
-      if (confirmed === 'summary' || confirmed === 'detailed') {
-        // Editing an open report - regenerate with the revision transcript.
-        void finalizeSession(confirmed, withReply, plan, res.data.studio ?? null)
-      }
+      const withReply = [...next, { role: 'assistant' as const, content: res.data.reply, id: `ra-${Date.now()}` }]
+      setMessages(withReply)
+      // Regenerate the report with the refinement, snapshotting a new revision.
+      void finalizeSession(report.kind, withReply, plan, selectedSkill, clean)
     } catch {
       setError('The advisor is unavailable right now. Try again.')
     } finally {
-      setEditSending(false)
-    }
-  }
-  const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
-  const [briefLoaded, setBriefLoaded] = useState(false)
-
-  const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
-  const [savingDraft, setSavingDraft] = useState(false)
-  const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
-  const [prefsOpen, setPrefsOpen] = useState(false)
-  const [exporting, setExporting] = useState<string | null>(null)
-
-  const savePrefs = (p: ChatPrefs) => {
-    setPrefs(p)
-    try { localStorage.setItem(`${PREFS_STORAGE_KEY}:${workspaceId}`, JSON.stringify(p)) } catch { /* ignore */ }
-  }
-
-  const exportDraft = async (fmt: 'pptx' | 'pdf' | 'docx' | 'html') => {
-    if (!savedDraftId || exporting) return
-    setExporting(fmt)
-    try {
-      const res = await exportsAPI.create(savedDraftId, fmt)
-      const url = URL.createObjectURL(res.data as Blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `advisory-report.${fmt}`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err: unknown) {
-      const e = err as { response?: { status?: number; data?: unknown }; code?: string }
-      // Error responses on a blob request arrive as a Blob; decode the detail.
-      let detail = ''
-      if (e.response?.data instanceof Blob) {
-        try { detail = JSON.parse(await (e.response.data as Blob).text())?.detail ?? '' } catch { /* ignore */ }
-      }
-      if (e.response?.status === 401) {
-        setError('Your session expired. Refresh the page and sign in again, then re-export.')
-      } else if (e.code === 'ECONNABORTED') {
-        setError(`The ${fmt.toUpperCase()} took too long to build. Try again.`)
-      } else {
-        setError(detail || `Could not export as ${fmt.toUpperCase()}. Try again.`)
-      }
-    } finally {
-      setExporting(null)
+      setRefining(false)
     }
   }
 
-  // #7/#10: confirmed report -> Draft Inbox draft -> existing export + Canvas pipeline
+  // ── #7/#10: confirmed report -> Draft Inbox draft -> export + Canvas pipeline ──
   const confirmAndPublish = async () => {
     if (!report || savingDraft) return
     setSavingDraft(true)
@@ -692,91 +961,31 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       setSavingDraft(false)
     }
   }
-  const openedRef = useRef(false)
 
-  // Pull the full server-side brief for this workspace (situation, severities,
-  // the client's own advisory questions) - richer than the local summary.
-  useEffect(() => {
-    let cancelled = false
-    challengeBriefsAPI.list().then(res => {
-      if (cancelled) return
-      const raw = (Array.isArray(res.data) ? res.data : res.data?.briefs ?? []) as Array<Record<string, unknown>>
-      const mine = raw
-        .filter(b => b.workspace_id === workspaceId && b.content)
-        .sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')))
-      if (mine.length > 0) setBriefContent(mine[0].content as BriefContent)
-      setBriefLoaded(true)
-    }).catch(() => setBriefLoaded(true))
-    return () => { cancelled = true }
-  }, [workspaceId])
-
-  // Fresh session: the advisor opens the conversation itself, briefed on the client.
-  useEffect(() => {
-    if (openedRef.current || messages.length > 0 || !briefLoaded) return
-    openedRef.current = true
-    setSending(true)
-    hcAiAdvisoryAPI.chat({
-      messages: [],
-      brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
-      context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
-      profile,
-      client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-    }).then(res => {
-      setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
-    }).catch(() => { /* fall back to the static empty state */ }).finally(() => { setSending(false); setTimeout(() => textareaRef.current?.focus(), 0) })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId])
-
-  const finalizeSession = async (type: 'summary' | 'detailed', history?: ChatMessage[], planOverride?: ChatPlan | null, studioSlug?: string | null) => {
-    const msgs = history ?? messages
-    if (finalizing || msgs.length === 0) return
-    setError(null)
-    setFinalizing(type)
+  const exportDraft = async (fmt: 'pptx' | 'pdf' | 'docx' | 'html') => {
+    if (!savedDraftId || exporting) return
+    setExporting(fmt)
     try {
-      const res = await hcAiAdvisoryAPI.finalizeReport({
-        studio: studioSlug ?? null,
-        messages: msgs.map(m => ({ role: m.role, content: m.content })),
-        report_type: type,
-        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
-        plan_state: planOverride !== undefined ? planOverride : plan,
-        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
-        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-        profile,
-        evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
-        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
-      })
-      setSavedDraftId(null)
-      if (type === 'detailed' && res.data.document) {
-        setReport({ kind: 'detailed', document: res.data.document as unknown as StudioOutputDocument })
-      } else if (type === 'summary' && res.data.summary) {
-        setReport({ kind: 'summary', summary: res.data.summary })
-      } else {
-        setError('The report came back empty. Try again.')
-      }
+      const res = await exportsAPI.create(savedDraftId, fmt)
+      const url = URL.createObjectURL(res.data as Blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `advisory-report.${fmt}`
+      a.click()
+      URL.revokeObjectURL(url)
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(typeof detail === 'string' ? detail : 'Could not generate the report. Try again.')
+      const e = err as { response?: { status?: number; data?: unknown }; code?: string }
+      let detail = ''
+      if (e.response?.data instanceof Blob) {
+        try { detail = JSON.parse(await (e.response.data as Blob).text())?.detail ?? '' } catch { /* ignore */ }
+      }
+      if (e.response?.status === 401) setError('Your session expired. Refresh the page and sign in again, then re-export.')
+      else if (e.code === 'ECONNABORTED') setError(`The ${fmt.toUpperCase()} took too long to build. Try again.`)
+      else setError(detail || `Could not export as ${fmt.toUpperCase()}. Try again.`)
     } finally {
-      setFinalizing(null)
+      setExporting(null)
     }
   }
-  const [uploading, setUploading] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { saveStoredChat(workspaceId, messages) }, [workspaceId, messages])
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, sending])
-
-  useEffect(() => {
-    // Autosize textarea
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
-  }, [draft])
 
   const sendMessage = async (content: string) => {
     const clean = content.trim()
@@ -799,23 +1008,17 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       preferences: prefs,
     }
 
-    // Apply the structured result (plan / finalize / studio) once the reply is complete.
     const applyResult = (reply: string, nextPlan: ChatPlan | null, finalize: 'summary' | 'detailed' | null, studio: string | null) => {
       setPlan(nextPlan)
-      try {
-        if (nextPlan) localStorage.setItem(`${PLAN_STORAGE_KEY}:${workspaceId}`, JSON.stringify(nextPlan))
-        else localStorage.removeItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
-      } catch { /* ignore */ }
+      if (studio && !selectedSkill) setSuggestedSkill(studio)
       if (finalize === 'summary' || finalize === 'detailed') {
-        const history = [...next, { role: 'assistant' as const, content: reply, id: `a-${Date.now()}` }]
-        if (viewMode === 'report') void finalizeSession(finalize, history, nextPlan, studio)
-        else setPendingApproval({ type: finalize, studio, history, plan: nextPlan })
+        // Ask for approval (Claude-style tool card) before generating anything.
+        setPendingApproval({ type: finalize, studio: studio ?? selectedSkill })
       }
     }
 
     const assistantId = `a-${Date.now()}`
     try {
-      // Streaming path: tokens append live into a placeholder assistant bubble.
       setMessages(prev => [...prev, { role: 'assistant', content: '', id: assistantId }])
       let acc = ''
       const meta = await hcAiAdvisoryAPI.chatStream(payload, (tok) => {
@@ -827,7 +1030,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc, plan: planChanged && nextPlan ? nextPlan : undefined } : m))
       applyResult(acc, nextPlan, meta.finalize, meta.studio)
     } catch {
-      // Fallback: non-streaming JSON chat if the stream fails.
       try {
         const res = await hcAiAdvisoryAPI.chat(payload)
         const reply = res.data.reply
@@ -852,15 +1054,13 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setMessages([])
     setAttachments([])
     setPlan(null)
-    localStorage.removeItem(`${CHAT_STORAGE_KEY}:${workspaceId}`)
-    localStorage.removeItem(`${PLAN_STORAGE_KEY}:${workspaceId}`)
+    setPendingApproval(null)
+    openedRef.current = false
+    void hcAiAdvisoryAPI.clearSession(workspaceId).catch(() => { /* ignore */ })
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage(draft)
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(draft) }
   }
 
   const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -880,366 +1080,306 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     }
   }
 
-  const removeAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(a => a.evidence_id !== id))
+  const removeAttachment = (id: string) => setAttachments(prev => prev.filter(a => a.evidence_id !== id))
+
+  const hasReportPane = reportOpen && (report || finalizing)
+
+  // A "generate report" affordance surfaces once there is a plan or enough conversation.
+  const canGenerate = messages.filter(m => m.role === 'user').length >= 1 || !!plan
+  const requestGeneration = (type: 'summary' | 'detailed') => {
+    if (!selectedSkill && suggestedSkill) setSelectedSkill(suggestedSkill)
+    setPendingApproval({ type, studio: selectedSkill ?? suggestedSkill })
   }
 
-  const appendFormatHint = (fmt: string) => {
-    setDraft(prev => {
-      const base = prev.trimEnd()
-      const hint = `Format the answer as a ${fmt}.`
-      return base ? `${base}\n${hint}` : hint
-    })
-    textareaRef.current?.focus()
-  }
-
-  // ── Report workspace: full-screen canvas + fresh chat-editing session ──
-  if (viewMode === 'report' && (report || finalizing)) {
-    return (
-      <div className="space-y-4">
-        {/* Report canvas - full width */}
-        <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
-          <div className="sticky top-0 z-10 flex items-center gap-3 px-5 py-3.5 border-b border-[#1e2433] bg-[#0f1117]/95 backdrop-blur flex-wrap">
-            <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">
-                {report?.kind === 'detailed'
-                  ? ((report.document as { title?: string }).title ?? 'Studio deliverable')
-                  : report?.kind === 'summary' ? report.summary.title : 'Generating report...'}
-              </p>
-              <p className="text-[11px] text-slate-500 truncate">
-                {report?.kind === 'detailed'
-                  ? `${(report.document as { studio_name?: string }).studio_name ?? 'Studio deliverable'} · generated from this session`
-                  : report ? 'Executive summary · generated from this session' : ''}
-              </p>
-            </div>
-            {report && (savedDraftId ? (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
-                  <button key={fmt} onClick={() => exportDraft(fmt)} disabled={!!exporting}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
-                    {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                    {fmt.toUpperCase()}
-                  </button>
-                ))}
-                <Link to={`/canvas/${savedDraftId}`}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition-colors">
-                  <Pencil className="w-3 h-3" /> Canvas
-                </Link>
-              </div>
-            ) : (
-              <button onClick={confirmAndPublish} disabled={savingDraft}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50">
-                {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                Approve output - unlock downloads
-              </button>
-            ))}
-            <button onClick={() => setViewMode('chat')} className="text-[11px] text-slate-500 hover:text-blue-400 transition-colors flex-shrink-0">
-              Back to chat
+  return (
+    <div className={cn('grid gap-4 items-start', hasReportPane ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : 'grid-cols-1')}>
+      {/* ─────────────────── LEFT: conversation ─────────────────── */}
+      <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+        {/* Toolbar: skill selector + report toggle */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-[#161b28] flex-wrap">
+          <button onClick={() => setPickerOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 transition-colors max-w-[60%]">
+            <LayoutGrid className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+            <span className="truncate">{selectedSkillObj ? selectedSkillObj.name : suggestedSkill && skills.find(s => s.slug === suggestedSkill) ? `${skills.find(s => s.slug === suggestedSkill)!.name} (suggested)` : 'Choose studio'}</span>
+            <ChevronDown className="w-3 h-3 text-slate-500 flex-shrink-0" />
+          </button>
+          <div className="flex-1" />
+          {report && !hasReportPane && (
+            <button onClick={() => setReportOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-1.5 text-[11px] font-semibold text-blue-300 transition-colors">
+              <PanelRightOpen className="w-3.5 h-3.5" /> Show report
             </button>
-          </div>
-          <div className="p-5 sm:p-8 max-h-[calc(100vh-24rem)] overflow-y-auto">
-            {report ? (
-              <div className="max-w-4xl mx-auto">
-                {report.kind === 'detailed'
-                  ? <StudioOutput document={report.document} />
-                  : <SummaryReportView summary={report.summary} />}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <div className="w-10 h-10 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
-                <p className="text-sm text-slate-500">Building the {finalizing === 'summary' ? 'executive summary' : 'studio report'} from your session...</p>
-              </div>
-            )}
-          </div>
+          )}
+          {messages.length > 0 && (
+            <button onClick={clear} className="text-[11px] text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-1.5">
+              <RotateCcw className="w-3 h-3" /> Clear
+            </button>
+          )}
         </div>
 
-        {/* Fresh chat-editing session under the report */}
-        <div className="rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
-          {editMessages.length > 0 && (
-            <div className="max-h-56 overflow-y-auto px-4 py-3 space-y-2.5 border-b border-[#161b28]">
-              {editMessages.map(m => (
-                <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                  <div className={
-                    m.role === 'user'
-                      ? 'max-w-[80%] rounded-2xl rounded-br-md bg-blue-600 text-white px-3.5 py-2 text-xs leading-relaxed'
-                      : 'max-w-[85%] rounded-2xl rounded-bl-md bg-[#131720] border border-[#1e2433] px-3.5 py-2 text-xs'
-                  }>
-                    {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
-                  </div>
-                </div>
-              ))}
-              {(editSending || finalizing) && (
-                <div className="flex justify-start">
-                  <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-3.5 py-2 flex items-center gap-2">
-                    {[0, 1, 2].map(i => (
-                      <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }} />
-                    ))}
-                    {finalizing && <span className="text-[11px] text-slate-500">updating the report...</span>}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="p-3">
-            {error && <p className="text-[11px] text-red-400 mb-2">{error}</p>}
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {['Add an infographic section', 'Simplify the language', 'Add industry benchmarks'].map(q => (
-                <button key={q} onClick={() => sendEditMessage(q)} disabled={editSending || !!finalizing || !report}
-                  className="rounded-full border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1 text-[11px] text-slate-400 hover:text-white transition-colors disabled:opacity-50">
+        {/* Thread */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-5 py-5 space-y-5">
+          {briefContent && <BriefingCard content={briefContent} />}
+          {messages.length === 1 && !sending && (
+            <div className="flex flex-wrap gap-2">
+              {[
+                ...(briefContent?.advisoryQuestions ?? []).slice(0, 3).map(q => q.questionText),
+                'Design a solution for our top challenge',
+                'Plan the 12-month roadmap',
+              ].filter(Boolean).slice(0, 5).map(q => (
+                <button key={q} onClick={() => sendMessage(q)}
+                  className="rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 text-xs text-blue-300 transition-colors text-left">
                   {q}
                 </button>
               ))}
             </div>
-            <div className="flex items-end gap-2 rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-1.5">
-              <textarea
-                value={editDraft}
-                onChange={e => setEditDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEditMessage(editDraft) } }}
-                rows={1}
-                disabled={editSending || !!finalizing || !report}
-                autoFocus
-                placeholder="Refine this report - ask for changes, infographics or explanations"
-                className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center"
-              />
-              <button onClick={() => sendEditMessage(editDraft)} disabled={!editDraft.trim() || editSending || !!finalizing || !report}
-                className={
-                  editDraft.trim() && !editSending && !finalizing
-                    ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-colors'
-                    : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'
-                }>
-                <Send className="w-4 h-4" />
+          )}
+          {messages.length === 0 && !sending && (
+            <div className="max-w-2xl mx-auto text-center space-y-6 py-8">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
+                <MessageSquare className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-white">Talk to your HC advisor</h2>
+                <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                  Twenty years of consulting experience, on demand. Ask anything about your workforce, capability, leadership pipeline, or strategy, then turn the conversation into a full studio report.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">Where do you want to start?</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {ADVISORY_PATHS.map(p => (
+                    <button key={p} onClick={() => sendMessage(p)}
+                      className="rounded-full border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-4 py-2 text-sm text-slate-200 transition-colors">
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <AnimatePresence initial={false}>
+            {messages.map(m => (
+              m.role === 'assistant' && m.content.length === 0 ? null : (
+              <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                {m.role === 'assistant' ? (
+                  <div className="flex gap-3 max-w-[92%]">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3">
+                      <AssistantMarkdown content={m.content} />
+                      {m.plan && <PlanCardInline plan={m.plan} />}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-end">
+                    <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
+                      {m.content}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+              )
+            ))}
+          </AnimatePresence>
+
+          {/* Claude-style tool-call approval - nothing generates until approved */}
+          {pendingApproval && (
+            <ApprovalCard
+              studioName={
+                (pendingApproval.studio && skills.find(s => s.slug === pendingApproval.studio)?.name)
+                || (selectedSkillObj?.name)
+                || (pendingApproval.type === 'summary' ? 'Executive Summary' : 'Advisory')
+              }
+              orgName={orgName}
+              reportType={pendingApproval.type}
+              onApprove={approveGeneration}
+              onEdit={() => { setPendingApproval(null); setPickerOpen(true) }}
+              onCancel={() => setPendingApproval(null)}
+            />
+          )}
+
+          {sending && !(messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content.length > 0) && (
+            <div className="flex gap-3 max-w-[85%]">
+              <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-blue-400" />
+              </div>
+              <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs px-3 py-2">{error}</div>
+          )}
+        </div>
+
+        {/* Composer */}
+        <div className="border-t border-[#1e2433] bg-[#0f1117] px-4 sm:px-5 py-3.5">
+          {/* Generate-report affordance */}
+          {canGenerate && !pendingApproval && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600 mr-1">Turn this into a</span>
+              <button onClick={() => requestGeneration('detailed')} disabled={!!finalizing}
+                className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 hover:bg-blue-500 px-3 py-1 text-[11px] font-semibold text-white transition-colors disabled:opacity-50">
+                <FileText className="w-3 h-3" /> Detailed report
+              </button>
+              <button onClick={() => requestGeneration('summary')} disabled={!!finalizing}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 px-3 py-1 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                <FileBarChart2 className="w-3 h-3" /> Summary
+              </button>
+            </div>
+          )}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {attachments.map(a => (
+                <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
+                  <Paperclip className="w-3 h-3" />
+                  <span className="max-w-[180px] truncate">{a.filename}</span>
+                  <button onClick={() => removeAttachment(a.evidence_id)} className="hover:text-white transition-colors" aria-label={`Remove ${a.filename}`}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-end gap-2 rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
+            <input ref={fileInputRef} type="file" accept={EVIDENCE_ACCEPT} className="hidden" onChange={handleFilePicked} />
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading || sending} title="Attach evidence"
+              className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+            </button>
+            <button onClick={() => setPrefsOpen(true)} title="Configure chat"
+              className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors">
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <textarea ref={textareaRef} value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={1}
+              disabled={sending} autoFocus
+              placeholder={brief ? `Ask about ${brief.organizationName || 'your organisation'}...` : 'Ask anything about your HC challenge...'}
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center" />
+            <button onClick={() => sendMessage(draft)} disabled={!draft.trim() || sending} title="Send (Enter)"
+              className={draft.trim() && !sending
+                ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-[0_2px_10px_rgba(37,99,235,0.35)] transition-colors'
+                : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'}>
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─────────────────── RIGHT: live report canvas ─────────────────── */}
+      {hasReportPane && (
+        <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e2433] bg-[#0f1117]/95 backdrop-blur flex-wrap">
+            <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white truncate">
+                {report?.kind === 'detailed' ? ((report.document as { title?: string }).title ?? 'Studio deliverable')
+                  : report?.kind === 'summary' ? report.summary.title : 'Generating report...'}
+              </p>
+              <p className="text-[11px] text-slate-500 truncate">
+                {report?.kind === 'detailed' ? `${(report.document as { studio_name?: string }).studio_name ?? 'Studio deliverable'} · from this session`
+                  : report ? 'Executive summary · from this session' : ''}
+              </p>
+            </div>
+            {revisions.length > 0 && (
+              <button onClick={() => { setRevsOpen(o => !o); if (!revsOpen) void refreshRevisions() }}
+                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-300 transition-colors">
+                <History className="w-3 h-3" /> v{revisions[0]?.version ?? 1}
+              </button>
+            )}
+            <button onClick={() => setReportOpen(false)} title="Hide report"
+              className="w-8 h-8 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 flex items-center justify-center transition-colors">
+              <PanelRightClose className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Revision trail dropdown */}
+          {revsOpen && revisions.length > 0 && (
+            <div className="border-b border-[#1e2433] bg-[#0c0e14] max-h-52 overflow-y-auto">
+              {revisions.map(r => (
+                <button key={r.version} onClick={() => restoreRevision(r)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition-colors border-b border-[#161b28] last:border-0">
+                  <span className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-300 text-[11px] font-bold flex items-center justify-center flex-shrink-0">v{r.version}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-medium text-white truncate">{r.note || 'Report update'}</span>
+                    <span className="block text-[10px] text-slate-500 capitalize">{r.report_kind ?? 'detailed'} report</span>
+                  </span>
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Report body */}
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+            {report ? (
+              <div className="max-w-3xl mx-auto">
+                {report.kind === 'detailed' ? <StudioOutput document={report.document} /> : <SummaryReportView summary={report.summary} />}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <div className="w-10 h-10 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+                <p className="text-sm text-slate-500">Researching and building the {finalizing === 'summary' ? 'executive summary' : 'studio report'}...</p>
+              </div>
+            )}
+          </div>
+
+          {/* Report actions + refine */}
+          <div className="border-t border-[#1e2433] bg-[#0c0e14] px-4 py-3 space-y-2.5">
+            {report && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {savedDraftId ? (
+                  <>
+                    {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
+                      <button key={fmt} onClick={() => exportDraft(fmt)} disabled={!!exporting}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                        {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                        {fmt.toUpperCase()}
+                      </button>
+                    ))}
+                    <Link to={`/canvas/${savedDraftId}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition-colors">
+                      <Pencil className="w-3 h-3" /> Canvas
+                    </Link>
+                  </>
+                ) : (
+                  <button onClick={confirmAndPublish} disabled={savingDraft || !!finalizing}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50">
+                    {savingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Approve output - unlock downloads
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex items-end gap-2 rounded-xl border border-[#1e2433] bg-[#0f1117] focus-within:border-blue-500/40 transition-colors px-2 py-1.5">
+              <Wand2 className="w-4 h-4 text-blue-400 flex-shrink-0 self-center ml-1" />
+              <textarea value={refineDraft} onChange={e => setRefineDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRefine(refineDraft) } }}
+                rows={1} disabled={refining || !!finalizing || !report}
+                placeholder="Refine the report - add a section, benchmarks, simplify..."
+                className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-1 py-1.5 resize-none leading-relaxed self-center" />
+              <button onClick={() => sendRefine(refineDraft)} disabled={!refineDraft.trim() || refining || !!finalizing || !report}
+                className={refineDraft.trim() && !refining && !finalizing
+                  ? 'flex-shrink-0 w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-colors'
+                  : 'flex-shrink-0 w-8 h-8 rounded-lg bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'}>
+                {refining || finalizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
-        </div>
-        {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
-      </div>
-    )
-  }
-
-  // ── Chat mode: full-width conversation ──
-  return (
-    <div>
-    <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
-      {messages.length > 0 && (
-        <div className="flex items-center justify-end px-4 py-1.5 border-b border-[#161b28]">
-          <button
-            onClick={clear}
-            className="text-[11px] text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-1.5"
-          >
-            <RotateCcw className="w-3 h-3" /> Clear conversation
-          </button>
         </div>
       )}
 
-      {/* Thread */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
-        {briefContent && <BriefingCard content={briefContent} />}
-        {messages.length === 1 && !sending && (
-          <div className="flex flex-wrap gap-2">
-            {[
-              ...(briefContent?.advisoryQuestions ?? []).slice(0, 3).map(q => q.questionText),
-              'Design a solution for our top challenge',
-              'Plan the 12-month roadmap',
-            ].filter(Boolean).slice(0, 5).map(q => (
-              <button key={q} onClick={() => sendMessage(q)}
-                className="rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 text-xs text-blue-300 transition-colors text-left">
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
-        {messages.length === 0 && !sending && (
-          <div className="max-w-2xl mx-auto text-center space-y-6 py-8">
-            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
-              <MessageSquare className="w-6 h-6 text-blue-400" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-white">Talk to your HC advisor</h2>
-              <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-                Twenty years of consulting experience, on demand. Ask anything about your workforce, capability, leadership pipeline, or strategy. I will ask clarifying questions and give you a real point of view.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">Where do you want to start?</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {ADVISORY_PATHS.map(p => (
-                  <button
-                    key={p}
-                    onClick={() => sendMessage(p)}
-                    className="rounded-full border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-4 py-2 text-sm text-slate-200 transition-colors"
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <AnimatePresence initial={false}>
-          {messages.map(m => (
-            // Skip the empty assistant placeholder while it waits for the first
-            // streamed token - the typing dots below stand in until text arrives.
-            m.role === 'assistant' && m.content.length === 0 ? null : (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {m.role === 'assistant' ? (
-                <div className="flex gap-3 max-w-[85%]">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3">
-                    <AssistantMarkdown content={m.content} />
-                    {m.plan && <PlanCardInline plan={m.plan} />}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-end">
-                  <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] px-4 py-2.5 text-sm max-w-[75%] whitespace-pre-wrap">
-                    {m.content}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-            )
-          ))}
-        </AnimatePresence>
-
-        {/* Claude-style permission request: nothing generates until approved */}
-        {pendingApproval && (
-          <div className="max-w-xl rounded-2xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-amber-500/20 bg-amber-500/10">
-              <FileBarChart2 className="w-3.5 h-3.5 text-amber-400" />
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">Permission request</p>
-            </div>
-            <div className="px-4 py-3.5">
-              <p className="text-sm text-slate-200">
-                Generate the{' '}
-                <span className="font-semibold text-white">
-                  {pendingApproval.type === 'summary' ? 'Executive Summary' : `${pendingApproval.studio ? pendingApproval.studio.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' ' : ''}detailed report`}
-                </span>{' '}
-                from this session? It opens in the report workspace where you can refine and export it.
-              </p>
-              <div className="flex gap-2 mt-3">
-                <button onClick={approveGeneration}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
-                  <Check className="w-3.5 h-3.5" /> Approve & generate
-                </button>
-                <button onClick={() => setPendingApproval(null)}
-                  className="px-4 py-2 rounded-lg border border-[#1e2433] text-slate-400 hover:text-white text-xs font-semibold transition-colors">
-                  Not now
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Re-open an already generated report */}
-        {report && !pendingApproval && (
-          <button onClick={() => setViewMode('report')}
-            className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-4 py-2 text-xs font-semibold text-blue-300 transition-colors">
-            <FileBarChart2 className="w-3.5 h-3.5" />
-            View the generated report
-          </button>
-        )}
-
-        {/* Typing dots only until the first streamed token arrives; once the
-            assistant bubble has text, it shows the stream itself (no double indicator). */}
-        {sending && !(messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content.length > 0) && (
-          <div className="flex gap-3 max-w-[85%]">
-            <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-            </div>
-            <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '300ms' }} />
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs px-3 py-2">
-            {error}
-          </div>
-        )}
-      </div>
-
-      {/* Composer */}
-      <div className="border-t border-[#1e2433] bg-[#0f1117] px-4 sm:px-6 py-4">
-        {/* Output-format hints */}
-        {/* Attached evidence pills */}
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {attachments.map(a => (
-              <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
-                <Paperclip className="w-3 h-3" />
-                <span className="max-w-[180px] truncate">{a.filename}</span>
-                <button onClick={() => removeAttachment(a.evidence_id)} className="hover:text-white transition-colors" aria-label={`Remove ${a.filename}`}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-end gap-2 rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
-          <input ref={fileInputRef} type="file" accept={EVIDENCE_ACCEPT} className="hidden" onChange={handleFilePicked} />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || sending}
-            title="Attach evidence (pdf, docx, txt, md, pptx)"
-            className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => setPrefsOpen(true)}
-            title="Configure chat (length, style)"
-            className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </button>
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onKeyDown={onKeyDown}
-            rows={1}
-            disabled={sending}
-            autoFocus
-            placeholder={
-              brief
-                ? `Ask about ${brief.organizationName || 'your organisation'}...`
-                : 'Ask anything about your HC challenge...'
-            }
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center"
-          />
-          <button
-            onClick={() => sendMessage(draft)}
-            disabled={!draft.trim() || sending}
-            title="Send (Enter)"
-            className={
-              draft.trim() && !sending
-                ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-[0_2px_10px_rgba(37,99,235,0.35)] transition-colors'
-                : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'
-            }
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
-        </div>
-
-      </div>
-    </div>
-    {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
+      {pickerOpen && (
+        <SkillPicker skills={skills} selected={selectedSkill} suggestedSlug={suggestedSkill}
+          onSelect={setSelectedSkill} onClose={() => setPickerOpen(false)} />
+      )}
+      {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
     </div>
   )
 }

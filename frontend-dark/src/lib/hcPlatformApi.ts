@@ -1325,6 +1325,43 @@ export const hcAiAdvisoryAPI = {
   }) => post<{ report_type: string; document?: Record<string, unknown> | null; summary?: SummaryReport | null }>(
     `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 240000 },
   ),
+
+  // --- Server-side session persistence (chat + report + revision trail) ------
+  getSession: (workspaceId: string) =>
+    get<AdvisorySessionState>(`${HC_BASE}/ai-advisory/session/${workspaceId}`),
+  saveSession: (workspaceId: string, body: {
+    messages?: Array<{ role: string; content: string; id?: string; plan?: ChatPlan | null }>
+    plan?: ChatPlan | null
+    selected_skill?: string | null
+    saved_draft_id?: string | null
+  }) => put<{ ok: boolean }>(`${HC_BASE}/ai-advisory/session/${workspaceId}`, body),
+  saveReport: (workspaceId: string, body: {
+    report_document: Record<string, unknown>
+    report_kind?: 'detailed' | 'summary'
+    note?: string | null
+  }) => put<{ ok: boolean; version: number }>(`${HC_BASE}/ai-advisory/session/${workspaceId}/report`, body),
+  listRevisions: (workspaceId: string) =>
+    get<AdvisoryRevisionRow[]>(`${HC_BASE}/ai-advisory/session/${workspaceId}/revisions`),
+  clearSession: (workspaceId: string) =>
+    post<{ ok: boolean }>(`${HC_BASE}/ai-advisory/session/${workspaceId}/clear`, {}),
+}
+
+export interface AdvisorySessionState {
+  workspace_id: string
+  messages: Array<{ role: 'user' | 'assistant'; content: string; id?: string; plan?: ChatPlan | null }>
+  report_document: Record<string, unknown> | null
+  report_kind: 'detailed' | 'summary' | null
+  plan: ChatPlan | null
+  selected_skill: string | null
+  saved_draft_id: string | null
+}
+
+export interface AdvisoryRevisionRow {
+  version: number
+  report_kind: 'detailed' | 'summary' | null
+  note: string | null
+  created_at: string | null
+  report_document: Record<string, unknown>
 }
 
 // ---------------------------------------------------------------------------
@@ -1345,6 +1382,19 @@ export interface BriefChatResponse {
 export const hcStudioRunAPI = {
   run: (slug: string, body: { brief?: Record<string, unknown> | null; workspace_id?: string | null; params?: Record<string, unknown> }) =>
     post<Record<string, unknown>>(`${HC_BASE}/studios/${slug}/run`, body),
+}
+
+export interface AdvisorySkill {
+  id: string
+  slug: string
+  name: string
+  category: string
+  description: string | null
+  report_spec?: string | null
+}
+
+export const hcSkillsAPI = {
+  list: () => get<AdvisorySkill[]>(`/skills`),
 }
 
 export const hcBriefChatAPI = {
