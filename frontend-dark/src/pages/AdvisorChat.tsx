@@ -1040,9 +1040,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     <div className={cn('grid gap-4 items-start',
       hasReportPane ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
         : planActive ? 'lg:grid-cols-[minmax(0,1fr)_320px]'
-        : 'grid-cols-1')}>
+        // Single-column: centre a comfortable-width chat card, not a full-bleed strip.
+        : 'grid-cols-1 max-w-4xl mx-auto')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
-      <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden w-full">
         {/* Toolbar: active studio chip (set via /slash command) + report toggle */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[#161b28] flex-wrap">
           {selectedSkillObj ? (
@@ -1073,9 +1074,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           )}
         </div>
 
-        {/* Thread - content centered in a readable column, panel stays full-width */}
+        {/* Thread */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto py-5">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-5">
+          <div className="w-full px-4 sm:px-6 space-y-5">
           {briefContent && <BriefingCard content={briefContent} />}
           {messages.length === 1 && !sending && (
             <div className="flex flex-wrap gap-2">
@@ -1176,9 +1177,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           </div>
         </div>
 
-        {/* Composer - centered to match the thread column */}
+        {/* Composer */}
         <div className="border-t border-[#1e2433] bg-[#0f1117] py-3.5">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="w-full px-4 sm:px-6">
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
