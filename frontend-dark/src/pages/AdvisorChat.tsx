@@ -642,8 +642,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [reportOpen, setReportOpen] = useState(false)   // whether the right panel is expanded (mobile / user toggle)
   const [revisions, setRevisions] = useState<AdvisoryRevisionRow[]>([])
   const [revsOpen, setRevsOpen] = useState(false)
-  const [refineDraft, setRefineDraft] = useState('')
-  const [refining, setRefining] = useState(false)
 
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
@@ -653,6 +651,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [threads, setThreads] = useState<import('../lib/hcPlatformApi').AdvisoryThreadSummary[]>([])
   const [threadsOpen, setThreadsOpen] = useState(false)
+  const [genStatus, setGenStatus] = useState('')   // cycling "thinking" line while generating
 
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
@@ -893,6 +892,25 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setPlan(p => p ? { ...p, steps: p.steps.map(s => ({ ...s, status: 'done' as const })) } : p)
   }, [finalizing, report])
 
+  // Cycling "thinking" status while the report generates (Claude-Code style).
+  useEffect(() => {
+    if (!finalizing) { setGenStatus(''); return }
+    const lines = [
+      'Reading your challenge brief and onboarding...',
+      'Reviewing the studio skill and its framework...',
+      'Researching relevant benchmarks and sources...',
+      'Mapping findings to your organisation...',
+      'Structuring the sections and tables...',
+      'Drafting the narrative and recommendations...',
+      'Checking figures and tightening the language...',
+      'Finalising the deliverable...',
+    ]
+    let i = 0
+    setGenStatus(lines[0])
+    const t = setInterval(() => { i = (i + 1) % lines.length; setGenStatus(lines[i]) }, 2200)
+    return () => clearInterval(t)
+  }, [finalizing])
+
   const refreshRevisions = async () => {
     if (!sessionId) return
     try {
@@ -919,37 +937,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     void finalizeSession(p.type, messages, plan, selectedSkill ?? p.studio)
   }
 
-  // ── Refine the open report through the same chat ──
-  const sendRefine = async (content: string) => {
-    const clean = content.trim()
-    if (!clean || refining || finalizing || !report) return
-    setError(null)
-    setRefineDraft('')
-    // Push the refine ask into the visible thread so history stays coherent.
-    const askMsg: ChatMessage = { role: 'user', content: clean, id: `ru-${Date.now()}` }
-    const next = [...messages, askMsg]
-    setMessages(next)
-    setRefining(true)
-    try {
-      const res = await hcAiAdvisoryAPI.chat({
-        messages: next.map(m => ({ role: m.role, content: m.content })),
-        brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
-        context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
-        profile,
-        client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
-        report_state: (report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>,
-        preferences: prefs,
-      })
-      const withReply = [...next, { role: 'assistant' as const, content: res.data.reply, id: `ra-${Date.now()}` }]
-      setMessages(withReply)
-      // Regenerate the report with the refinement, snapshotting a new revision.
-      void finalizeSession(report.kind, withReply, plan, selectedSkill, clean)
-    } catch {
-      setError('The advisor is unavailable right now. Try again.')
-    } finally {
-      setRefining(false)
-    }
-  }
 
   // ── #7/#10: confirmed report -> Draft Inbox draft -> export + Canvas pipeline ──
   const confirmAndPublish = async () => {
@@ -1023,8 +1010,15 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       setPlan(nextPlan)
       if (studio && !selectedSkill) setSuggestedSkill(studio)
       if (finalize === 'summary' || finalize === 'detailed') {
-        // The user's explicitly chosen studio ALWAYS wins over the AI's guess.
-        setPendingApproval({ type: finalize, studio: selectedSkill ?? studio })
+        const chosen = selectedSkill ?? studio  // the user's chosen studio always wins
+        if (report) {
+          // A report is already open: this is a refinement request from the chat.
+          // Regenerate directly, no approval card.
+          const withReply = [...next, { role: 'assistant' as const, content: reply, id: `a-${Date.now()}` }]
+          void finalizeSession(finalize, withReply, nextPlan, chosen, clean)
+        } else {
+          setPendingApproval({ type: finalize, studio: chosen })
+        }
       }
     }
 
@@ -1539,13 +1533,17 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             ) : plan && plan.steps.length > 0 ? (
               // Animated working-plan progress while the report generates.
               <div className="max-w-lg mx-auto py-8">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-1.5">
                   <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   <p className="text-sm font-semibold text-white flex-1">Researching and building your report...</p>
                   <span className="text-xs font-bold text-blue-400 tabular-nums">
                     {plan.steps.filter(s => s.status === 'done').length}/{plan.steps.length}
                   </span>
                 </div>
+                <AnimatePresence mode="wait">
+                  <motion.p key={genStatus} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="text-[11px] text-slate-500 mb-4 pl-6">{genStatus}</motion.p>
+                </AnimatePresence>
                 <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden mb-4">
                   <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
                     animate={{ width: `${(plan.steps.filter(s => s.status === 'done').length / plan.steps.length) * 100}%` }}
@@ -1570,7 +1568,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             ) : (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
                 <div className="w-10 h-10 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
-                <p className="text-sm text-slate-500">Researching and building the {finalizing === 'summary' ? 'executive summary' : 'studio report'}...</p>
+                <AnimatePresence mode="wait">
+                  <motion.p key={genStatus} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="text-sm text-slate-500">{genStatus || `Researching and building the ${finalizing === 'summary' ? 'executive summary' : 'studio report'}...`}</motion.p>
+                </AnimatePresence>
               </div>
             )}
           </div>
@@ -1602,20 +1603,12 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 )}
               </div>
             )}
-            <div className="flex items-end gap-2 rounded-xl border border-[#1e2433] bg-[#0f1117] focus-within:border-blue-500/40 transition-colors px-2 py-1.5">
-              <Wand2 className="w-4 h-4 text-blue-400 flex-shrink-0 self-center ml-1" />
-              <textarea value={refineDraft} onChange={e => setRefineDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRefine(refineDraft) } }}
-                rows={1} disabled={refining || !!finalizing || !report}
-                placeholder="Refine the report - add a section, benchmarks, simplify..."
-                className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-1 py-1.5 resize-none leading-relaxed self-center" />
-              <button onClick={() => sendRefine(refineDraft)} disabled={!refineDraft.trim() || refining || !!finalizing || !report}
-                className={refineDraft.trim() && !refining && !finalizing
-                  ? 'flex-shrink-0 w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-colors'
-                  : 'flex-shrink-0 w-8 h-8 rounded-lg bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'}>
-                {refining || finalizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              </button>
-            </div>
+            {report && (
+              <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <Wand2 className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                To refine this report, just ask in the chat on the left (e.g. "add industry benchmarks", "left-align the tables").
+              </p>
+            )}
           </div>
         </div>
       )}
