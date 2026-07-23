@@ -574,13 +574,17 @@ function ApprovalCard({
   onEdit: () => void
   onCancel: () => void
 }) {
+  // Rendered like an assistant message (avatar + bubble) so it fits the chat.
   return (
-    <div className="max-w-xl rounded-2xl border border-blue-500/30 bg-[#0c0e14] overflow-hidden shadow-[0_2px_20px_rgba(37,99,235,0.15)]">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1e2433] bg-blue-500/5">
-        <Wand2 className="w-3.5 h-3.5 text-blue-400" />
-        <p className="text-[11px] font-bold uppercase tracking-wider text-blue-300">Deep research + report</p>
+    <div className="flex gap-3 max-w-[92%]">
+      <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+        <Sparkles className="w-4 h-4 text-blue-400" />
       </div>
-      <div className="px-4 py-3.5">
+      <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 min-w-0">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Wand2 className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300">Deep research + report</span>
+        </div>
         <p className="text-sm text-slate-200 leading-relaxed">
           I'll research and generate the{' '}
           <span className="font-semibold text-white">{studioName}</span>{' '}
@@ -593,11 +597,11 @@ function ApprovalCard({
             <Check className="w-3.5 h-3.5" /> Approve
           </button>
           <button onClick={onEdit}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
             <Pencil className="w-3.5 h-3.5" /> Change studio
           </button>
           <button onClick={onCancel}
-            className="px-4 py-2 rounded-lg border border-transparent text-slate-500 hover:text-white text-xs font-semibold transition-colors">
+            className="px-4 py-2 rounded-lg text-slate-500 hover:text-white text-xs font-semibold transition-colors">
             Cancel
           </button>
         </div>
@@ -820,7 +824,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setReportOpen(true)
     try {
       const res = await hcAiAdvisoryAPI.finalizeReport({
-        studio: studioSlug ?? selectedSkill ?? null,
+        studio: selectedSkill ?? studioSlug ?? null,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
         report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
@@ -857,6 +861,38 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     }
   }
 
+  // ── Animate the working plan while the report is generating ──
+  // Ticks steps to "done" one by one so the tracker visibly progresses, holding
+  // the final step until generation actually completes.
+  useEffect(() => {
+    if (!finalizing || !plan || plan.steps.length === 0) return
+    let i = 0
+    // Mark the first step in-progress immediately.
+    setPlan(p => p ? { ...p, steps: p.steps.map((s, idx) => ({ ...s, status: idx === 0 ? 'in_progress' : 'pending' })) } : p)
+    const timer = setInterval(() => {
+      setPlan(p => {
+        if (!p) return p
+        const n = p.steps.length
+        // Advance up to n-1 steps to done while generating; hold the last.
+        if (i >= n - 1) return p
+        const doneIdx = i
+        i += 1
+        return { ...p, steps: p.steps.map((s, idx) => ({
+          ...s,
+          status: idx <= doneIdx ? 'done' : idx === doneIdx + 1 ? 'in_progress' : 'pending',
+        })) }
+      })
+    }, 1400)
+    return () => clearInterval(timer)
+  }, [finalizing, plan?.steps.length])
+
+  // When generation finishes and a report exists, complete the plan (all done).
+  useEffect(() => {
+    if (finalizing || !report || !plan) return
+    if (plan.steps.every(s => s.status === 'done')) return
+    setPlan(p => p ? { ...p, steps: p.steps.map(s => ({ ...s, status: 'done' as const })) } : p)
+  }, [finalizing, report])
+
   const refreshRevisions = async () => {
     if (!sessionId) return
     try {
@@ -880,7 +916,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     if (!pendingApproval) return
     const p = pendingApproval
     setPendingApproval(null)
-    void finalizeSession(p.type, messages, plan, p.studio ?? selectedSkill)
+    void finalizeSession(p.type, messages, plan, selectedSkill ?? p.studio)
   }
 
   // ── Refine the open report through the same chat ──
@@ -974,7 +1010,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     const payload = {
       messages: next.map(m => ({ role: m.role, content: m.content })),
       brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
-      context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined },
+      context: { workspace_id: workspaceId, workspace_name: workspaceName ?? undefined, studio_id: selectedSkill ?? undefined, studio_name: selectedSkillObj?.name ?? undefined },
       profile,
       evidence_ids: attachments.length > 0 ? attachments.map(a => a.evidence_id) : undefined,
       client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
@@ -987,8 +1023,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       setPlan(nextPlan)
       if (studio && !selectedSkill) setSuggestedSkill(studio)
       if (finalize === 'summary' || finalize === 'detailed') {
-        // Ask for approval (Claude-style tool card) before generating anything.
-        setPendingApproval({ type: finalize, studio: studio ?? selectedSkill })
+        // The user's explicitly chosen studio ALWAYS wins over the AI's guess.
+        setPendingApproval({ type: finalize, studio: selectedSkill ?? studio })
       }
     }
 
@@ -1499,6 +1535,37 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             {report ? (
               <div className="max-w-3xl mx-auto">
                 {report.kind === 'detailed' ? <StudioOutput document={report.document} /> : <SummaryReportView summary={report.summary} />}
+              </div>
+            ) : plan && plan.steps.length > 0 ? (
+              // Animated working-plan progress while the report generates.
+              <div className="max-w-lg mx-auto py-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                  <p className="text-sm font-semibold text-white flex-1">Researching and building your report...</p>
+                  <span className="text-xs font-bold text-blue-400 tabular-nums">
+                    {plan.steps.filter(s => s.status === 'done').length}/{plan.steps.length}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden mb-4">
+                  <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
+                    animate={{ width: `${(plan.steps.filter(s => s.status === 'done').length / plan.steps.length) * 100}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }} />
+                </div>
+                <div className="space-y-1.5">
+                  {plan.steps.map((st, i) => (
+                    <div key={i} className={cn('flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors',
+                      st.status === 'done' ? 'text-slate-300'
+                        : st.status === 'in_progress' ? 'bg-blue-500/10 text-white' : 'text-slate-600')}>
+                      <span className={cn('w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border text-[10px] font-bold',
+                        st.status === 'done' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                          : st.status === 'in_progress' ? 'bg-blue-500/15 border-blue-500/40 text-blue-400'
+                          : 'bg-[#131720] border-[#1e2433] text-slate-500')}>
+                        {st.status === 'done' ? <Check className="w-3 h-3" /> : st.status === 'in_progress' ? <Loader2 className="w-3 h-3 animate-spin" /> : i + 1}
+                      </span>
+                      <span className="text-sm truncate">{st.title}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
