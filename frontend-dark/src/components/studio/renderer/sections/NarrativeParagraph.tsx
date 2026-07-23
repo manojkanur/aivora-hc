@@ -16,12 +16,13 @@ interface NarrativeParagraphData {
   readingTimeMin?: number
 }
 
-// Sentiment -> bold, solid, clearly readable colour (no thin underline).
+// One consistent accent for all highlighted phrases (no multi-colour rainbow).
+const HIGHLIGHT_CLASS = 'font-semibold text-blue-700'
 const sentimentUnderline: Record<Sentiment, string> = {
-  good: 'font-semibold text-emerald-700',
-  warning: 'font-semibold text-amber-700',
-  bad: 'font-semibold text-rose-700',
-  neutral: 'font-semibold text-blue-700',
+  good: HIGHLIGHT_CLASS,
+  warning: HIGHLIGHT_CLASS,
+  bad: HIGHLIGHT_CLASS,
+  neutral: HIGHLIGHT_CLASS,
 }
 
 // Escape regex special chars in a phrase before composing it into a RegExp
@@ -72,7 +73,7 @@ function renderMarkdownLite(body: string, highlights: Highlight[] = []): ReactNo
           key={`h-${keyCounter++}`}
           className={sentimentUnderline[sentiment]}
         >
-          {chunk.text}
+          {chunk.text.replace(/\*\*/g, '')}
         </span>
       )
       continue
@@ -90,7 +91,9 @@ function renderMarkdownLite(body: string, highlights: Highlight[] = []): ReactNo
           </strong>
         )
       } else {
-        nodes.push(<span key={`t-${keyCounter++}`}>{part}</span>)
+        // Strip any orphaned ** markers (e.g. a bold span that also overlapped a
+        // highlight phrase, leaving a stray delimiter behind).
+        nodes.push(<span key={`t-${keyCounter++}`}>{part.replace(/\*\*/g, '')}</span>)
       }
     }
   }
