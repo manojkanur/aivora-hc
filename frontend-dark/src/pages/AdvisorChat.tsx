@@ -1525,9 +1525,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             </div>
           )}
 
-          {/* Report body */}
+          {/* Report body - while (re)generating, show the progress animation even
+              if a previous report is still in memory. */}
           <div className="flex-1 overflow-y-auto p-5 sm:p-6">
-            {report ? (
+            {report && !finalizing ? (
               <div className="max-w-3xl mx-auto">
                 {report.kind === 'detailed' ? <StudioOutput document={report.document} /> : <SummaryReportView summary={report.summary} />}
               </div>

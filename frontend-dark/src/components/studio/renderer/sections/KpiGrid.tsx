@@ -231,11 +231,11 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04, duration: 0.3, ease: 'easeOut' }}
               className={[
-                'relative overflow-hidden rounded-xl border border-[#1e2433]',
+                'relative overflow-hidden rounded-xl border',
                 tilePadding[columns],
                 isHero
-                  ? 'bg-gradient-to-br from-blue-500/10 via-[#131720] to-[#131720]'
-                  : 'bg-[#0f1117]',
+                  ? 'border-blue-500/40 bg-blue-500/10'
+                  : 'border-[#1e2433] bg-[#0f1117]',
               ].join(' ')}
             >
               {isHero && (
@@ -252,11 +252,14 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
                 <Icon className={`w-4 h-4 shrink-0 ${isHero ? 'text-blue-400' : 'text-slate-500'}`} />
               </div>
 
-              <div className="relative flex items-baseline gap-1.5">
+              <div className="relative flex items-baseline gap-1.5 flex-wrap">
                 <div
                   className={[
-                    'font-mono font-bold text-white tabular-nums leading-none',
-                    valueSize[columns],
+                    'font-bold text-white leading-tight break-words min-w-0',
+                    // Monospace + tabular only for short numeric-ish values; long
+                    // words like "Moderate" render in the normal font and can wrap.
+                    String(item.value).length <= 6 ? 'font-mono tabular-nums' : '',
+                    String(item.value).length > 10 ? 'text-2xl' : valueSize[columns],
                   ].join(' ')}
                 >
                   {item.value}

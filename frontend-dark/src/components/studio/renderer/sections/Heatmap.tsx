@@ -59,8 +59,9 @@ const DIVERGING_BAD: [number, number, number] = [244, 63, 94]
 const DIVERGING_MID: [number, number, number] = [100, 116, 139]
 const DIVERGING_GOOD: [number, number, number] = [16, 185, 129]
 
-// Sequential base (dark card-like): blends from this toward the accent.
-const SEQUENTIAL_BASE: [number, number, number] = [19, 23, 32]
+// Sequential base: a light tint that blends toward the accent, so low values
+// are pale and high values saturate - readable on the light report paper.
+const SEQUENTIAL_BASE: [number, number, number] = [219, 234, 254]  // blue-100
 
 export function heatmap({
   title,
@@ -129,22 +130,23 @@ export function heatmap({
   }
 
   const textColorFor = (v: number): string => {
-    if (!Number.isFinite(v)) return '#475569'
+    if (!Number.isFinite(v)) return '#94a3b8'
     if (colorScale === 'diverging') {
       const intensity = absMax === 0 ? 0 : Math.abs(v) / absMax
-      return intensity > 0.55 ? '#ffffff' : '#e2e8f0'
+      return intensity > 0.5 ? '#ffffff' : '#1e293b'
     }
     const denom = max - min === 0 ? 1 : max - min
     const t = clamp01((v - min) / denom)
-    return t > 0.55 ? '#ffffff' : '#cbd5e1'
+    // Pale cells (low t) -> dark ink; saturated cells (high t) -> white.
+    return t > 0.5 ? '#ffffff' : '#1e293b'
   }
 
   const nCols = Math.max(1, cols.length)
   const nRows = Math.max(1, rows.length)
   // Cell size adapts to dimensions; clamp between 28 and 64px.
   const cellSize = Math.max(28, Math.min(64, Math.round(560 / Math.max(nCols, nRows))))
-  const rowLabelWidth = 120
-  const colLabelHeight = 56
+  const rowLabelWidth = 150
+  const colLabelHeight = 84
   const gridW = nCols * cellSize
   const gridH = nRows * cellSize
   const svgW = rowLabelWidth + gridW + 8
@@ -171,21 +173,25 @@ export function heatmap({
           role="img"
           aria-label={title}
         >
-          {/* Column labels */}
+          {/* Column labels - rotated -45 from just above each column, anchored
+              at start so they lean up-right and never cross the row labels. */}
           {cols.map((c, ci) => {
             const x = rowLabelWidth + ci * cellSize + cellSize / 2
+            const y = colLabelHeight - 6
+            const label = String(c).length > 22 ? String(c).slice(0, 21) + '…' : String(c)
             return (
               <text
                 key={`col-${ci}`}
                 x={x}
-                y={colLabelHeight - 10}
-                transform={`rotate(-35 ${x} ${colLabelHeight - 10})`}
-                textAnchor="end"
+                y={y}
+                transform={`rotate(-45 ${x} ${y})`}
+                textAnchor="start"
                 fontSize={11}
-                fill="#94a3b8"
+                fontWeight={500}
+                fill="#334155"
                 style={{ fontVariantNumeric: 'tabular-nums' }}
               >
-                {c}
+                {label}
               </text>
             )
           })}
@@ -201,9 +207,10 @@ export function heatmap({
                   textAnchor="end"
                   dominantBaseline="middle"
                   fontSize={11}
-                  fill="#94a3b8"
+                  fontWeight={500}
+                  fill="#334155"
                 >
-                  {rLabel}
+                  {String(rLabel).length > 22 ? String(rLabel).slice(0, 21) + '…' : rLabel}
                 </text>
                 {cols.map((_, ci) => {
                   const v = values[ri]?.[ci] ?? NaN
@@ -218,8 +225,8 @@ export function heatmap({
                         height={cellSize - 2}
                         rx={4}
                         fill={colorFor(v)}
-                        stroke={isHover ? '#ffffff' : '#1e2433'}
-                        strokeWidth={isHover ? 1.5 : 1}
+                        stroke={isHover ? '#1d4ed8' : '#e2e8f0'}
+                        strokeWidth={isHover ? 2 : 1}
                         onMouseEnter={(e) => {
                           const target = e.currentTarget as SVGRectElement
                           const rect = target.getBoundingClientRect()

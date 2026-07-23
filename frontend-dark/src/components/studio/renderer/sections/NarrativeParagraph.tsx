@@ -16,12 +16,12 @@ interface NarrativeParagraphData {
   readingTimeMin?: number
 }
 
-// Sentiment -> Tailwind classes for the tinted underline
+// Sentiment -> bold, solid, clearly readable colour (no thin underline).
 const sentimentUnderline: Record<Sentiment, string> = {
-  good: 'decoration-emerald-500 text-emerald-100',
-  warning: 'decoration-amber-500 text-amber-100',
-  bad: 'decoration-rose-500 text-rose-100',
-  neutral: 'decoration-blue-500 text-blue-100',
+  good: 'font-semibold text-emerald-700',
+  warning: 'font-semibold text-amber-700',
+  bad: 'font-semibold text-rose-700',
+  neutral: 'font-semibold text-blue-700',
 }
 
 // Escape regex special chars in a phrase before composing it into a RegExp
@@ -70,7 +70,7 @@ function renderMarkdownLite(body: string, highlights: Highlight[] = []): ReactNo
       nodes.push(
         <span
           key={`h-${keyCounter++}`}
-          className={`underline decoration-2 underline-offset-4 ${sentimentUnderline[sentiment]}`}
+          className={sentimentUnderline[sentiment]}
         >
           {chunk.text}
         </span>

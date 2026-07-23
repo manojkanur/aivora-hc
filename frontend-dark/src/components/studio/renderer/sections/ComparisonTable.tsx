@@ -125,13 +125,13 @@ export function comparisontable({
                     <th
                       key={col.key}
                       className={[
-                        'px-4 py-3 text-[10px] uppercase tracking-wider font-semibold whitespace-nowrap text-right',
+                        'px-4 py-3 text-[10px] uppercase tracking-wider font-semibold whitespace-nowrap text-left',
                         highlight
                           ? 'text-blue-300 bg-blue-500/10 border-l border-r border-blue-500/30 shadow-[inset_0_0_18px_rgba(59,130,246,0.18)]'
                           : 'text-slate-500',
                       ].join(' ')}
                     >
-                      <span className="inline-flex items-center gap-1.5 justify-end">
+                      <span className="inline-flex items-center gap-1.5">
                         {highlight && <Star className="w-3 h-3 text-blue-300 fill-blue-300" />}
                         {col.label}
                       </span>
@@ -162,7 +162,8 @@ export function comparisontable({
                       <td
                         key={`${col.key}-${rIdx}`}
                         className={[
-                          'px-4 py-3 text-right align-middle',
+                          'px-4 py-3 align-middle',
+                          numeric ? 'text-right tabular-nums' : 'text-left',
                           highlight
                             ? 'bg-blue-500/[0.06] border-l border-r border-blue-500/20'
                             : '',
