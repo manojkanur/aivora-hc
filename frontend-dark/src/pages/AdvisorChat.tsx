@@ -1362,7 +1362,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">Studios · pick one to shape the report</span>
                 <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{slashResults.length}</span>
               </div>
-              <div className="max-h-[min(60vh,26rem)] overflow-y-auto overscroll-contain">
+              <div className="max-h-[min(45vh,22rem)] overflow-y-auto overscroll-contain">
                 {slashResults.map((s, i) => (
                   <button key={s.slug} onMouseEnter={() => setSlashIdx(i)} onClick={() => pickStudioSlash(s)}
                     className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',
