@@ -1186,20 +1186,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-300 hover:text-white transition-colors flex-shrink-0">
             <Plus className="w-3.5 h-3.5" />
           </button>
-          {selectedSkillObj ? (
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-300 max-w-[60%]">
-              <LayoutGrid className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{selectedSkillObj.name}</span>
-              <button onClick={() => setSelectedSkill(null)} className="hover:text-white transition-colors" aria-label="Clear studio">
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
-              <LayoutGrid className="w-3.5 h-3.5 flex-shrink-0" />
-              Type <code className="text-blue-300 bg-blue-500/10 px-1 py-0.5 rounded">/</code> to pick a studio
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+            <LayoutGrid className="w-3.5 h-3.5 flex-shrink-0" />
+            Type <code className="text-blue-300 bg-blue-500/10 px-1 py-0.5 rounded">/</code> to pick a studio
+          </span>
           <div className="flex-1" />
           {report && !hasReportPane && (
             <button onClick={() => setReportOpen(true)}
@@ -1334,8 +1324,18 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               </button>
             </div>
           )}
-          {attachments.length > 0 && (
+          {(selectedSkillObj || attachments.length > 0) && (
             <div className="flex flex-wrap gap-2 mb-3">
+              {/* Selected studio: shown as a chip in the typing area, Claude-style */}
+              {selectedSkillObj && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/15 text-blue-300 text-[11px] font-semibold px-2.5 py-1">
+                  <LayoutGrid className="w-3 h-3" />
+                  <span className="max-w-[200px] truncate">{selectedSkillObj.name}</span>
+                  <button onClick={() => setSelectedSkill(null)} className="hover:text-white transition-colors" aria-label="Clear studio">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
               {attachments.map(a => (
                 <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
                   <Paperclip className="w-3 h-3" />
