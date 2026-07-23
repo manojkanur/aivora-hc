@@ -19,7 +19,6 @@ import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
 import { hcAiAdvisoryAPI, hcSkillsAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport, type AdvisorySkill, type AdvisoryRevisionRow } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
-import { JourneyTimeline } from '../components/journey/JourneyTimeline'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
@@ -1043,7 +1042,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         : planActive ? 'lg:grid-cols-[minmax(0,1fr)_320px]'
         : 'grid-cols-1')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
-      <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
         {/* Toolbar: active studio chip (set via /slash command) + report toggle */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[#161b28] flex-wrap">
           {selectedSkillObj ? (
@@ -1074,8 +1073,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           )}
         </div>
 
-        {/* Thread */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-5 py-5 space-y-5">
+        {/* Thread - content centered in a readable column, panel stays full-width */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto py-5">
+          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-5">
           {briefContent && <BriefingCard content={briefContent} />}
           {messages.length === 1 && !sending && (
             <div className="flex flex-wrap gap-2">
@@ -1173,10 +1173,12 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           {error && (
             <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs px-3 py-2">{error}</div>
           )}
+          </div>
         </div>
 
-        {/* Composer */}
-        <div className="border-t border-[#1e2433] bg-[#0f1117] px-4 sm:px-5 py-3.5">
+        {/* Composer - centered to match the thread column */}
+        <div className="border-t border-[#1e2433] bg-[#0f1117] py-3.5">
+          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
@@ -1255,6 +1257,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
+          </div>
         </div>
       </div>
 
@@ -1302,7 +1305,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
       {/* ─────────────────── RIGHT: live report canvas ─────────────────── */}
       {hasReportPane && (
-        <div className="flex flex-col h-[calc(100vh-11.5rem)] rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e2433] bg-[#0f1117]/95 backdrop-blur flex-wrap">
             <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -1831,18 +1834,16 @@ export default function AdvisorChat() {
   const orgLine = [...new Set([workspaceName, profile.organization_name, profile.industry].filter(Boolean))].join(' · ')
 
   return (
-    <div className="p-4 sm:p-5 max-w-7xl mx-auto space-y-4">
-      <JourneyTimeline current="advisor" workspaceId={workspaceId} />
-
-      {/* Slim profile strip */}
+    <div className="px-4 sm:px-6 pt-3 pb-4 space-y-3">
+      {/* Slim single-row header: identity + inline actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-blue-400" />
+          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-4.5 h-4.5 text-blue-400" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl font-bold text-white">Advisory Command Centre</h1>
+              <h1 className="text-lg font-bold text-white">Advisory Command Centre</h1>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-full px-2.5 py-0.5">
                 {profile.persona}
               </span>
