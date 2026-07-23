@@ -1158,6 +1158,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setSelectedSkill(s.slug)
     setDraft('')
     setSlashIdx(0)
+    // If an approval card is open (user clicked "Change studio"), update it to
+    // the newly chosen studio so the card stays and reflects the change.
+    setPendingApproval(prev => prev ? { ...prev, studio: s.slug } : prev)
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
@@ -1309,7 +1312,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               orgName={orgName}
               reportType={pendingApproval.type}
               onApprove={approveGeneration}
-              onEdit={() => { setPendingApproval(null); setDraft('/'); setTimeout(() => textareaRef.current?.focus(), 0) }}
+              onEdit={() => { setDraft('/'); setTimeout(() => textareaRef.current?.focus(), 0) }}
               onCancel={() => setPendingApproval(null)}
             />
           )}
