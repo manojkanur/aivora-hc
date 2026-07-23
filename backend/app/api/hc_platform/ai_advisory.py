@@ -365,7 +365,10 @@ Co-work plans:
 - When work is genuinely multi-step and the direction is agreed, propose a short PLAN: a title and 3-6 concrete steps. Work through it collaboratively across turns - one or two steps per reply, updating each step's status (pending, in_progress, done) as the conversation progresses.
 - The user sees the plan as a progress tracker in the panel beside the chat (not inside the conversation). Keep step titles short (max 8 words). EVERY step must carry a note: one line describing what that step covers or asks; once a step is done, replace its note with a one-line result summary.
 - WORK THE PLAN LIKE A CO-WORKER, step by step: after the user approves or engages with the plan, actively execute ONE step per turn - mark it in_progress, do the substantive work for that step in your reply (analysis, options, draft content), then mark it done with a one-line result note and ask whether to proceed to the next step or adjust. Never sit idle waiting for instructions while a plan is open.
-- If the user changes direction, update the plan (add, remove, rename steps) rather than abandoning it silently. When all steps are done, say so and summarise the outcome.
+- MANDATORY STATE ADVANCEMENT: while a plan is active, EVERY turn must move the plan forward in the "plan" JSON. Concretely: mark the step you just worked as "done" (with a one-line result note) and set the NEXT step to "in_progress". Never return a plan where the same step stays "in_progress" across two of your turns, and never leave every step at its old status. If you did the work for step N in this reply, step N must come back as "done" in this reply's plan. The user is watching a live progress tracker - it must tick up each turn.
+- This step-by-step rule OVERRIDES the "write the deliverable out fully" instinct WHILE A PLAN IS RUNNING. Do NOT dump the entire multi-section deliverable in one reply while steps remain pending - that leaves the tracker stuck. Produce only the current step's content, advance the status, and move on. Write the full combined document only at the end, via the report (set finalize), not inline.
+- When ALL steps are "done", say the plan is complete in one line and ask the closing question (summary vs detailed report). Do not keep a plan open after its work is finished.
+- If the user changes direction, update the plan (add, remove, rename steps) rather than abandoning it silently.
 - Simple questions do not need a plan. Never invent a plan for a one-off question.
 
 Closing the session:
@@ -1335,6 +1338,7 @@ class SessionSaveRequest(BaseModel):
     plan: dict[str, Any] | None = None
     selected_skill: str | None = None
     saved_draft_id: str | None = None
+    title: str | None = None
 
 
 class ReportSaveRequest(BaseModel):
@@ -1358,56 +1362,150 @@ async def _get_or_create_session(db: Any, tenant_id: uuid.UUID, workspace_id: uu
 
 def _session_dict(s) -> dict[str, Any]:
     return {
+        "id": str(s.id),
         "workspace_id": str(s.workspace_id),
+        "title": s.title,
         "messages": s.messages or [],
         "report_document": s.report_document,
         "report_kind": s.report_kind,
         "plan": s.plan,
         "selected_skill": s.selected_skill,
         "saved_draft_id": str(s.saved_draft_id) if s.saved_draft_id else None,
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
     }
 
 
-@router.get("/session/{workspace_id}")
-async def get_advisory_session(
-    workspace_id: uuid.UUID,
-    current_user: CurrentUser,
-    current_tenant: CurrentTenant,
-    db: DBDep,
-) -> dict[str, Any]:
-    """The persisted advisory session for a workspace (chat, report, plan, skill)."""
+def _thread_summary(s) -> dict[str, Any]:
+    """Lightweight metadata for the thread list (no full chat / report body)."""
+    return {
+        "id": str(s.id),
+        "title": s.title or "New chat",
+        "selected_skill": s.selected_skill,
+        "has_report": bool(s.report_document),
+        "report_kind": s.report_kind,
+        "message_count": len(s.messages or []),
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+    }
+
+
+async def _get_thread(db: Any, tenant_id: uuid.UUID, session_id: uuid.UUID):
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    return (
+        await db.execute(
+            select(AdvisorySession).where(
+                AdvisorySession.id == session_id,
+                AdvisorySession.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def _latest_or_new_thread(db: Any, tenant_id: uuid.UUID, workspace_id: uuid.UUID):
+    """Back-compat: the most recently updated thread for a workspace, or a fresh one."""
     from app.models.hc_platform.advisory_session import AdvisorySession
 
     row = (
         await db.execute(
-            select(AdvisorySession).where(
-                AdvisorySession.workspace_id == workspace_id,
-                AdvisorySession.tenant_id == current_tenant.id,
-            )
+            select(AdvisorySession)
+            .where(AdvisorySession.workspace_id == workspace_id, AdvisorySession.tenant_id == tenant_id)
+            .order_by(AdvisorySession.updated_at.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     if row is None:
-        return {"workspace_id": str(workspace_id), "messages": [], "report_document": None,
-                "report_kind": None, "plan": None, "selected_skill": None, "saved_draft_id": None}
-    return _session_dict(row)
+        row = AdvisorySession(tenant_id=tenant_id, workspace_id=workspace_id, messages=[])
+        db.add(row)
+        await db.flush()
+    return row
 
 
-@router.put("/session/{workspace_id}")
-async def save_advisory_session(
+# --- Thread list / create for a workspace ------------------------------------
+
+class ThreadCreateRequest(BaseModel):
+    title: str | None = None
+    selected_skill: str | None = None
+
+
+@router.get("/session/{workspace_id}/threads")
+async def list_advisory_threads(
     workspace_id: uuid.UUID,
-    payload: SessionSaveRequest,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> list[dict[str, Any]]:
+    """All advisory threads for a workspace (newest first)."""
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    rows = (
+        await db.execute(
+            select(AdvisorySession)
+            .where(AdvisorySession.workspace_id == workspace_id, AdvisorySession.tenant_id == current_tenant.id)
+            .order_by(AdvisorySession.updated_at.desc())
+        )
+    ).scalars().all()
+    return [_thread_summary(r) for r in rows]
+
+
+@router.post("/session/{workspace_id}/threads", status_code=status.HTTP_201_CREATED)
+async def create_advisory_thread(
+    workspace_id: uuid.UUID,
+    payload: ThreadCreateRequest,
     current_user: CurrentUser,
     current_tenant: CurrentTenant,
     db: DBDep,
 ) -> dict[str, Any]:
-    """Autosave chat / plan / selected skill for a workspace's advisory session."""
-    s = await _get_or_create_session(db, current_tenant.id, workspace_id)
+    """Start a fresh advisory thread (own chat, report and revisions) in a workspace."""
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    row = AdvisorySession(
+        tenant_id=current_tenant.id,
+        workspace_id=workspace_id,
+        messages=[],
+        title=(payload.title or "").strip()[:160] or None,
+        selected_skill=(payload.selected_skill or "").strip() or None,
+    )
+    db.add(row)
+    await db.flush()
+    return _session_dict(row)
+
+
+# --- A single thread by id ---------------------------------------------------
+
+@router.get("/thread/{session_id}")
+async def get_advisory_thread(
+    session_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is None:
+        raise HTTPException(404, "Thread not found")
+    return _session_dict(s)
+
+
+@router.put("/thread/{session_id}")
+async def save_advisory_thread(
+    session_id: uuid.UUID,
+    payload: "SessionSaveRequest",
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Autosave chat / plan / skill / title for one thread."""
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is None:
+        raise HTTPException(404, "Thread not found")
     if payload.messages is not None:
         s.messages = payload.messages[-200:]
     if payload.plan is not None:
         s.plan = payload.plan
     if payload.selected_skill is not None:
         s.selected_skill = payload.selected_skill.strip() or None
+    if payload.title is not None:
+        s.title = payload.title.strip()[:160] or None
     if payload.saved_draft_id is not None:
         try:
             s.saved_draft_id = uuid.UUID(payload.saved_draft_id)
@@ -1417,22 +1515,147 @@ async def save_advisory_session(
     return {"ok": True}
 
 
-@router.put("/session/{workspace_id}/report")
-async def save_advisory_report(
-    workspace_id: uuid.UUID,
-    payload: ReportSaveRequest,
+@router.put("/thread/{session_id}/report")
+async def save_advisory_thread_report(
+    session_id: uuid.UUID,
+    payload: "ReportSaveRequest",
     current_user: CurrentUser,
     current_tenant: CurrentTenant,
     db: DBDep,
 ) -> dict[str, Any]:
-    """Persist the current report document and snapshot a revision for the undo trail."""
+    """Persist the thread's report document and snapshot a revision."""
     from app.models.hc_platform.advisory_session import AdvisoryRevision
 
-    s = await _get_or_create_session(db, current_tenant.id, workspace_id)
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is None:
+        raise HTTPException(404, "Thread not found")
     s.report_document = payload.report_document
     s.report_kind = payload.report_kind
     await db.flush()
 
+    last = (
+        await db.execute(
+            select(AdvisoryRevision).where(AdvisoryRevision.session_id == s.id)
+            .order_by(AdvisoryRevision.version.desc()).limit(1)
+        )
+    ).scalar_one_or_none()
+    version = (last.version + 1) if last else 1
+    db.add(AdvisoryRevision(
+        session_id=s.id, version=version, report_kind=payload.report_kind,
+        report_document=payload.report_document, note=(payload.note or "")[:400],
+    ))
+    await db.flush()
+    return {"ok": True, "version": version}
+
+
+@router.get("/thread/{session_id}/revisions")
+async def list_advisory_thread_revisions(
+    session_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> list[dict[str, Any]]:
+    from app.models.hc_platform.advisory_session import AdvisoryRevision
+
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is None:
+        return []
+    rows = (
+        await db.execute(
+            select(AdvisoryRevision).where(AdvisoryRevision.session_id == s.id)
+            .order_by(AdvisoryRevision.version.desc())
+        )
+    ).scalars().all()
+    return [
+        {"version": r.version, "report_kind": r.report_kind, "note": r.note,
+         "created_at": r.created_at.isoformat() if r.created_at else None,
+         "report_document": r.report_document}
+        for r in rows
+    ]
+
+
+@router.delete("/thread/{session_id}")
+async def delete_advisory_thread(
+    session_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is not None:
+        await db.delete(s)  # revisions cascade via FK ondelete
+        await db.flush()
+    return {"ok": True}
+
+
+# --- Back-compat: workspace-scoped endpoints operate on the latest thread ----
+
+@router.get("/session/{workspace_id}")
+async def get_advisory_session(
+    workspace_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """The most recent advisory thread for a workspace (back-compat)."""
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    row = (
+        await db.execute(
+            select(AdvisorySession)
+            .where(AdvisorySession.workspace_id == workspace_id, AdvisorySession.tenant_id == current_tenant.id)
+            .order_by(AdvisorySession.updated_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return {"id": None, "workspace_id": str(workspace_id), "title": None, "messages": [],
+                "report_document": None, "report_kind": None, "plan": None,
+                "selected_skill": None, "saved_draft_id": None, "updated_at": None}
+    return _session_dict(row)
+
+
+@router.put("/session/{workspace_id}")
+async def save_advisory_session(
+    workspace_id: uuid.UUID,
+    payload: "SessionSaveRequest",
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Autosave the latest thread for a workspace (back-compat)."""
+    s = await _latest_or_new_thread(db, current_tenant.id, workspace_id)
+    if payload.messages is not None:
+        s.messages = payload.messages[-200:]
+    if payload.plan is not None:
+        s.plan = payload.plan
+    if payload.selected_skill is not None:
+        s.selected_skill = payload.selected_skill.strip() or None
+    if payload.title is not None:
+        s.title = payload.title.strip()[:160] or None
+    if payload.saved_draft_id is not None:
+        try:
+            s.saved_draft_id = uuid.UUID(payload.saved_draft_id)
+        except (ValueError, TypeError):
+            s.saved_draft_id = None
+    await db.flush()
+    return {"ok": True, "id": str(s.id)}
+
+
+@router.put("/session/{workspace_id}/report")
+async def save_advisory_report(
+    workspace_id: uuid.UUID,
+    payload: "ReportSaveRequest",
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    from app.models.hc_platform.advisory_session import AdvisoryRevision
+
+    s = await _latest_or_new_thread(db, current_tenant.id, workspace_id)
+    s.report_document = payload.report_document
+    s.report_kind = payload.report_kind
+    await db.flush()
     last = (
         await db.execute(
             select(AdvisoryRevision).where(AdvisoryRevision.session_id == s.id)
@@ -1455,15 +1678,13 @@ async def list_advisory_revisions(
     current_tenant: CurrentTenant,
     db: DBDep,
 ) -> list[dict[str, Any]]:
-    """The report revision trail for a workspace (newest first)."""
     from app.models.hc_platform.advisory_session import AdvisorySession, AdvisoryRevision
 
     s = (
         await db.execute(
-            select(AdvisorySession).where(
-                AdvisorySession.workspace_id == workspace_id,
-                AdvisorySession.tenant_id == current_tenant.id,
-            )
+            select(AdvisorySession)
+            .where(AdvisorySession.workspace_id == workspace_id, AdvisorySession.tenant_id == current_tenant.id)
+            .order_by(AdvisorySession.updated_at.desc()).limit(1)
         )
     ).scalar_one_or_none()
     if s is None:
@@ -1489,15 +1710,14 @@ async def clear_advisory_session(
     current_tenant: CurrentTenant,
     db: DBDep,
 ) -> dict[str, Any]:
-    """Reset the conversation (keeps revisions for history)."""
+    """Reset the latest thread's conversation (keeps revisions)."""
     from app.models.hc_platform.advisory_session import AdvisorySession
 
     s = (
         await db.execute(
-            select(AdvisorySession).where(
-                AdvisorySession.workspace_id == workspace_id,
-                AdvisorySession.tenant_id == current_tenant.id,
-            )
+            select(AdvisorySession)
+            .where(AdvisorySession.workspace_id == workspace_id, AdvisorySession.tenant_id == current_tenant.id)
+            .order_by(AdvisorySession.updated_at.desc()).limit(1)
         )
     ).scalar_one_or_none()
     if s is not None:

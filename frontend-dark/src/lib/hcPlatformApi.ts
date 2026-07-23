@@ -1326,7 +1326,31 @@ export const hcAiAdvisoryAPI = {
     `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 240000 },
   ),
 
-  // --- Server-side session persistence (chat + report + revision trail) ------
+  // --- Threads: many advisory chats per workspace ---------------------------
+  listThreads: (workspaceId: string) =>
+    get<AdvisoryThreadSummary[]>(`${HC_BASE}/ai-advisory/session/${workspaceId}/threads`),
+  createThread: (workspaceId: string, body?: { title?: string | null; selected_skill?: string | null }) =>
+    post<AdvisorySessionState>(`${HC_BASE}/ai-advisory/session/${workspaceId}/threads`, body ?? {}),
+  getThread: (sessionId: string) =>
+    get<AdvisorySessionState>(`${HC_BASE}/ai-advisory/thread/${sessionId}`),
+  saveThread: (sessionId: string, body: {
+    messages?: Array<{ role: string; content: string; id?: string; plan?: ChatPlan | null }>
+    plan?: ChatPlan | null
+    selected_skill?: string | null
+    saved_draft_id?: string | null
+    title?: string | null
+  }) => put<{ ok: boolean }>(`${HC_BASE}/ai-advisory/thread/${sessionId}`, body),
+  saveThreadReport: (sessionId: string, body: {
+    report_document: Record<string, unknown>
+    report_kind?: 'detailed' | 'summary'
+    note?: string | null
+  }) => put<{ ok: boolean; version: number }>(`${HC_BASE}/ai-advisory/thread/${sessionId}/report`, body),
+  listThreadRevisions: (sessionId: string) =>
+    get<AdvisoryRevisionRow[]>(`${HC_BASE}/ai-advisory/thread/${sessionId}/revisions`),
+  deleteThread: (sessionId: string) =>
+    del<void>(`${HC_BASE}/ai-advisory/thread/${sessionId}`),
+
+  // --- Back-compat session (latest thread) -----------------------------------
   getSession: (workspaceId: string) =>
     get<AdvisorySessionState>(`${HC_BASE}/ai-advisory/session/${workspaceId}`),
   saveSession: (workspaceId: string, body: {
@@ -1347,13 +1371,27 @@ export const hcAiAdvisoryAPI = {
 }
 
 export interface AdvisorySessionState {
+  id: string | null
   workspace_id: string
+  title: string | null
   messages: Array<{ role: 'user' | 'assistant'; content: string; id?: string; plan?: ChatPlan | null }>
   report_document: Record<string, unknown> | null
   report_kind: 'detailed' | 'summary' | null
   plan: ChatPlan | null
   selected_skill: string | null
   saved_draft_id: string | null
+  updated_at?: string | null
+}
+
+export interface AdvisoryThreadSummary {
+  id: string
+  title: string
+  selected_skill: string | null
+  has_report: boolean
+  report_kind: 'detailed' | 'summary' | null
+  message_count: number
+  updated_at: string | null
+  created_at: string | null
 }
 
 export interface AdvisoryRevisionRow {

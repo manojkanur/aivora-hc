@@ -646,6 +646,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [briefLoaded, setBriefLoaded] = useState(false)
   const [sessionLoaded, setSessionLoaded] = useState(false)
 
+  // Threads: many advisory chats per workspace. sessionId is the active thread.
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [threads, setThreads] = useState<import('../lib/hcPlatformApi').AdvisoryThreadSummary[]>([])
+  const [threadsOpen, setThreadsOpen] = useState(false)
+
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const [prefs, setPrefs] = useState<ChatPrefs>(() => loadPrefs(workspaceId))
@@ -691,37 +696,63 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     return () => { cancelled = true }
   }, [workspaceId])
 
-  // ── Hydrate the persisted session (chat, plan, report, skill) from the server ──
+  // Apply a loaded thread's state into the panel.
+  const applyThreadState = (s: import('../lib/hcPlatformApi').AdvisorySessionState) => {
+    setSessionId(s.id)
+    setMessages(Array.isArray(s.messages) && s.messages.length > 0
+      ? s.messages.map((m, i) => ({ role: m.role, content: m.content, id: m.id ?? `h-${i}`, plan: m.plan ?? undefined }))
+      : [])
+    openedRef.current = Array.isArray(s.messages) && s.messages.length > 0
+    setPlan(s.plan ?? null)
+    setSelectedSkill(s.selected_skill ?? null)
+    setSavedDraftId(s.saved_draft_id ?? null)
+    if (s.report_document) {
+      if (s.report_kind === 'summary') {
+        const sr = (s.report_document as { summary_report?: SummaryReport }).summary_report ?? (s.report_document as unknown as SummaryReport)
+        setReport({ kind: 'summary', summary: sr })
+      } else {
+        setReport({ kind: 'detailed', document: s.report_document as unknown as StudioOutputDocument })
+      }
+      setReportOpen(true)
+    } else {
+      setReport(null)
+      setReportOpen(false)
+    }
+  }
+
+  const refreshThreads = async () => {
+    try {
+      const res = await hcAiAdvisoryAPI.listThreads(workspaceId)
+      setThreads(Array.isArray(res.data) ? res.data : [])
+    } catch { /* ignore */ }
+  }
+
+  // ── Hydrate: list threads, load the most recent (or create one) ──
   useEffect(() => {
     let cancelled = false
-    hcAiAdvisoryAPI.getSession(workspaceId).then(res => {
+    hcAiAdvisoryAPI.listThreads(workspaceId).then(async res => {
       if (cancelled) return
-      const s = res.data
-      if (Array.isArray(s.messages) && s.messages.length > 0) {
-        setMessages(s.messages.map((m, i) => ({ role: m.role, content: m.content, id: m.id ?? `h-${i}`, plan: m.plan ?? undefined })))
-        openedRef.current = true
+      const list = Array.isArray(res.data) ? res.data : []
+      setThreads(list)
+      if (list.length > 0) {
+        const full = await hcAiAdvisoryAPI.getThread(list[0].id)
+        if (!cancelled) applyThreadState(full.data)
+      } else {
+        const created = await hcAiAdvisoryAPI.createThread(workspaceId, {})
+        if (!cancelled) { applyThreadState(created.data); setThreads([{
+          id: created.data.id!, title: created.data.title ?? 'New chat', selected_skill: null,
+          has_report: false, report_kind: null, message_count: 0,
+          updated_at: created.data.updated_at ?? null, created_at: null }]) }
       }
-      if (s.plan) setPlan(s.plan)
-      if (s.selected_skill) setSelectedSkill(s.selected_skill)
-      if (s.saved_draft_id) setSavedDraftId(s.saved_draft_id)
-      if (s.report_document) {
-        if (s.report_kind === 'summary') {
-          const sr = (s.report_document as { summary_report?: SummaryReport }).summary_report ?? (s.report_document as unknown as SummaryReport)
-          setReport({ kind: 'summary', summary: sr })
-        } else {
-          setReport({ kind: 'detailed', document: s.report_document as unknown as StudioOutputDocument })
-        }
-        setReportOpen(true)
-      }
-    }).catch(() => { /* fresh session */ }).finally(() => { if (!cancelled) { setSessionLoaded(true); hydratedRef.current = true } })
+    }).catch(() => { /* fresh */ }).finally(() => { if (!cancelled) { setSessionLoaded(true); hydratedRef.current = true } })
     return () => { cancelled = true }
   }, [workspaceId])
 
-  // ── Autosave chat / plan / skill to the server (debounced) ──
+  // ── Autosave the active thread (debounced) ──
   useEffect(() => {
-    if (!hydratedRef.current) return
+    if (!hydratedRef.current || !sessionId) return
     const t = setTimeout(() => {
-      void hcAiAdvisoryAPI.saveSession(workspaceId, {
+      void hcAiAdvisoryAPI.saveThread(sessionId, {
         messages: messages.map(m => ({ role: m.role, content: m.content, id: m.id, plan: m.plan ?? null })),
         plan,
         selected_skill: selectedSkill,
@@ -729,7 +760,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       }).catch(() => { /* best-effort */ })
     }, 900)
     return () => clearTimeout(t)
-  }, [workspaceId, messages, plan, selectedSkill, savedDraftId])
+  }, [sessionId, messages, plan, selectedSkill, savedDraftId])
 
   // ── Fresh session: the advisor opens the conversation itself ──
   useEffect(() => {
@@ -746,7 +777,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       setMessages(prev => prev.length === 0 ? [{ role: 'assistant', content: res.data.reply, id: `a-${Date.now()}` }] : prev)
     }).catch(() => { /* fall back to static empty state */ }).finally(() => { setSending(false); setTimeout(() => textareaRef.current?.focus(), 0) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId, briefLoaded, sessionLoaded])
+  }, [workspaceId, briefLoaded, sessionLoaded, sessionId])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -798,9 +829,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       const docForSave = nextReport.kind === 'detailed'
         ? (nextReport.document as unknown as Record<string, unknown>)
         : ({ studio_id: 'ai_advisory:executive_summary', title: nextReport.summary.title, subtitle: nextReport.summary.subtitle ?? '', summary_report: nextReport.summary } as Record<string, unknown>)
-      void hcAiAdvisoryAPI.saveReport(workspaceId, {
-        report_document: docForSave, report_kind: type, note: note ?? 'Generated from the advisory session',
-      }).then(() => { void refreshRevisions() }).catch(() => { /* best-effort */ })
+      if (sessionId) {
+        void hcAiAdvisoryAPI.saveThreadReport(sessionId, {
+          report_document: docForSave, report_kind: type, note: note ?? 'Generated from the advisory session',
+        }).then(() => { void refreshRevisions(); void refreshThreads() }).catch(() => { /* best-effort */ })
+      }
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(typeof detail === 'string' ? detail : 'Could not generate the report. Try again.')
@@ -810,8 +843,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   const refreshRevisions = async () => {
+    if (!sessionId) return
     try {
-      const res = await hcAiAdvisoryAPI.listRevisions(workspaceId)
+      const res = await hcAiAdvisoryAPI.listThreadRevisions(sessionId)
       setRevisions(Array.isArray(res.data) ? res.data : [])
     } catch { /* ignore */ }
   }
@@ -976,13 +1010,59 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     }
   }
 
+  const resetLocalThreadState = () => {
+    setMessages([])
+    setAttachments([])
+    setPlan(null)
+    setReport(null)
+    setReportOpen(false)
+    setRevisions([])
+    setSavedDraftId(null)
+    setSelectedSkill(null)
+    setPendingApproval(null)
+    setThreadsOpen(false)
+    openedRef.current = false
+  }
+
+  const newThread = async () => {
+    try {
+      const res = await hcAiAdvisoryAPI.createThread(workspaceId, {})
+      resetLocalThreadState()
+      applyThreadState(res.data)
+      await refreshThreads()
+    } catch { setError('Could not start a new chat. Try again.') }
+  }
+
+  const switchThread = async (id: string) => {
+    if (id === sessionId) { setThreadsOpen(false); return }
+    setThreadsOpen(false)
+    try {
+      const res = await hcAiAdvisoryAPI.getThread(id)
+      resetLocalThreadState()
+      applyThreadState(res.data)
+    } catch { setError('Could not open that chat. Try again.') }
+  }
+
+  const deleteThread = async (id: string) => {
+    try {
+      await hcAiAdvisoryAPI.deleteThread(id)
+      const remaining = threads.filter(t => t.id !== id)
+      setThreads(remaining)
+      if (id === sessionId) {
+        if (remaining.length > 0) { await switchThread(remaining[0].id) }
+        else { await newThread() }
+      }
+    } catch { setError('Could not delete that chat. Try again.') }
+  }
+
+  // "Clear" now resets the CURRENT thread's conversation (keeps the thread + its report history).
   const clear = () => {
     setMessages([])
     setAttachments([])
     setPlan(null)
     setPendingApproval(null)
     openedRef.current = false
-    void hcAiAdvisoryAPI.clearSession(workspaceId).catch(() => { /* ignore */ })
+    if (sessionId) void hcAiAdvisoryAPI.saveThread(sessionId, { messages: [], plan: null }).catch(() => { /* ignore */ })
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1026,7 +1106,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const slashMatch = /^\/([\w-]*)$/.exec(draft)
   const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : null
   const slashResults = slashQuery !== null
-    ? skills.filter(s => s.slug.toLowerCase().includes(slashQuery) || s.name.toLowerCase().includes(slashQuery)).slice(0, 8)
+    ? skills.filter(s => s.slug.toLowerCase().includes(slashQuery) || s.name.toLowerCase().includes(slashQuery))
     : []
   const slashOpen = slashQuery !== null && slashResults.length > 0
   const pickStudioSlash = (s: AdvisorySkill) => {
@@ -1044,8 +1124,52 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         : 'grid-cols-1 max-w-4xl mx-auto')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
       <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden w-full">
-        {/* Toolbar: active studio chip (set via /slash command) + report toggle */}
+        {/* Toolbar: threads + active studio chip (set via /slash command) + report toggle */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[#161b28] flex-wrap">
+          {/* Thread switcher */}
+          <div className="relative">
+            <button onClick={() => { setThreadsOpen(o => !o); if (!threadsOpen) void refreshThreads() }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 transition-colors max-w-[220px]">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+              <span className="truncate">{threads.find(t => t.id === sessionId)?.title || 'Chat'}</span>
+              <ChevronDown className="w-3 h-3 text-slate-500 flex-shrink-0" />
+            </button>
+            {threadsOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setThreadsOpen(false)} />
+                <div className="absolute left-0 top-full mt-1.5 z-40 w-72 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
+                  <button onClick={newThread}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-[#161b28] hover:bg-white/5 transition-colors">
+                    <Plus className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-xs font-semibold text-white">New chat</span>
+                  </button>
+                  <div className="max-h-72 overflow-y-auto">
+                    {threads.map(t => (
+                      <div key={t.id} className={cn('group flex items-center gap-2 px-3 py-2 transition-colors',
+                        t.id === sessionId ? 'bg-blue-600/10' : 'hover:bg-white/5')}>
+                        <button onClick={() => switchThread(t.id)} className="min-w-0 flex-1 text-left">
+                          <span className="block text-xs font-medium text-white truncate">{t.title || 'New chat'}</span>
+                          <span className="block text-[10px] text-slate-500 truncate">
+                            {t.has_report ? `${t.report_kind ?? 'report'} · ` : ''}{t.message_count} messages
+                          </span>
+                        </button>
+                        {threads.length > 1 && (
+                          <button onClick={() => deleteThread(t.id)} title="Delete chat"
+                            className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all flex-shrink-0">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <button onClick={newThread} title="New chat"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+            <Plus className="w-3.5 h-3.5" />
+          </button>
           {selectedSkillObj ? (
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-300 max-w-[60%]">
               <LayoutGrid className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1179,7 +1303,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
         {/* Composer */}
         <div className="border-t border-[#1e2433] bg-[#0f1117] py-3.5">
-          <div className="w-full px-4 sm:px-6">
+          <div className="w-full px-4 sm:px-6 relative">
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
@@ -1207,11 +1331,15 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               ))}
             </div>
           )}
-          {/* Slash-command studio menu */}
+          {/* Slash-command studio menu - floats ABOVE the composer so the full
+              list (all 27) is reachable and scrollable, never clipped. */}
           {slashOpen && (
-            <div className="mb-2 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
-              <div className="px-3 py-1.5 border-b border-[#161b28] text-[10px] uppercase tracking-widest font-bold text-slate-600">Studios · pick one to shape the report</div>
-              <div className="max-h-64 overflow-y-auto">
+            <div className="absolute bottom-full left-0 right-0 mb-2 z-40 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#161b28]">
+                <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">Studios · pick one to shape the report</span>
+                <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{slashResults.length}</span>
+              </div>
+              <div className="max-h-[min(60vh,26rem)] overflow-y-auto overscroll-contain">
                 {slashResults.map((s, i) => (
                   <button key={s.slug} onMouseEnter={() => setSlashIdx(i)} onClick={() => pickStudioSlash(s)}
                     className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',

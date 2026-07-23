@@ -20,9 +20,11 @@ class AdvisorySession(UUIDBase):
     __tablename__ = "advisory_sessions"
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    # One session per workspace (unique) - the advisory is workspace-scoped.
-    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True, index=True)
+    # A workspace can hold MANY advisory threads (one chat + report each), so this
+    # is indexed but NOT unique - the user runs a separate thread per studio report.
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
 
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)  # thread label (e.g. "Talent Mobility report")
     messages: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)      # full chat transcript
     report_document: Mapped[dict | None] = mapped_column(JSONB, nullable=True)        # current StudioOutputDocument (or summary)
     report_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)        # 'detailed' | 'summary'
