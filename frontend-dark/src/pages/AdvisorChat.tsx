@@ -1216,10 +1216,6 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-300 hover:text-white transition-colors flex-shrink-0">
             <Plus className="w-3.5 h-3.5" />
           </button>
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
-            <LayoutGrid className="w-3.5 h-3.5 flex-shrink-0" />
-            Type <code className="text-blue-300 bg-blue-500/10 px-1 py-0.5 rounded">/</code> to pick a studio
-          </span>
           <div className="flex-1" />
           {report && !hasReportPane && (
             <button onClick={() => setReportOpen(true)}
