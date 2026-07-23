@@ -13,6 +13,7 @@ type Step = 'compose' | 'preview'
 
 const FORMAT_TABS: { id: LinkedInFormat; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
   { id: 'single',   label: 'Infographic',  icon: ImageIcon, hint: 'One branded card with headline, bullets and a stat' },
+  { id: 'hero',     label: 'Hero image',   icon: Sparkles,  hint: 'AI-generated photorealistic hero visual (10-30s)' },
   { id: 'carousel', label: 'Carousel',     icon: Layers,    hint: '5-slide storyboard, one idea per slide' },
   { id: 'text',     label: 'Text only',    icon: Type,      hint: 'Long-form copy, no attached image' },
 ]
@@ -276,9 +277,12 @@ function ComposeStep({
           )}
         >
           {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {generating ? 'Generating…' : 'Generate draft'}
+          {generating ? (format === 'hero' ? 'Painting hero image…' : 'Generating…') : 'Generate draft'}
         </button>
       </div>
+      {generating && format === 'hero' && (
+        <p className="text-[11px] text-slate-500 text-right -mt-1">This can take 10-30 seconds. If the image model is unavailable, a branded card is used instead.</p>
+      )}
     </div>
   )
 }

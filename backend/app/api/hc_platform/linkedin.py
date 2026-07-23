@@ -142,12 +142,12 @@ class PromptShareIn(BaseModel):
 
 class GenerateIn(BaseModel):
     prompt: str = Field(..., min_length=3, max_length=2000)
-    format: Literal["single", "carousel", "text"] = "single"
+    format: Literal["single", "carousel", "text", "hero"] = "single"
 
 
 class GenerateOut(BaseModel):
     caption: str
-    format: Literal["single", "carousel", "text"]
+    format: Literal["single", "carousel", "text", "hero"]
     images_base64: list[str] = Field(default_factory=list)
 
 
@@ -1011,6 +1011,86 @@ async def _generate_single(prompt: str) -> tuple[str, list[bytes]]:
         return fallback_caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
 
 
+async def _generate_hero(prompt: str) -> tuple[str, list[bytes]]:
+    """Generate a photorealistic HERO image with gpt-image-1.
+
+    Drafts a LinkedIn caption + a clean image prompt from the user's input, then
+    asks gpt-image-1 for a text-free, photorealistic HC-advisory hero visual.
+    Falls back to the Pillow infographic if the key is missing or the image
+    model fails, so this never 500s.
+    """
+    from app.config import settings
+    from app.services.ai_orchestrator import _get_client
+    import json
+
+    fallback_head = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
+    fallback_sub = "Aivora HC advisory · human capital, elevated."
+    fallback_caption = prompt.strip()
+
+    def _fallback() -> tuple[str, list[bytes]]:
+        return fallback_caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
+
+    if not settings.OPENAI_API_KEY:
+        return _fallback()
+
+    # 1) Draft caption + a clean, text-free image prompt.
+    caption = fallback_caption
+    image_prompt = (
+        "A cinematic, photorealistic corporate scene evoking modern human capital "
+        "advisory: diverse professionals collaborating in a bright, premium office, "
+        "soft natural light, shallow depth of field, blue accent tones."
+    )
+    try:
+        client = _get_client()
+        sys = (
+            "You are Aivora HC's creative director. Return STRICT JSON with keys: "
+            "caption (string, 400-900 chars, 2-4 short paragraphs, at most 3 focused "
+            "hashtags at the end, no em-dashes, plain hyphens only); "
+            "image_prompt (a single vivid paragraph, max 480 chars, describing a "
+            "PHOTOREALISTIC, editorial hero photograph for this topic. Absolutely NO "
+            "text, words, letters, logos, charts, or UI in the image. Describe scene, "
+            "subjects, lighting, mood, composition and a restrained blue-accent palette "
+            "fitting a premium human-capital advisory brand)."
+        )
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": sys},
+                      {"role": "user", "content": f"Topic:\n\n{prompt.strip()}"}],
+            temperature=0.6,
+            max_tokens=900,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        caption = _clean(data.get("caption") or "") or fallback_caption
+        ip = _clean(data.get("image_prompt") or "")
+        if ip:
+            image_prompt = ip
+    except Exception:
+        pass  # keep defaults; still try the image below
+
+    # 2) Generate the hero image with gpt-image-1.
+    try:
+        client = _get_client()
+        full_prompt = (
+            image_prompt
+            + " Editorial photograph, ultra-detailed, natural light, shallow depth of field. "
+            "No text, no words, no letters, no logos, no charts, no graphs, no UI elements."
+        )
+        img_resp = await client.images.generate(
+            model="gpt-image-1",
+            prompt=full_prompt[:900],
+            size="1024x1024",
+            n=1,
+        )
+        b64 = img_resp.data[0].b64_json if img_resp.data else None
+        if not b64:
+            return caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
+        return caption, [base64.b64decode(b64)]
+    except Exception:
+        # Image model unavailable / errored: keep the good caption, fall back to card.
+        return caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
+
+
 async def _generate_carousel(prompt: str, slide_count: int = 5) -> tuple[str, list[bytes]]:
     from app.config import settings
     from app.services.ai_orchestrator import _get_client
@@ -1172,6 +1252,8 @@ async def linkedin_generate(payload: GenerateIn, _current_user: AdminUser) -> Ge
         caption, images = await _generate_single(payload.prompt)
     elif payload.format == "carousel":
         caption, images = await _generate_carousel(payload.prompt)
+    elif payload.format == "hero":
+        caption, images = await _generate_hero(payload.prompt)
     else:
         caption, images = await _generate_text_only(payload.prompt)
 

@@ -259,7 +259,7 @@ export interface LinkedInPromptRequest {
   visibility?: 'PUBLIC' | 'CONNECTIONS'
 }
 
-export type LinkedInFormat = 'single' | 'carousel' | 'text'
+export type LinkedInFormat = 'single' | 'carousel' | 'text' | 'hero'
 
 export interface LinkedInGenerateRequest {
   prompt: string
@@ -292,7 +292,8 @@ export const linkedinAPI = {
   sharePrompt: (body: LinkedInPromptRequest) =>
     api.post<LinkedInShareResponse & { caption?: string }>('/hc-platform/linkedin/share-prompt', body),
   generate: (body: LinkedInGenerateRequest) =>
-    api.post<LinkedInGenerateResponse>('/hc-platform/linkedin/generate', body),
+    // Hero uses gpt-image-1 which can take 20-40s; give generation a generous budget.
+    api.post<LinkedInGenerateResponse>('/hc-platform/linkedin/generate', body, { timeout: 120000 }),
   publish: (body: LinkedInPublishRequest) =>
     api.post<LinkedInShareResponse & { caption?: string }>('/hc-platform/linkedin/publish', body),
 }
