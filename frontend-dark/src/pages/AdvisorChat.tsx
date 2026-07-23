@@ -748,15 +748,31 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     return () => { cancelled = true }
   }, [workspaceId])
 
-  // ── Autosave the active thread (debounced) ──
+  // ── Autosave the active thread (debounced), auto-titling from the first ask ──
   useEffect(() => {
     if (!hydratedRef.current || !sessionId) return
     const t = setTimeout(() => {
+      // Derive a thread title once, from the first user message (or the studio).
+      const current = threads.find(t => t.id === sessionId)
+      const hasTitle = !!current?.title && current.title !== 'New chat'
+      let titlePatch: string | undefined
+      if (!hasTitle) {
+        const firstUser = messages.find(m => m.role === 'user')?.content?.trim()
+        const derived = firstUser
+          ? firstUser.replace(/\s+/g, ' ').slice(0, 60)
+          : (selectedSkill ? (skills.find(s => s.slug === selectedSkill)?.name ?? '') : '')
+        if (derived) titlePatch = derived
+      }
       void hcAiAdvisoryAPI.saveThread(sessionId, {
         messages: messages.map(m => ({ role: m.role, content: m.content, id: m.id, plan: m.plan ?? null })),
         plan,
         selected_skill: selectedSkill,
         saved_draft_id: savedDraftId,
+        ...(titlePatch ? { title: titlePatch } : {}),
+      }).then(() => {
+        if (titlePatch) {
+          setThreads(prev => prev.map(t => t.id === sessionId ? { ...t, title: titlePatch! } : t))
+        }
       }).catch(() => { /* best-effort */ })
     }, 900)
     return () => clearTimeout(t)
