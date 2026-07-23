@@ -888,11 +888,23 @@ def _context_block(ctx: "ChatContext | None") -> str:
         parts.append(f"Current page: {ctx.path}")
     if ctx.workspace_name:
         parts.append(f"Active workspace: {ctx.workspace_name}")
+    selected = None
     if ctx.studio_name or ctx.studio_id:
-        parts.append(f"Currently viewing Studio: {ctx.studio_name or ctx.studio_id}")
+        selected = ctx.studio_name or ctx.studio_id
+        parts.append(f"SELECTED STUDIO: {selected}")
     if not parts:
         return ""
-    return "Where the user is right now:\n" + "\n".join(f"- {p}" for p in parts)
+    block = "Where the user is right now:\n" + "\n".join(f"- {p}" for p in parts)
+    if selected:
+        slug = (ctx.studio_id or "").replace("ai_advisory:", "")
+        block += (
+            f"\n\nSTUDIO LOCK (overrides the conversation topic): the user has explicitly selected the "
+            f"'{selected}' studio. If they ask you to generate/create a report or deliverable, it MUST be a "
+            f"'{selected}' report - set studio to '{slug or selected}' and frame the reply and title around "
+            f"'{selected}', NOT around whatever studio was discussed earlier in this chat. Do not drift back "
+            f"to a previous studio just because the earlier conversation was about it."
+        )
+    return block
 
 
 def _profile_block(profile: "AdvisoryProfile | None") -> str:

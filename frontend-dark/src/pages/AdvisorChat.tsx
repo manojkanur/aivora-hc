@@ -630,6 +630,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   })
   const [plan, setPlan] = useState<ChatPlan | null>(null)
   const [report, setReport] = useState<SessionReport | null>(null)
+  const [reportStudio, setReportStudio] = useState<string | null>(null)  // studio that produced the current report
   const [finalizing, setFinalizing] = useState<'summary' | 'detailed' | null>(null)
   const [pendingApproval, setPendingApproval] = useState<{ type: 'summary' | 'detailed'; studio: string | null } | null>(null)
 
@@ -818,15 +819,20 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   ) => {
     const msgs = history ?? messages
     if (finalizing || msgs.length === 0) return
+    const targetStudio = selectedSkill ?? studioSlug ?? null
+    // Only treat this as a REVISION of the current report when it is the SAME
+    // studio. If the user switched studios, generate a FRESH report (do not pass
+    // the old report as the base, or it will keep the old studio's framing).
+    const isSameStudio = !!report && reportStudio === targetStudio
     setError(null)
     setFinalizing(type)
     setReportOpen(true)
     try {
       const res = await hcAiAdvisoryAPI.finalizeReport({
-        studio: selectedSkill ?? studioSlug ?? null,
+        studio: targetStudio,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
-        report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
+        report_state: isSameStudio ? ((report!.kind === 'detailed' ? report!.document : report!.summary) as unknown as Record<string, unknown>) : undefined,
         plan_state: planOverride !== undefined ? planOverride : plan,
         brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
         client_profile: (getProfileFor(workspaceId) as unknown as Record<string, unknown>) ?? null,
@@ -843,6 +849,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       }
       if (!nextReport) { setError('The report came back empty. Try again.'); return }
       setReport(nextReport)
+      setReportStudio(targetStudio)  // remember which studio produced this report
       // Persist the report + snapshot a revision.
       const docForSave = nextReport.kind === 'detailed'
         ? (nextReport.document as unknown as Record<string, unknown>)
