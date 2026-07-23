@@ -6,7 +6,7 @@ interface CreditsState {
   plan: string
   isLoading: boolean
   lastFetched: number | null
-  fetchBalance: () => Promise<void>
+  fetchBalance: (force?: boolean) => Promise<void>
   deductOptimistic: (amount: number) => void
   refundOptimistic: (amount: number) => void
   setBalance: (balance: number) => void
@@ -18,10 +18,10 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
   isLoading: false,
   lastFetched: null,
 
-  fetchBalance: async () => {
+  fetchBalance: async (force = false) => {
     const { lastFetched } = get()
-    // Cache for 60 seconds
-    if (lastFetched && Date.now() - lastFetched < 60000) return
+    // Cache for 20 seconds unless a force refresh is requested (after an action).
+    if (!force && lastFetched && Date.now() - lastFetched < 20000) return
 
     set({ isLoading: true })
     try {

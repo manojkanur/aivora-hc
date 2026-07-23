@@ -1,12 +1,24 @@
 import { Coins } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCreditsStore } from '../../store/credits'
 import { cn } from '../../lib/utils'
 import { CreditTopupModal } from './CreditTopupModal'
 
 export function CreditMeter() {
-  const { balance, isLoading } = useCreditsStore()
+  const { balance, isLoading, fetchBalance } = useCreditsStore()
   const [topupOpen, setTopupOpen] = useState(false)
+
+  // Load the balance on mount and poll periodically so the meter stays current.
+  useEffect(() => {
+    void fetchBalance()
+    const t = setInterval(() => void fetchBalance(true), 30000)
+    return () => clearInterval(t)
+  }, [fetchBalance])
+
+  // When the top-up modal closes, force a refresh (in case a purchase completed).
+  useEffect(() => {
+    if (!topupOpen) void fetchBalance(true)
+  }, [topupOpen, fetchBalance])
 
   const isEmpty = balance === 0
   const isLow = balance > 0 && balance < 20

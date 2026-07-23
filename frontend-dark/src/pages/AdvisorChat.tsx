@@ -19,6 +19,7 @@ import type { AnswerValue, Question } from '../lib/advisory/types'
 import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
 import { hcAiAdvisoryAPI, hcSkillsAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport, type AdvisorySkill, type AdvisoryRevisionRow } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
+import { useCreditsStore } from '../store/credits'
 import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
@@ -850,6 +851,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       if (!nextReport) { setError('The report came back empty. Try again.'); return }
       setReport(nextReport)
       setReportStudio(targetStudio)  // remember which studio produced this report
+      void useCreditsStore.getState().fetchBalance(true)  // a report spent credits; refresh the meter
       // Persist the report + snapshot a revision.
       const docForSave = nextReport.kind === 'detailed'
         ? (nextReport.document as unknown as Record<string, unknown>)

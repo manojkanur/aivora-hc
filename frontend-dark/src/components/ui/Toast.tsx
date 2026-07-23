@@ -118,7 +118,11 @@ export function ToastContainer() {
 export function useInsufficientCreditsHandler() {
   const { addToast } = useToastStore()
   useEffect(() => {
-    const handler = () => addToast({ type: 'error', message: 'Insufficient credits. Please top up to continue.' })
+    const handler = () => {
+      addToast({ type: 'error', message: 'Insufficient credits. Please top up to continue.' })
+      // Force-refresh the balance so the meter reflects reality immediately.
+      import('../../store/credits').then(m => m.useCreditsStore.getState().fetchBalance(true)).catch(() => {})
+    }
     window.addEventListener('insufficient-credits', handler)
     return () => window.removeEventListener('insufficient-credits', handler)
   }, [addToast])

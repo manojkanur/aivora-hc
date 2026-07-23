@@ -670,6 +670,31 @@ async def finalize_report(
     if not settings.OPENAI_API_KEY:
         raise HTTPException(503, "Report generation needs the OpenAI key configured.")
 
+    # --- Credits: a NEW report costs the selected studio's credit_cost (same as a
+    # studio run). Refinements (report_state present) are free re-generations.
+    # The deduction is committed by the request dependency only on success; if
+    # generation raises, the whole transaction rolls back so the user is not
+    # charged for a failed report. ---
+    from app.models.skill import SkillRegistry
+    from app.services.credits import deduct_credits
+
+    if not payload.report_state and payload.studio:
+        slug = str(payload.studio).replace("ai_advisory:", "").strip().lower()
+        skill_row = (
+            await db.execute(select(SkillRegistry).where(SkillRegistry.slug == slug))
+        ).scalar_one_or_none()
+        cost = int(getattr(skill_row, "credit_cost", 0) or 0) if skill_row else 0
+        if cost > 0:
+            ok = await deduct_credits(
+                current_tenant.id, current_user.id, cost,
+                f"advisory_report_{slug}", str(skill_row.id) if skill_row else slug, db,
+            )
+            if not ok:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail=f"Insufficient credits. This report costs {cost} credits.",
+                )
+
     transcript = "\n\n".join(
         f"{'CLIENT' if m.role == 'user' else 'ADVISOR'}: {m.content}"
         for m in payload.messages[-40:]
