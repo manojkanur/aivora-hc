@@ -1132,10 +1132,13 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   return (
-    <div className={cn('grid gap-4 items-start w-full',
+    <div className={cn('grid gap-4 items-start w-full mx-auto',
+      // Report open: use the full width for the two big panes.
       hasReportPane ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
-        : planActive ? 'lg:grid-cols-[minmax(0,1fr)_320px]'
-        : 'grid-cols-1')}>
+        // Plan rail open: chat + a slim plan column, capped so it is not too wide.
+        : planActive ? 'lg:grid-cols-[minmax(0,1fr)_300px] max-w-5xl'
+        // Just the conversation: a centred, comfortable reading column.
+        : 'grid-cols-1 max-w-3xl')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
       <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden w-full">
         {/* Toolbar: threads + active studio chip (set via /slash command) + report toggle */}
@@ -1977,7 +1980,7 @@ export default function AdvisorChat() {
   const orgLine = [...new Set([workspaceName, profile.organization_name, profile.industry].filter(Boolean))].join(' · ')
 
   return (
-    <div className="px-4 sm:px-6 pt-3 pb-4 space-y-3 max-w-6xl mx-auto w-full">
+    <div className="px-4 sm:px-6 lg:px-8 pt-3 pb-4 space-y-3 w-full">
       {/* Slim single-row header: identity + inline actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
