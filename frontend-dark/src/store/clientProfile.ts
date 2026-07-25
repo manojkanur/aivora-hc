@@ -88,12 +88,18 @@ export interface ClientProfile {
     hcPriorities: HcPriority[]
     keyPainPoints: string[]
     transformationAgenda: TransformationAgendaItem[]
+    /** Free text when 'Other (please specify)' is chosen in the transformation agenda. */
+    transformationAgendaOther?: string
   }
   workforceContext: {
     workforceChallenges: WorkforceChallenge[]
+    workforceChallengesOther?: string
     talentChallenges: TalentChallenge[]
+    talentChallengesOther?: string
     leadershipChallenges: LeadershipChallenge[]
+    leadershipChallengesOther?: string
     exRewardChallenges: ExRewardChallenge[]
+    exRewardChallengesOther?: string
     nationalizationContext: {
       applicable: boolean
       programName?: NationalizationProgram

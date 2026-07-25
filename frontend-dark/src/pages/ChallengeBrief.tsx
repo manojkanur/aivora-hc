@@ -80,6 +80,7 @@ interface OrganizationContext {
 }
 interface BusinessSituation {
   situationSummary: string; strategicDrivers: StrategicDriver[]
+  strategicDriversOther?: string
   timeHorizon: TimeHorizon; budgetEnvelope: BudgetEnvelope
   executiveSponsor: ExecutiveSponsor; boardVisibility: boolean; recentChangesNote: string
 }
@@ -130,7 +131,7 @@ const STRATEGIC_DRIVER_LABELS: Record<StrategicDriver, string> = {
   'market-entry': 'Market entry', 'competitive-pressure': 'Competitive pressure',
   'talent-shortage': 'Talent shortage', 'leadership-change': 'Leadership change',
   restructuring: 'Restructuring', 'ipo-preparation': 'IPO preparation',
-  'sustainability-esg': 'ESG / sustainability', nationalization: 'Nationalization', other: 'Other',
+  'sustainability-esg': 'ESG / sustainability', nationalization: 'Nationalization', other: 'Other (please specify)',
 }
 const TIME_HORIZON_LABELS: Record<TimeHorizon, string> = { immediate: 'Immediate (< 4 weeks)', 'short-term': 'Short-term (1-3 months)', 'medium-term': 'Medium-term (3-6 months)', 'long-term': 'Long-term (6+ months)', unspecified: 'Unspecified' }
 const BUDGET_LABELS: Record<BudgetEnvelope, string> = { 'not-defined': 'Not defined', 'very-limited': 'Very limited', moderate: 'Moderate', substantial: 'Substantial', open: 'Open / TBD' }
@@ -184,10 +185,12 @@ export function defaultBrief(): ChallengeBriefData {
 
 // ── Shared UI ──────────────────────────────────────────────────────────────
 
-function ChipGroup<T extends string>({ label, description, options, labels, value, onChange }: {
+function ChipGroup<T extends string>({ label, description, options, labels, value, onChange, otherKey, otherValue, onOtherText }: {
   label: string; description?: string; options: T[]; labels: Record<T, string>; value: T[]; onChange: (next: T[]) => void
+  otherKey?: T; otherValue?: string; onOtherText?: (text: string) => void
 }) {
   const toggle = (opt: T) => onChange(value.includes(opt) ? value.filter(x => x !== opt) : [...value, opt])
+  const showOther = !!otherKey && !!onOtherText && value.includes(otherKey)
   return (
     <div className="space-y-3">
       <div>
@@ -203,6 +206,11 @@ function ChipGroup<T extends string>({ label, description, options, labels, valu
           </button>
         ))}
       </div>
+      {showOther && (
+        <textarea value={otherValue ?? ''} onChange={e => onOtherText!(e.target.value)} rows={2}
+          placeholder={`Describe your other ${label.toLowerCase()}...`}
+          className="w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none" />
+      )}
     </div>
   )
 }
@@ -262,7 +270,7 @@ function StepSituation({ value, onChange }: { value: BusinessSituation; onChange
     <div className="space-y-6">
       <div><h2 className="text-2xl font-bold text-white">Business situation</h2><p className="text-sm text-slate-400 mt-1">Describe the strategic context driving this engagement.</p></div>
       <Textarea label="Situation summary" rows={4} placeholder="Describe the business situation and what is driving this engagement..." value={value.situationSummary} onChange={e => p('situationSummary', e.target.value)} />
-      <ChipGroup label="Strategic drivers" description="What external and internal forces are shaping this engagement?" options={Object.keys(STRATEGIC_DRIVER_LABELS) as StrategicDriver[]} labels={STRATEGIC_DRIVER_LABELS} value={value.strategicDrivers} onChange={next => p('strategicDrivers', next)} />
+      <ChipGroup label="Strategic drivers" description="What external and internal forces are shaping this engagement?" options={Object.keys(STRATEGIC_DRIVER_LABELS) as StrategicDriver[]} labels={STRATEGIC_DRIVER_LABELS} value={value.strategicDrivers} onChange={next => p('strategicDrivers', next)} otherKey={'other' as StrategicDriver} otherValue={value.strategicDriversOther} onOtherText={t => p('strategicDriversOther', t)} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SelectField label="Time horizon" options={Object.keys(TIME_HORIZON_LABELS) as TimeHorizon[]} labels={TIME_HORIZON_LABELS} value={value.timeHorizon} onChange={v => p('timeHorizon', v)} />
         <SelectField label="Budget envelope" options={Object.keys(BUDGET_LABELS) as BudgetEnvelope[]} labels={BUDGET_LABELS} value={value.budgetEnvelope} onChange={v => p('budgetEnvelope', v)} />

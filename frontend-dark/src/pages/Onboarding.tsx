@@ -58,7 +58,7 @@ const TRANSFORMATION_LABELS: Record<TransformationAgendaItem, string> = {
   digital: 'Digital', cultural: 'Cultural', 'operating-model': 'Operating model',
   'm-and-a-integration': 'M&A integration', 'post-merger': 'Post-merger',
   'cost-optimization': 'Cost optimization', 'growth-acceleration': 'Growth acceleration',
-  'esg-transformation': 'ESG transformation', 'regulatory-driven': 'Regulatory-driven', none: 'None in scope',
+  'esg-transformation': 'ESG transformation', 'regulatory-driven': 'Regulatory-driven', none: 'Other (please specify)',
 }
 
 const WORKFORCE_CHALLENGE_LABELS: Record<WorkforceChallenge, string> = {
@@ -66,7 +66,7 @@ const WORKFORCE_CHALLENGE_LABELS: Record<WorkforceChallenge, string> = {
   'contractor-heavy': 'Contractor-heavy', 'aging-workforce': 'Ageing workforce',
   'skill-mismatch': 'Skill mismatch', 'engagement-decline': 'Engagement decline',
   'remote-hybrid-strain': 'Remote / hybrid strain', 'diversity-gaps': 'Diversity gaps',
-  'productivity-decline': 'Productivity decline', none: 'None of the above',
+  'productivity-decline': 'Productivity decline', none: 'Other (please specify)',
 }
 
 const TALENT_CHALLENGE_LABELS: Record<TalentChallenge, string> = {
@@ -74,14 +74,14 @@ const TALENT_CHALLENGE_LABELS: Record<TalentChallenge, string> = {
   'niche-skills-shortage': 'Niche skills shortage', 'leadership-bench-thin': 'Leadership bench thin',
   'external-hire-dependency': 'External hire dependency',
   'retention-of-critical-talent': 'Retention of critical talent',
-  'graduate-pipeline': 'Graduate pipeline', none: 'None of the above',
+  'graduate-pipeline': 'Graduate pipeline', none: 'Other (please specify)',
 }
 
 const LEADERSHIP_CHALLENGE_LABELS: Record<LeadershipChallenge, string> = {
   'succession-risk': 'Succession risk', 'limited-bench': 'Limited bench',
   'leadership-quality': 'Leadership quality', 'transition-failures': 'Transition failures',
   'executive-misalignment': 'Executive misalignment',
-  'leadership-development-gap': 'Leadership development gap', none: 'None of the above',
+  'leadership-development-gap': 'Leadership development gap', none: 'Other (please specify)',
 }
 
 const EX_REWARD_LABELS: Record<ExRewardChallenge, string> = {
@@ -89,7 +89,7 @@ const EX_REWARD_LABELS: Record<ExRewardChallenge, string> = {
   'benefits-competitiveness': 'Benefits competitiveness', 'ex-journey-friction': 'EX journey friction',
   'culture-misalignment': 'Culture misalignment', 'wellbeing-concerns': 'Wellbeing concerns',
   'rewards-cost-pressure': 'Rewards cost pressure', 'incentive-misalignment': 'Incentive misalignment',
-  none: 'None of the above',
+  none: 'Other (please specify)',
 }
 
 const NATIONALIZATION_LABELS: Record<NationalizationProgram, string> = {
@@ -144,6 +144,7 @@ const URGENCY_LABELS: Record<UrgencyBand, string> = {
 
 function ChipGroup<T extends string>({
   label, description, options, labels, value, onChange,
+  otherKey, otherValue, onOtherText,
 }: {
   label: string
   description?: string
@@ -151,9 +152,15 @@ function ChipGroup<T extends string>({
   labels: Record<T, string>
   value: T[]
   onChange: (next: T[]) => void
+  // When the option keyed `otherKey` is selected, reveal a free-text area that
+  // writes through onOtherText. Lets the user add anything not in the presets.
+  otherKey?: T
+  otherValue?: string
+  onOtherText?: (text: string) => void
 }) {
   const toggle = (opt: T) =>
     onChange(value.includes(opt) ? value.filter(x => x !== opt) : [...value, opt])
+  const showOther = !!otherKey && !!onOtherText && value.includes(otherKey)
   return (
     <div className="space-y-3">
       <div>
@@ -173,6 +180,15 @@ function ChipGroup<T extends string>({
           </button>
         ))}
       </div>
+      {showOther && (
+        <textarea
+          value={otherValue ?? ''}
+          onChange={e => onOtherText!(e.target.value)}
+          rows={2}
+          placeholder={`Describe your other ${label.toLowerCase()}...`}
+          className="w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+        />
+      )}
     </div>
   )
 }
@@ -228,7 +244,7 @@ function StepPriorities({ value, onChange }: {
       </div>
       <ChipGroup label="Business priorities" description="Top-of-mind objectives at the enterprise level." options={Object.keys(BUSINESS_PRIORITY_LABELS) as BusinessPriority[]} labels={BUSINESS_PRIORITY_LABELS} value={value.businessPriorities} onChange={next => onChange({ ...value, businessPriorities: next })} />
       <ChipGroup label="Human-capital priorities" description="What does the people agenda need to deliver?" options={Object.keys(HC_PRIORITY_LABELS) as HcPriority[]} labels={HC_PRIORITY_LABELS} value={value.hcPriorities} onChange={next => onChange({ ...value, hcPriorities: next })} />
-      <ChipGroup label="Transformation agenda" description="Active or upcoming transformation themes." options={Object.keys(TRANSFORMATION_LABELS) as TransformationAgendaItem[]} labels={TRANSFORMATION_LABELS} value={value.transformationAgenda} onChange={next => onChange({ ...value, transformationAgenda: next })} />
+      <ChipGroup label="Transformation agenda" description="Active or upcoming transformation themes." options={Object.keys(TRANSFORMATION_LABELS) as TransformationAgendaItem[]} labels={TRANSFORMATION_LABELS} value={value.transformationAgenda} onChange={next => onChange({ ...value, transformationAgenda: next })} otherKey={'none' as TransformationAgendaItem} otherValue={value.transformationAgendaOther} onOtherText={t => onChange({ ...value, transformationAgendaOther: t })} />
       <div className="space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Key pain points</p>
         <p className="text-xs text-slate-500">Short statements work best (e.g. "Frontline attrition above 18%"). Up to 12 entries.</p>
@@ -272,10 +288,10 @@ function StepWorkforce({ value, onChange }: {
         <h2 className="text-2xl font-bold text-white">Workforce challenges & nationalization</h2>
         <p className="text-sm text-slate-400 mt-1">Tell us where the friction is to weight recommendations that move the needle fastest.</p>
       </div>
-      <ChipGroup label="Workforce challenges" options={Object.keys(WORKFORCE_CHALLENGE_LABELS) as WorkforceChallenge[]} labels={WORKFORCE_CHALLENGE_LABELS} value={value.workforceChallenges} onChange={next => patch('workforceChallenges', next)} />
-      <ChipGroup label="Talent challenges" options={Object.keys(TALENT_CHALLENGE_LABELS) as TalentChallenge[]} labels={TALENT_CHALLENGE_LABELS} value={value.talentChallenges} onChange={next => patch('talentChallenges', next)} />
-      <ChipGroup label="Leadership challenges" options={Object.keys(LEADERSHIP_CHALLENGE_LABELS) as LeadershipChallenge[]} labels={LEADERSHIP_CHALLENGE_LABELS} value={value.leadershipChallenges} onChange={next => patch('leadershipChallenges', next)} />
-      <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} />
+      <ChipGroup label="Workforce challenges" options={Object.keys(WORKFORCE_CHALLENGE_LABELS) as WorkforceChallenge[]} labels={WORKFORCE_CHALLENGE_LABELS} value={value.workforceChallenges} onChange={next => patch('workforceChallenges', next)} otherKey={'none' as WorkforceChallenge} otherValue={value.workforceChallengesOther} onOtherText={t => patch('workforceChallengesOther', t)} />
+      <ChipGroup label="Talent challenges" options={Object.keys(TALENT_CHALLENGE_LABELS) as TalentChallenge[]} labels={TALENT_CHALLENGE_LABELS} value={value.talentChallenges} onChange={next => patch('talentChallenges', next)} otherKey={'none' as TalentChallenge} otherValue={value.talentChallengesOther} onOtherText={t => patch('talentChallengesOther', t)} />
+      <ChipGroup label="Leadership challenges" options={Object.keys(LEADERSHIP_CHALLENGE_LABELS) as LeadershipChallenge[]} labels={LEADERSHIP_CHALLENGE_LABELS} value={value.leadershipChallenges} onChange={next => patch('leadershipChallenges', next)} otherKey={'none' as LeadershipChallenge} otherValue={value.leadershipChallengesOther} onOtherText={t => patch('leadershipChallengesOther', t)} />
+      <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} otherKey={'none' as ExRewardChallenge} otherValue={value.exRewardChallengesOther} onOtherText={t => patch('exRewardChallengesOther', t)} />
 
       <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
         <div className="flex items-start justify-between gap-4">
