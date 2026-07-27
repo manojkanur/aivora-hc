@@ -5,7 +5,7 @@ import {
   Sparkles, RotateCcw, ArrowRight, FileText, Target, Plus, LayoutGrid,
   MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
   Check, Circle, CircleDot, ListChecks, FileBarChart2, SlidersHorizontal, Download,
-  ChevronDown, Search, History, Wand2, PanelRightClose, PanelRightOpen,
+  ChevronDown, Search, History, Wand2, PanelRightClose, PanelRightOpen, Shield,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -662,6 +662,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [exporting, setExporting] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [slashIdx, setSlashIdx] = useState(0)   // highlighted item in the slash menu
+  // Evidence upload consent: remembered per browser once acknowledged.
+  const [uploadConsent, setUploadConsent] = useState<boolean>(() => {
+    try { return localStorage.getItem('aivora-upload-consent') === '1' } catch { return false }
+  })
+  const [consentOpen, setConsentOpen] = useState(false)
   const [planExpanded, setPlanExpanded] = useState(false)   // compact plan box -> full steps on click
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -1415,7 +1420,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             )}
             <div className="flex items-end gap-2">
             <input ref={fileInputRef} type="file" accept={EVIDENCE_ACCEPT} className="hidden" onChange={handleFilePicked} />
-            <button onClick={() => fileInputRef.current?.click()} disabled={uploading || sending} title="Attach evidence"
+            <button onClick={() => { if (uploadConsent) fileInputRef.current?.click(); else setConsentOpen(true) }} disabled={uploading || sending} title="Attach evidence"
               className="flex-shrink-0 w-9 h-9 rounded-xl text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
             </button>
@@ -1625,6 +1630,40 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       )}
 
       {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
+      {consentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setConsentOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-2.5">
+              <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h2 className="text-base font-bold text-white">Your documents are private and protected</h2>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1.5">
+                  Files you upload are used <span className="font-semibold text-slate-200">only</span> to generate your advisory output in this workspace. We <span className="font-semibold text-slate-200">never</span> use your documents to train AI models, and we do not share them with third parties or use them for any other purpose. Uploads are transmitted securely, access is restricted to your workspace, and you can remove any file at any time.
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1.5">Please avoid uploading government-classified material or documents you are not authorised to share.</p>
+              </div>
+            </div>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input type="checkbox" checked={uploadConsent} onChange={e => setUploadConsent(e.target.checked)}
+                className="w-4 h-4 rounded border-[#2a3048] bg-[#0c0e14] text-blue-600 focus:ring-blue-500/40 focus:ring-2 cursor-pointer" />
+              <span className="text-xs font-medium text-slate-200">I understand and consent to uploading these documents for advisory use only.</span>
+            </label>
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setConsentOpen(false)} className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+              <button onClick={() => {
+                  if (!uploadConsent) return
+                  try { localStorage.setItem('aivora-upload-consent', '1') } catch { /* ignore */ }
+                  setConsentOpen(false)
+                  setTimeout(() => fileInputRef.current?.click(), 0)
+                }}
+                disabled={!uploadConsent}
+                className={cn('px-5 py-2 rounded-xl text-sm font-semibold transition-colors', uploadConsent ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-blue-600/25 text-white/60 cursor-not-allowed')}>
+                Continue to upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

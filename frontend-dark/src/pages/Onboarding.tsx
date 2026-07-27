@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Target, Users, FileSearch,
-  ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight, Upload, FileText,
+  ArrowRight, ArrowLeft, Check, Plus, X, ChevronRight, Upload, FileText, Shield,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input, Textarea } from '../components/ui/Input'
@@ -327,6 +327,7 @@ function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
 }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [consent, setConsent] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const files = evidence.uploadedFiles ?? []
 
@@ -360,6 +361,25 @@ function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
         <p className="text-sm text-slate-400 mt-1">Add any documents you can share - strategy decks, org charts, HC policies, engagement surveys, exit data, comp bands. The AI Advisory reads and grounds its analysis in them.</p>
       </div>
 
+      {/* Privacy / consent notice - upload is disabled until acknowledged. */}
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 space-y-3">
+        <div className="flex items-start gap-2.5">
+          <Shield className="w-4.5 h-4.5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-slate-300 leading-relaxed">
+            <p className="font-semibold text-white">Your documents are private and protected</p>
+            <p className="mt-1 text-slate-400">
+              Files you upload are used <span className="font-semibold text-slate-200">only</span> to generate your advisory output in this workspace. We <span className="font-semibold text-slate-200">never</span> use your documents to train AI models, and we do not share them with third parties or use them for any other purpose. Uploads are transmitted securely, access is restricted to your workspace, and you can remove any file at any time.
+            </p>
+            <p className="mt-1 text-slate-500">Please avoid uploading government-classified material or documents you are not authorised to share.</p>
+          </div>
+        </div>
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
+            className="w-4 h-4 rounded border-[#2a3048] bg-[#0c0e14] text-blue-600 focus:ring-blue-500/40 focus:ring-2 cursor-pointer" />
+          <span className="text-xs font-medium text-slate-200">I understand and consent to uploading these documents for advisory use only.</span>
+        </label>
+      </div>
+
       <input
         ref={inputRef}
         type="file"
@@ -372,10 +392,12 @@ function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        disabled={uploading || !workspaceId}
+        disabled={uploading || !workspaceId || !consent}
+        title={!consent ? 'Please tick the consent box above to upload' : undefined}
         className={cn(
           'w-full rounded-2xl border-2 border-dashed p-8 flex flex-col items-center justify-center gap-2 transition-colors',
-          uploading ? 'border-blue-500/40 bg-blue-500/5 cursor-wait' : 'border-[#2a3048] bg-[#0c0e14] hover:border-blue-500/50 hover:bg-blue-500/5'
+          !consent ? 'border-[#1e2433] bg-[#0c0e14] opacity-50 cursor-not-allowed'
+            : uploading ? 'border-blue-500/40 bg-blue-500/5 cursor-wait' : 'border-[#2a3048] bg-[#0c0e14] hover:border-blue-500/50 hover:bg-blue-500/5'
         )}
       >
         {uploading ? (
