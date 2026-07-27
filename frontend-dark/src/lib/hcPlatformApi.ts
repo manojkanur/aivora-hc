@@ -1315,6 +1315,7 @@ export const hcAiAdvisoryAPI = {
     messages: { role: 'user' | 'assistant'; content: string }[]
     report_type: 'detailed' | 'summary'
     studio?: string | null
+    extra_studios?: string[]  // additional studios woven into one unified report (client #4)
     report_state?: Record<string, unknown> | null
     plan_state?: ChatPlan | null
     brief?: Record<string, unknown> | null

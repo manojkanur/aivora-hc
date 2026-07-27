@@ -638,6 +638,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   // Skill picker
   const [skills, setSkills] = useState<AdvisorySkill[]>([])
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
+  // Additional studios to COMBINE into one unified report (client #4). The
+  // primary is `selectedSkill`; up to two more may be stacked here (cap 3 total).
+  const [extraStudios, setExtraStudios] = useState<string[]>([])
   const [suggestedSkill, setSuggestedSkill] = useState<string | null>(null)
 
   // Report side controls
@@ -681,6 +684,16 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   const selectedSkillObj = selectedSkill ? skills.find(s => s.slug === selectedSkill) ?? null : null
+  const extraSkillObjs = extraStudios.map(slug => skills.find(s => s.slug === slug)).filter(Boolean) as AdvisorySkill[]
+  // Clearing the primary promotes the first extra so the combine never leaves
+  // orphaned extras with no primary.
+  const clearPrimaryStudio = () => {
+    setExtraStudios(prev => {
+      const [next, ...rest] = prev
+      setSelectedSkill(next ?? null)
+      return rest
+    })
+  }
   const orgName = brief?.organizationName || briefContent?.organization?.organizationName || workspaceName || 'your organisation'
 
   // ── Load the studio skill catalogue (all 27) ──
@@ -714,6 +727,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     openedRef.current = Array.isArray(s.messages) && s.messages.length > 0
     setPlan(s.plan ?? null)
     setSelectedSkill(s.selected_skill ?? null)
+    setExtraStudios([])
     setSavedDraftId(s.saved_draft_id ?? null)
     if (s.report_document) {
       if (s.report_kind === 'summary') {
@@ -826,16 +840,21 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     const msgs = history ?? messages
     if (finalizing || msgs.length === 0) return
     const targetStudio = selectedSkill ?? studioSlug ?? null
+    // Additional studios to weave into one unified report (client #4).
+    const combineStudios = extraStudios.filter(s => s && s !== targetStudio)
+    // The report "identity" is the full combined set, so switching or adding a
+    // studio produces a FRESH report (not a revision of the old framing).
+    const targetKey = [targetStudio, ...combineStudios].filter(Boolean).join('+')
     // Only treat this as a REVISION of the current report when it is the SAME
-    // studio. If the user switched studios, generate a FRESH report (do not pass
-    // the old report as the base, or it will keep the old studio's framing).
-    const isSameStudio = !!report && reportStudio === targetStudio
+    // studio combination. If the user switched/added studios, generate fresh.
+    const isSameStudio = !!report && reportStudio === targetKey
     setError(null)
     setFinalizing(type)
     setReportOpen(true)
     try {
       const res = await hcAiAdvisoryAPI.finalizeReport({
         studio: targetStudio,
+        extra_studios: combineStudios.length > 0 ? combineStudios : undefined,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
         report_state: isSameStudio ? ((report!.kind === 'detailed' ? report!.document : report!.summary) as unknown as Record<string, unknown>) : undefined,
@@ -855,7 +874,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       }
       if (!nextReport) { setError('The report came back empty. Try again.'); return }
       setReport(nextReport)
-      setReportStudio(targetStudio)  // remember which studio produced this report
+      setReportStudio(targetKey)  // remember the full studio combination for revision-vs-fresh
       void useCreditsStore.getState().fetchBalance(true)  // a report spent credits; refresh the meter
       // Persist the report + snapshot a revision.
       const docForSave = nextReport.kind === 'detailed'
@@ -1078,6 +1097,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setRevisions([])
     setSavedDraftId(null)
     setSelectedSkill(null)
+    setExtraStudios([])
     setPendingApproval(null)
     setThreadsOpen(false)
     openedRef.current = false
@@ -1169,12 +1189,17 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     : []
   const slashOpen = slashQuery !== null && slashResults.length > 0
   const pickStudioSlash = (s: AdvisorySkill) => {
-    setSelectedSkill(s.slug)
+    // Multi-studio combine (client #4): the FIRST pick is the primary studio;
+    // subsequent picks stack as extras (up to 3 studios total, de-duplicated).
+    if (!selectedSkill) {
+      setSelectedSkill(s.slug)
+      // Picking a fresh primary replaces the card's studio.
+      setPendingApproval(prev => prev ? { ...prev, studio: s.slug } : prev)
+    } else if (s.slug !== selectedSkill && !extraStudios.includes(s.slug) && extraStudios.length < 2) {
+      setExtraStudios(prev => [...prev, s.slug])
+    }
     setDraft('')
     setSlashIdx(0)
-    // If an approval card is open (user clicked "Change studio"), update it to
-    // the newly chosen studio so the card stays and reflects the change.
-    setPendingApproval(prev => prev ? { ...prev, studio: s.slug } : prev)
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
@@ -1372,7 +1397,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           {slashOpen && (
             <div className="absolute bottom-full left-0 right-0 mb-2 z-40 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#161b28]">
-                <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">Studios · pick one to shape the report</span>
+                <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">
+                  {selectedSkill ? 'Studios · add up to 2 more to combine' : 'Studios · pick one to shape the report'}
+                </span>
                 <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{slashResults.length}</span>
               </div>
               <div className="max-h-[min(45vh,22rem)] overflow-y-auto overscroll-contain">
@@ -1396,17 +1423,26 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           )}
           <div className="flex flex-col rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
             {/* Attached context (studio + evidence) - inside the input box, above the text */}
-            {(selectedSkillObj || attachments.length > 0) && (
+            {(selectedSkillObj || extraSkillObjs.length > 0 || attachments.length > 0) && (
               <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-0.5">
                 {selectedSkillObj && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/15 text-blue-300 text-[11px] font-semibold px-2.5 py-1">
                     <LayoutGrid className="w-3 h-3" />
                     <span className="max-w-[200px] truncate">{selectedSkillObj.name}</span>
-                    <button onClick={() => setSelectedSkill(null)} className="hover:text-white transition-colors" aria-label="Clear studio">
+                    <button onClick={clearPrimaryStudio} className="hover:text-white transition-colors" aria-label="Clear studio">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
+                {extraSkillObjs.map(s => (
+                  <span key={s.slug} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/15 text-blue-300 text-[11px] font-semibold px-2.5 py-1">
+                    <Plus className="w-3 h-3" />
+                    <span className="max-w-[200px] truncate">{s.name}</span>
+                    <button onClick={() => setExtraStudios(prev => prev.filter(x => x !== s.slug))} className="hover:text-white transition-colors" aria-label={`Remove ${s.name}`}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
                 {attachments.map(a => (
                   <span key={a.evidence_id} className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[11px] px-2.5 py-1">
                     <Paperclip className="w-3 h-3" />

@@ -422,7 +422,8 @@ def _onboarding_block(client_profile: dict[str, Any] | None) -> str:
 class FinalizeReportRequest(BaseModel):
     messages: list[ChatMessage]
     report_type: str  # 'detailed' | 'summary'
-    studio: str | None = None  # builder slug; spec-backed studios use their master instruction
+    studio: str | None = None  # primary builder slug; spec-backed studios use their master instruction
+    extra_studios: list[str] = []  # additional studios to weave into ONE unified report (client #4)
     report_state: dict[str, Any] | None = None  # existing report being revised, if any
     plan_state: dict[str, Any] | None = None
     brief: dict[str, Any] | None = None
@@ -678,21 +679,33 @@ async def finalize_report(
     from app.models.skill import SkillRegistry
     from app.services.credits import deduct_credits
 
-    if not payload.report_state and payload.studio:
-        slug = str(payload.studio).replace("ai_advisory:", "").strip().lower()
-        skill_row = (
-            await db.execute(select(SkillRegistry).where(SkillRegistry.slug == slug))
-        ).scalar_one_or_none()
-        cost = int(getattr(skill_row, "credit_cost", 0) or 0) if skill_row else 0
-        if cost > 0:
+    # The full set of studios in this report: primary + any extras to combine.
+    # De-duplicated, order-preserving, normalised to bare slugs.
+    combine_slugs: list[str] = []
+    for raw in ([payload.studio] if payload.studio else []) + list(payload.extra_studios or []):
+        s = str(raw or "").replace("ai_advisory:", "").strip().lower()
+        if s and s not in combine_slugs:
+            combine_slugs.append(s)
+
+    if not payload.report_state and combine_slugs:
+        # A combined report costs the SUM of every selected studio's credit_cost
+        # (client #4 decision). Charge once, listing the mix in the ledger note.
+        skill_rows = (
+            await db.execute(select(SkillRegistry).where(SkillRegistry.slug.in_(combine_slugs)))
+        ).scalars().all()
+        by_slug = {r.slug: r for r in skill_rows}
+        total_cost = sum(int(getattr(by_slug.get(s), "credit_cost", 0) or 0) for s in combine_slugs)
+        if total_cost > 0:
+            primary_row = by_slug.get(combine_slugs[0])
+            ref = str(primary_row.id) if primary_row else combine_slugs[0]
             ok = await deduct_credits(
-                current_tenant.id, current_user.id, cost,
-                f"advisory_report_{slug}", str(skill_row.id) if skill_row else slug, db,
+                current_tenant.id, current_user.id, total_cost,
+                f"advisory_report_{'+'.join(combine_slugs)}", ref, db,
             )
             if not ok:
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Insufficient credits. This report costs {cost} credits.",
+                    detail=f"Insufficient credits. This report costs {total_cost} credits.",
                 )
 
     transcript = "\n\n".join(
@@ -705,6 +718,44 @@ async def finalize_report(
     from app.services.hc_platform.spec_studio import generate_spec_report, resolve_spec
 
     resolved_spec = await resolve_spec(db, payload.studio) if payload.report_type == "detailed" else None
+
+    # Combine block (client #4): when 2+ studios are selected, instruct the model
+    # to synthesise ONE unified deliverable that weaves every selected studio's
+    # framing together (not stacked sections). Also fold each extra studio's spec
+    # into the engine so the unified report carries their frameworks too.
+    combine_block = ""
+    if len(combine_slugs) > 1:
+        names_by_slug = {
+            r.slug: r.name
+            for r in (
+                await db.execute(select(SkillRegistry).where(SkillRegistry.slug.in_(combine_slugs)))
+            ).scalars().all()
+        }
+        studio_labels = [names_by_slug.get(s, s) for s in combine_slugs]
+        combine_block = (
+            "COMBINED ADVISORY (multiple studios in ONE report):\n"
+            "The client asked to combine these studios into a SINGLE unified deliverable: "
+            + ", ".join(studio_labels) + ".\n"
+            "Produce ONE coherent report - not separate stacked reports. Weave the studios' "
+            "frameworks, metrics and recommendations into a single analytical arc with a shared "
+            "executive summary, integrated diagnosis, a combined roadmap, and one prioritised set of "
+            "recommendations. Where the studios overlap, reconcile them; where they complement each "
+            "other, show how they connect. The reader should experience it as one integrated piece of "
+            "advice covering all the selected areas."
+        )
+        if payload.report_type == "detailed":
+            extra_specs = []
+            for s in combine_slugs[1:]:
+                sp = await resolve_spec(db, s)
+                if sp:
+                    extra_specs.append(
+                        f"--- ADDITIONAL STUDIO SPEC: {names_by_slug.get(s, s)} ---\n{sp}"
+                    )
+            if extra_specs:
+                combine_block += "\n\n" + "\n\n".join(extra_specs)
+                # Ensure the spec-backed path fires even if the primary had no spec.
+                if not resolved_spec:
+                    resolved_spec = combine_block
 
     revise_block = ""
     if payload.report_state:
@@ -734,6 +785,7 @@ async def finalize_report(
                 spec=resolved_spec,
                 transcript=transcript,
                 context_blocks=[
+                    combine_block,
                     _brief_context_block(payload.brief),
                     _profile_block(payload.profile),
                     _onboarding_block(payload.client_profile),
@@ -762,6 +814,7 @@ async def finalize_report(
             current_user.id,
             "hc_platform.ai_advisory.finalize_report",
             {"report_type": "detailed", "studio": payload.studio,
+             "combined_studios": combine_slugs if len(combine_slugs) > 1 else None,
              "workspace_id": payload.context.workspace_id if payload.context else None},
         )
         return FinalizeReportResponse(report_type="detailed", document=document)
@@ -769,6 +822,7 @@ async def finalize_report(
     base = _DETAILED_REPORT_PROMPT if payload.report_type == "detailed" else _SUMMARY_REPORT_PROMPT
     parts = [base]
     for block in (
+        combine_block,
         _brief_context_block(payload.brief),
         _profile_block(payload.profile),
         _onboarding_block(payload.client_profile),
