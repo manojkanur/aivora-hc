@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,6 +31,11 @@ class AdvisorySession(UUIDBase):
     plan: Mapped[dict | None] = mapped_column(JSONB, nullable=True)                    # co-work plan
     selected_skill: Mapped[str | None] = mapped_column(String(100), nullable=True)     # studio slug chosen for the report
     saved_draft_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # export draft, if published
+
+    # Public share (client #5): an unguessable token that renders this thread's
+    # CURRENT report as an unauthenticated live artifact at /a/<token>. Revocable.
+    share_token: Mapped[str | None] = mapped_column(String(48), nullable=True, unique=True, index=True)
+    share_revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class AdvisoryRevision(UUIDBase):

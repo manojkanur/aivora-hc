@@ -81,6 +81,7 @@ function lazyPage(importer: () => Promise<{ default: React.ComponentType }>) {
 }
 
 const Landing           = lazyPage(() => import('./pages/Landing'))
+const ArtifactView      = lazyPage(() => import('./pages/ArtifactView'))
 const Login             = lazyPage(() => import('./pages/Login'))
 const Signup            = lazyPage(() => import('./pages/Signup'))
 const Onboarding        = lazyPage(() => import('./pages/Onboarding'))
@@ -128,6 +129,8 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        {/* Public shared advisory artifact (client #5) - no auth. */}
+        <Route path="/a/:token" element={<ArtifactView />} />
 
         {/* Protected — rendered inside AppLayout (which uses <Outlet>) */}
         <Route

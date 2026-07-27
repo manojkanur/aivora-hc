@@ -6,6 +6,7 @@ import {
   MessageSquare, Loader2, Send, ClipboardList, Paperclip, X, Pencil, Briefcase,
   Check, Circle, CircleDot, ListChecks, FileBarChart2, SlidersHorizontal, Download,
   ChevronDown, Search, History, Wand2, PanelRightClose, PanelRightOpen, Shield,
+  Share2, Link2, Copy,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -647,6 +648,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [reportOpen, setReportOpen] = useState(false)   // whether the right panel is expanded (mobile / user toggle)
   const [revisions, setRevisions] = useState<AdvisoryRevisionRow[]>([])
   const [revsOpen, setRevsOpen] = useState(false)
+  // Public share link (client #5)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
 
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
@@ -728,6 +734,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setPlan(s.plan ?? null)
     setSelectedSkill(s.selected_skill ?? null)
     setExtraStudios([])
+    setShareToken(s.share_token ?? null)
+    setShareOpen(false)
     setSavedDraftId(s.saved_draft_id ?? null)
     if (s.report_document) {
       if (s.report_kind === 'summary') {
@@ -1018,6 +1026,42 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     }
   }
 
+  // ── Public share link (client #5) ──
+  const shareUrl = shareToken ? `${window.location.origin}/a/${shareToken}` : null
+  const createShareLink = async () => {
+    if (!sessionId || sharing) return
+    setSharing(true)
+    try {
+      const res = await hcAiAdvisoryAPI.shareThread(sessionId)
+      setShareToken(res.data.token)
+    } catch {
+      setError('Could not create the share link. Try again.')
+    } finally {
+      setSharing(false)
+    }
+  }
+  const revokeShareLink = async () => {
+    if (!sessionId || sharing) return
+    setSharing(true)
+    try {
+      await hcAiAdvisoryAPI.revokeThreadShare(sessionId)
+      setShareToken(null)
+      setShareOpen(false)
+    } catch {
+      setError('Could not disable the link. Try again.')
+    } finally {
+      setSharing(false)
+    }
+  }
+  const copyShareUrl = () => {
+    if (!shareUrl) return
+    try {
+      void navigator.clipboard.writeText(shareUrl)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 1800)
+    } catch { /* clipboard unavailable */ }
+  }
+
   const sendMessage = async (content: string) => {
     const clean = content.trim()
     if (!clean || sending) return
@@ -1098,6 +1142,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setSavedDraftId(null)
     setSelectedSkill(null)
     setExtraStudios([])
+    setShareToken(null)
+    setShareOpen(false)
     setPendingApproval(null)
     setThreadsOpen(false)
     openedRef.current = false
@@ -1631,7 +1677,44 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           {/* Report actions + refine */}
           <div className="border-t border-[#1e2433] bg-[#0c0e14] px-4 py-3 space-y-2.5">
             {report && (
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap relative">
+                {/* Public share (client #5) - always available once a report exists */}
+                <div className="relative">
+                  <button onClick={() => { setShareOpen(o => !o); if (!shareToken && !shareOpen) void createShareLink() }}
+                    disabled={!sessionId || sharing}
+                    className={cn('inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors disabled:opacity-50',
+                      shareToken ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : 'border-[#1e2433] bg-[#131720] text-slate-200 hover:border-blue-500/40')}>
+                    {sharing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />}
+                    Share
+                  </button>
+                  {shareOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-72 rounded-xl border border-[#1e2433] bg-[#0c0e14] p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
+                      <p className="text-[11px] font-semibold text-white flex items-center gap-1.5"><Link2 className="w-3 h-3 text-blue-400" /> Public share link</p>
+                      <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">Anyone with this link can view the live report - no login. It always shows the latest version.</p>
+                      {shareUrl ? (
+                        <>
+                          <div className="mt-2 flex items-center gap-1">
+                            <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
+                              className="flex-1 min-w-0 rounded-lg border border-[#1e2433] bg-[#131720] px-2 py-1.5 text-[11px] text-slate-300" />
+                            <button onClick={copyShareUrl} title="Copy link"
+                              className="flex-shrink-0 w-8 h-8 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-300 flex items-center justify-center transition-colors">
+                              {shareCopied ? <Check className="w-3.5 h-3.5 text-blue-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                          <button onClick={revokeShareLink} disabled={sharing}
+                            className="mt-2 text-[11px] font-medium text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50">
+                            Disable this link
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={createShareLink} disabled={sharing || !sessionId}
+                          className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition-colors disabled:opacity-50">
+                          {sharing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />} Create link
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {savedDraftId ? (
                   <>
                     {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (

@@ -1549,6 +1549,7 @@ def _session_dict(s) -> dict[str, Any]:
         "plan": s.plan,
         "selected_skill": s.selected_skill,
         "saved_draft_id": str(s.saved_draft_id) if s.saved_draft_id else None,
+        "share_token": s.share_token if not s.share_revoked else None,
         "updated_at": s.updated_at.isoformat() if s.updated_at else None,
     }
 
@@ -1724,6 +1725,88 @@ async def save_advisory_thread_report(
     ))
     await db.flush()
     return {"ok": True, "version": version}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Public shareable artifact (client #5): an unguessable token renders this
+# thread's CURRENT report as an unauthenticated live dashboard at /a/<token>.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _artifact_meta(s) -> dict[str, Any]:
+    """Public-safe descriptor of the shared report: no chat, no tenant internals."""
+    doc = s.report_document or {}
+    studio_name = None
+    org = None
+    if isinstance(doc, dict):
+        studio_name = doc.get("studio_name") or (doc.get("summary_report") or {}).get("title")
+        org = doc.get("subtitle")
+    return {
+        "studio_name": studio_name,
+        "subtitle": org,
+        "report_kind": s.report_kind or "detailed",
+        "generated_at": s.updated_at.isoformat() if s.updated_at else None,
+    }
+
+
+@router.post("/thread/{session_id}/share")
+async def share_advisory_thread(
+    session_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Mint (or re-enable) a public share token for this thread's live report."""
+    import secrets
+
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is None:
+        raise HTTPException(404, "Thread not found")
+    if not s.report_document:
+        raise HTTPException(400, "Generate a report before sharing it.")
+    if not s.share_token:
+        s.share_token = secrets.token_urlsafe(24)[:48]
+    s.share_revoked = False
+    await db.flush()
+    return {"token": s.share_token, "revoked": False}
+
+
+@router.post("/thread/{session_id}/revoke-share")
+async def revoke_advisory_thread_share(
+    session_id: uuid.UUID,
+    current_user: CurrentUser,
+    current_tenant: CurrentTenant,
+    db: DBDep,
+) -> dict[str, Any]:
+    """Disable a previously shared link. The token stays but stops resolving."""
+    s = await _get_thread(db, current_tenant.id, session_id)
+    if s is None:
+        raise HTTPException(404, "Thread not found")
+    s.share_revoked = True
+    await db.flush()
+    return {"ok": True, "revoked": True}
+
+
+@router.get("/public/artifact/{token}")
+async def get_public_artifact(token: str, db: DBDep) -> dict[str, Any]:
+    """UNAUTHENTICATED. Return the live report for a valid, non-revoked token.
+
+    Serves only the report document + a public-safe descriptor - never the
+    chat transcript, workspace or tenant details.
+    """
+    from app.models.hc_platform.advisory_session import AdvisorySession
+
+    if not token or len(token) > 48:
+        raise HTTPException(404, "Not found")
+    s = (
+        await db.execute(select(AdvisorySession).where(AdvisorySession.share_token == token))
+    ).scalar_one_or_none()
+    if s is None or s.share_revoked or not s.report_document:
+        raise HTTPException(404, "This shared report is not available.")
+    return {
+        "report_document": s.report_document,
+        "report_kind": s.report_kind or "detailed",
+        "meta": _artifact_meta(s),
+    }
 
 
 @router.get("/thread/{session_id}/revisions")

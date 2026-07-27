@@ -1346,6 +1346,11 @@ export const hcAiAdvisoryAPI = {
     report_kind?: 'detailed' | 'summary'
     note?: string | null
   }) => put<{ ok: boolean; version: number }>(`${HC_BASE}/ai-advisory/thread/${sessionId}/report`, body),
+  // --- Public share (client #5): mint / revoke a live artifact link ---------
+  shareThread: (sessionId: string) =>
+    post<{ token: string; revoked: boolean }>(`${HC_BASE}/ai-advisory/thread/${sessionId}/share`, {}),
+  revokeThreadShare: (sessionId: string) =>
+    post<{ ok: boolean; revoked: boolean }>(`${HC_BASE}/ai-advisory/thread/${sessionId}/revoke-share`, {}),
   listThreadRevisions: (sessionId: string) =>
     get<AdvisoryRevisionRow[]>(`${HC_BASE}/ai-advisory/thread/${sessionId}/revisions`),
   deleteThread: (sessionId: string) =>
@@ -1381,6 +1386,7 @@ export interface AdvisorySessionState {
   plan: ChatPlan | null
   selected_skill: string | null
   saved_draft_id: string | null
+  share_token?: string | null
   updated_at?: string | null
 }
 
