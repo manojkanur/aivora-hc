@@ -21,7 +21,7 @@ import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } fro
 import { hcAiAdvisoryAPI, hcSkillsAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport, type AdvisorySkill, type AdvisoryRevisionRow } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { useCreditsStore } from '../store/credits'
-import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI } from '../lib/api'
+import { workspacesAPI, challengeBriefsAPI, draftsAPI, exportsAPI, linkedinAPI } from '../lib/api'
 import { cn } from '../lib/utils'
 import { useBriefStore, type WorkspaceBrief } from '../store/briefStore'
 
@@ -648,11 +648,18 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [reportOpen, setReportOpen] = useState(false)   // whether the right panel is expanded (mobile / user toggle)
   const [revisions, setRevisions] = useState<AdvisoryRevisionRow[]>([])
   const [revsOpen, setRevsOpen] = useState(false)
+  // Output depth tier (client #8): basic | thinking | expert | deepthinking
+  const [tier, setTier] = useState<'basic' | 'thinking' | 'expert' | 'deepthinking'>('thinking')
   // Public share link (client #5)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+  // Social post generator (client #8)
+  const [socialOpen, setSocialOpen] = useState(false)
+  const [socialBusy, setSocialBusy] = useState<'generating' | 'publishing' | null>(null)
+  const [socialDraft, setSocialDraft] = useState<{ caption: string; image?: string } | null>(null)
+  const [socialCopied, setSocialCopied] = useState(false)
 
   const [briefContent, setBriefContent] = useState<BriefContent | null>(null)
   const [briefLoaded, setBriefLoaded] = useState(false)
@@ -863,6 +870,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       const res = await hcAiAdvisoryAPI.finalizeReport({
         studio: targetStudio,
         extra_studios: combineStudios.length > 0 ? combineStudios : undefined,
+        tier,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
         report_state: isSameStudio ? ((report!.kind === 'detailed' ? report!.document : report!.summary) as unknown as Record<string, unknown>) : undefined,
@@ -1060,6 +1068,71 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 1800)
     } catch { /* clipboard unavailable */ }
+  }
+
+  // ── Social post generator (client #8) ──
+  // Builds a LinkedIn-ready caption + clean infographic card from the report,
+  // reusing the existing LinkedIn generate/publish pipeline. Generates a DRAFT
+  // (no auto-post); the user reviews then explicitly publishes.
+  const buildSocialPrompt = (): string => {
+    if (!report) return ''
+    if (report.kind === 'detailed') {
+      const doc = report.document as { title?: string; studio_name?: string; sections?: Array<{ layout?: string; data?: Record<string, unknown> }> }
+      const hero = doc.sections?.find(s => s.layout === 'hero')?.data as { headline?: string; highlights?: string[] } | undefined
+      const facts = (hero?.highlights ?? []).slice(0, 5).join('; ')
+      return [
+        `Write a LinkedIn post for ${orgName} about our "${doc.studio_name ?? doc.title ?? 'HC advisory'}" work.`,
+        hero?.headline ? `Key message: ${hero.headline}.` : '',
+        facts ? `Back it with these figures: ${facts}.` : '',
+        'Make it insightful and professional, with a clean infographic card of the top metrics.',
+      ].filter(Boolean).join(' ')
+    }
+    const s = report.summary
+    const kpis = (s.kpis ?? []).slice(0, 4).map(k => `${k.label} ${k.value}${k.unit ?? ''}`).join('; ')
+    return `Write a LinkedIn post for ${orgName}: ${s.title}. ${s.overview ?? ''} ${kpis ? `Highlight: ${kpis}.` : ''} Professional tone, clean infographic card.`.trim()
+  }
+  const generateSocial = async () => {
+    if (socialBusy || !report) return
+    setSocialBusy('generating')
+    setError(null)
+    try {
+      const res = await linkedinAPI.generate({ prompt: buildSocialPrompt(), format: 'single' })
+      setSocialDraft({ caption: res.data.caption, image: res.data.images_base64?.[0] })
+    } catch (err: unknown) {
+      const st = (err as { response?: { status?: number } })?.response?.status
+      if (st === 403) setError('Only admins can generate social posts.')
+      else setError('Could not generate the social post. Try again.')
+    } finally {
+      setSocialBusy(null)
+    }
+  }
+  const copySocialCaption = () => {
+    if (!socialDraft?.caption) return
+    try {
+      void navigator.clipboard.writeText(socialDraft.caption)
+      setSocialCopied(true)
+      setTimeout(() => setSocialCopied(false), 1800)
+    } catch { /* ignore */ }
+  }
+  const publishSocial = async () => {
+    if (!socialDraft || socialBusy) return
+    setSocialBusy('publishing')
+    setError(null)
+    try {
+      await linkedinAPI.publish({
+        caption: socialDraft.caption,
+        images_base64: socialDraft.image ? [socialDraft.image] : [],
+        title: 'Aivora HC Insight',
+      })
+      setSocialOpen(false)
+      setSocialDraft(null)
+    } catch (err: unknown) {
+      const st = (err as { response?: { status?: number } })?.response?.status
+      if (st === 412) setError('Connect LinkedIn first (Settings) to publish. You can still copy the caption and image.')
+      else setError('Could not publish to LinkedIn. You can copy the caption and image instead.')
+    } finally {
+      setSocialBusy(null)
+    }
   }
 
   const sendMessage = async (content: string) => {
@@ -1436,6 +1509,16 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 px-3 py-1 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
                 <FileBarChart2 className="w-3 h-3" /> Summary
               </button>
+              {/* Depth tier (client #8) */}
+              <span className="ml-1 inline-flex items-center rounded-full border border-[#1e2433] bg-[#0c0e14] overflow-hidden" title="How deep should the report go?">
+                {(['basic', 'thinking', 'expert', 'deepthinking'] as const).map(t => (
+                  <button key={t} onClick={() => setTier(t)} disabled={!!finalizing}
+                    className={cn('px-2.5 py-1 text-[10px] font-semibold capitalize transition-colors disabled:opacity-50',
+                      tier === t ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white')}>
+                    {t === 'deepthinking' ? 'Deep' : t}
+                  </button>
+                ))}
+              </span>
             </div>
           )}
           {/* Slash-command studio menu - floats ABOVE the composer so the full
@@ -1715,6 +1798,12 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                     </div>
                   )}
                 </div>
+                {/* Social post (client #8) */}
+                <button onClick={() => { setSocialOpen(true); if (!socialDraft) void generateSocial() }}
+                  disabled={!!socialBusy}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                  <Share2 className="w-3 h-3" /> Social
+                </button>
                 {savedDraftId ? (
                   <>
                     {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
@@ -1749,6 +1838,55 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       )}
 
       {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
+      {socialOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setSocialOpen(false)}>
+          <div className="w-full max-w-lg rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-white flex items-center gap-2"><Share2 className="w-4 h-4 text-blue-400" /> Social post</h2>
+              <button onClick={() => setSocialOpen(false)} className="w-7 h-7 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 flex items-center justify-center transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            {socialBusy === 'generating' || (!socialDraft && !error) ? (
+              <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Drafting a LinkedIn post from your report...
+              </div>
+            ) : socialDraft ? (
+              <>
+                {socialDraft.image && (
+                  <img src={socialDraft.image} alt="Generated infographic" className="w-full rounded-xl border border-[#1e2433]" />
+                )}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Caption</span>
+                    <button onClick={copySocialCaption} className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-white transition-colors">
+                      {socialCopied ? <Check className="w-3 h-3 text-blue-400" /> : <Copy className="w-3 h-3" />} Copy
+                    </button>
+                  </div>
+                  <textarea value={socialDraft.caption} onChange={e => setSocialDraft(d => d ? { ...d, caption: e.target.value } : d)}
+                    rows={7} className="w-full rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3 py-2.5 text-sm text-slate-200 resize-y focus:border-blue-500/40 outline-none" />
+                </div>
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <button onClick={generateSocial} disabled={!!socialBusy}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#1e2433] text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-50">
+                    <RotateCcw className="w-3.5 h-3.5" /> Regenerate
+                  </button>
+                  <button onClick={publishSocial} disabled={!!socialBusy}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors disabled:opacity-50">
+                    {socialBusy === 'publishing' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />} Post to LinkedIn
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500">Review before posting. If LinkedIn isn't connected, copy the caption and download the image to post manually.</p>
+              </>
+            ) : (
+              <div className="py-10 text-center">
+                <p className="text-sm text-slate-400">{error || 'Could not draft a post.'}</p>
+                <button onClick={generateSocial} className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">
+                  <RotateCcw className="w-3.5 h-3.5" /> Try again
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {consentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setConsentOpen(false)}>
           <div className="w-full max-w-md rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-4" onClick={e => e.stopPropagation()}>

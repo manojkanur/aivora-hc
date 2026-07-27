@@ -1316,6 +1316,7 @@ export const hcAiAdvisoryAPI = {
     report_type: 'detailed' | 'summary'
     studio?: string | null
     extra_studios?: string[]  // additional studios woven into one unified report (client #4)
+    tier?: string | null  // depth tier (client #8): basic | thinking | expert | deepthinking
     report_state?: Record<string, unknown> | null
     plan_state?: ChatPlan | null
     brief?: Record<string, unknown> | null

@@ -424,6 +424,7 @@ class FinalizeReportRequest(BaseModel):
     report_type: str  # 'detailed' | 'summary'
     studio: str | None = None  # primary builder slug; spec-backed studios use their master instruction
     extra_studios: list[str] = []  # additional studios to weave into ONE unified report (client #4)
+    tier: str | None = None  # depth tier (client #8): basic | thinking | expert | deepthinking
     report_state: dict[str, Any] | None = None  # existing report being revised, if any
     plan_state: dict[str, Any] | None = None
     brief: dict[str, Any] | None = None
@@ -461,12 +462,14 @@ Respond with ONLY a JSON object shaped as a StudioOutputDocument:
   "studio_name": "...",              // the chosen studio's exact name
   "title": "...",                    // deliverable title with the organization name
   "subtitle": "...",                 // one line: chosen studio, org, scope
-  "sections": [ 9 to 12 sections ]   // NOT fewer than 9
+  "sections": [ 10 to 13 sections ]  // NOT fewer than 10 (the hero band is section 0)
 }
 
 Each section: {"id": "<slug>", "title": "...", "layout": "<layout>", "data": {...}, "footnote": "optional source/assumption note"}
 
-THE CONSULTING ARC - follow this section spine (9-12 sections). Each arrow is a distinct section with the layout named:
+THE CONSULTING ARC - follow this section spine (10-13 sections). Each arrow is a distinct section with the layout named:
+0. HERO AT-A-GLANCE BAND (MANDATORY, always the FIRST section) -> "hero". This is the scannable headline strip a busy executive reads in five seconds. data: {"eyebrow": "<studio name> - <org>", "headline": "<the single sharpest finding as one bold sentence, e.g. 'Succession risk is critical: 3 of 5 C-suite roles have no named successor'>", "subheadline": "<one line naming the stakes and the recommended direction>", "highlights": ["<4-5 punchy at-a-glance facts, each a metric with its label, e.g. '14.2% attrition (vs 11% sector)', '63-day time-to-fill', 'Leadership bench: 42/100']"]}. The highlights MUST be concrete numbers, not adjectives.
+0b. IMMEDIATELY AFTER the hero, a "kpi_grid" of the 4-5 headline metrics from the hero highlights, rendered as big-number tiles with benchmark sublabels. This gives the at-a-glance band its visual punch.
 1. Executive summary -> narrative_paragraph. Reflect back their stated situation, the stakes, and the headline finding. 2-4 tight paragraphs.
 2. Current-state diagnosis with a QUANTIFIED visual -> radar_chart across HC dimensions (Current vs Target series) OR heatmap of capability-by-role. This must carry real scores, not vibes.
 3. Evidence and benchmarks -> kpi_grid with big real numbers (attrition, tenure, cost, ratios) each with a benchmark/context sublabel.
@@ -480,13 +483,16 @@ THE CONSULTING ARC - follow this section spine (9-12 sections). Each arrow is a 
 11. Closing -> callout_quote stating the single most important next action and your confidence level.
 You MAY add one or two supporting sections (a second bar_chart, a nine_box_grid, a swimlane of workstreams, an extra kpi_grid) where the session justifies it, staying within 12 total.
 
-MANDATORY LAYOUT VARIETY - the report is INVALID unless it contains at least one of EACH of these: radar_chart OR heatmap; bar_chart; comparison_table; recommendation_cards; risk_flags_list; timeline; kpi_grid; and a closing callout_quote. Do NOT use narrative_paragraph for more than 3 sections in the whole document. Do not repeat the same layout back-to-back where a different one would carry the point better. Let the visuals do the analytical work.
+MANDATORY LAYOUT VARIETY - the report is INVALID unless it contains at least one of EACH of these: a "hero" band as the FIRST section; a kpi_grid right after it; radar_chart OR heatmap; bar_chart; comparison_table; recommendation_cards; risk_flags_list; timeline; and a closing callout_quote. Do NOT use narrative_paragraph for more than 3 sections in the whole document. Do not repeat the same layout back-to-back where a different one would carry the point better. Let the visuals do the analytical work.
 
 REAL DATA DENSITY - non-negotiable. Every kpi value, every bar value, every heatmap cell, every radar score, every benchmark and every scorecard target must be a CONCRETE NUMBER tied to this org's industry, region and size. Attach a benchmark wherever one plausibly exists. NO "TBD", no "N/A", no vague placeholders, no round-number hand-waving ("~50%", "roughly half") unless you state the basis. If a number is your estimate, say so in the narrative or footnote and give the reasoning; if it rests on public data, cite the source URL in that section's footnote. Prefer a defensible specific figure (e.g. 14.2%, 1.8x, 63 days) over a soft generality every time.
 
 SOURCES: when a figure, benchmark or claim in a section is grounded in a real, publicly citable source (an industry report, a public benchmark, a named framework, a regulator or a government programme), put the full source URL in that section's "footnote" (or a "source" field inside data). Prefer the EXTERNAL SOURCES block supplied in context - only cite a URL that actually appears there or that you are certain exists. A plain "https://..." link is shown to the user as a clickable citation. If a section is derived purely from the client's own inputs, leave the footnote empty or omit it - do NOT write "not specified", and do NOT invent URLs.
 
 ALLOWED layouts and their EXACT data shapes (ONLY these - never invent layout names like 'infographic'; an infographic request means kpi_grid, bar_chart or timeline). Match these shapes exactly or the section will not render:
+
+- "hero": {"eyebrow": "Succession Planning - Acme Corp", "headline": "Succession risk is critical: 3 of 5 C-suite roles have no named successor", "subheadline": "Without a named bench, a single departure stalls the growth plan; stand up a succession program this quarter.", "highlights": ["14.2% attrition (vs 11% sector)", "63-day time-to-fill", "Leadership bench 42/100", "0 of 5 roles with ready-now successor"]}
+  // ALWAYS the first section. headline = the one sharpest finding as a bold sentence; highlights = 4-5 concrete metric facts (label + number), never adjectives.
 
 - "narrative_paragraph": {"body": "2-4 paragraph markdown-lite text with **bold**", "highlights": [{"phrase": "exact phrase from body", "sentiment": "good|warning|bad|neutral"}]}
   // highlights are OBJECTS, not strings; each phrase must appear verbatim in body.
@@ -653,6 +659,45 @@ def _search_query_from_context(brief: dict[str, Any] | None, studio: str | None)
     )
 
 
+# Output tiers (client #8): control the depth/rigour of the deliverable. Each
+# tier maps to a prompt directive and whether to gather live web sources.
+_TIER_DIRECTIVES = {
+    "basic": (
+        "OUTPUT TIER: BASIC. Produce a lean, fast deliverable - hit the essential "
+        "sections only, keep the narrative tight, and prefer the client's own inputs "
+        "over extensive external benchmarking. Clarity over exhaustiveness."
+    ),
+    "thinking": (
+        "OUTPUT TIER: THINKING. Produce a solid, well-reasoned deliverable with clear "
+        "diagnosis and recommendations grounded in the client's inputs and standard "
+        "benchmarks. This is the balanced default."
+    ),
+    "expert": (
+        "OUTPUT TIER: EXPERT. Produce a partner-grade deliverable: rigorous diagnosis, "
+        "richer quantification, more benchmarks with cited sources, sharper trade-off "
+        "analysis in the framework section, and a more granular roadmap. Use the full "
+        "section range and let the visuals carry the analysis."
+    ),
+    "deepthinking": (
+        "OUTPUT TIER: DEEPTHINKING. Produce the most thorough, boardroom-grade "
+        "deliverable possible: exhaustive evidence, multiple cited external sources per "
+        "claim where they exist, scenario-aware recommendations, second-order risks with "
+        "mitigations and owners, and a phased roadmap with dependencies. Push to the top "
+        "of the allowed section range and maximise defensible data density throughout."
+    ),
+}
+
+
+def _tier_directive(tier: str | None) -> str:
+    key = str(tier or "").strip().lower()
+    return _TIER_DIRECTIVES.get(key, "")
+
+
+def _tier_wants_web(tier: str | None) -> bool:
+    """Basic tier skips live web search for speed; other tiers gather sources."""
+    return str(tier or "").strip().lower() != "basic"
+
+
 @router.post("/finalize-report", response_model=FinalizeReportResponse)
 async def finalize_report(
     payload: FinalizeReportRequest,
@@ -766,12 +811,15 @@ async def finalize_report(
         )
 
     # Gather citable external sources from the live web so the report can back
-    # its benchmarks with real URLs. Best-effort and skipped for revisions.
+    # its benchmarks with real URLs. Best-effort, skipped for revisions, and
+    # skipped for the BASIC tier (client #8) which trades depth for speed.
     web_sources = ""
-    if not payload.report_state:
+    if not payload.report_state and _tier_wants_web(payload.tier):
         web_sources = await _gather_web_sources(
             _search_query_from_context(payload.brief, payload.studio)
         )
+
+    tier_block = _tier_directive(payload.tier)
 
     # Uploaded documents (e.g. PDFs) so the report can cite them by name.
     evidence_ctx = await _evidence_block(db, payload.evidence_ids, current_tenant.id)
@@ -785,6 +833,7 @@ async def finalize_report(
                 spec=resolved_spec,
                 transcript=transcript,
                 context_blocks=[
+                    tier_block,
                     combine_block,
                     _brief_context_block(payload.brief),
                     _profile_block(payload.profile),
@@ -815,6 +864,7 @@ async def finalize_report(
             "hc_platform.ai_advisory.finalize_report",
             {"report_type": "detailed", "studio": payload.studio,
              "combined_studios": combine_slugs if len(combine_slugs) > 1 else None,
+             "tier": payload.tier,
              "workspace_id": payload.context.workspace_id if payload.context else None},
         )
         return FinalizeReportResponse(report_type="detailed", document=document)
@@ -822,6 +872,7 @@ async def finalize_report(
     base = _DETAILED_REPORT_PROMPT if payload.report_type == "detailed" else _SUMMARY_REPORT_PROMPT
     parts = [base]
     for block in (
+        tier_block,
         combine_block,
         _brief_context_block(payload.brief),
         _profile_block(payload.profile),

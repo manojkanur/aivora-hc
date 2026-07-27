@@ -83,14 +83,23 @@ You are generating the comprehensive deliverable defined in "Recommended Output 
 {
   "title": "...",                 // deliverable title including the organization name
   "subtitle": "...",              // one line: deliverable type, organization, scope
-  "sections": [ ... ]             // 14 sections, in this exact order
+  "sections": [ ... ]             // 15 sections, in this exact order (hero band first)
 }
 
 Each section: {"id": "...", "title": "...", "layout": "...", "data": {...}, "footnote": "optional"}
 
 Every section must earn its place: real numbers, real axes, real matrix cells. Never emit a chart, grid, heatmap or list with placeholder or zero values. The radar_chart, heatmap, kpi_grid, bar_chart, risk_flags_list and callout_quote below are MANDATORY and must each render with fully populated data.
 
-THE 14 SECTIONS (in this exact order, exact ids):
+THE 15 SECTIONS (in this exact order, exact ids):
+
+0. id "hero", layout "hero"  (MANDATORY at-a-glance band, ALWAYS the first section)
+   data: {
+     "eyebrow": "<deliverable type> - <organization>",
+     "headline": "<the single sharpest finding as one bold sentence>",
+     "subheadline": "<one line naming the stakes and the recommended direction>",
+     "highlights": ["<4-5 concrete metric facts, each a label + number, e.g. '14.2% attrition (vs 11% sector)'>"]
+   }
+   highlights MUST be concrete numbers, never adjectives. This is the scannable strip an executive reads in five seconds.
 
 1. id "executive_summary", layout "narrative_paragraph"
    data: {
@@ -213,7 +222,7 @@ THE 14 SECTIONS (in this exact order, exact ids):
 
 RULES:
 - Ground every section in the specific choices the client made in onboarding and the challenge brief (their priorities, flagged challenges and severity, strategic drivers, advisory questions, industry, region, size, uploaded evidence). Name those choices explicitly and build the diagnosis, radar scores, heatmap cells, maturity rating and recommendations directly on them. The executive summary must reflect their stated situation back in their own terms. Never produce generic content that ignores their inputs.
-- ONLY the layouts listed above are valid ("narrative_paragraph", "radar_chart", "comparison_table", "kpi_grid", "heatmap", "risk_flags_list", "timeline", "callout_quote"). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual, express it as a kpi_grid (stat tiles), a radar_chart, a heatmap, a comparison_table or a timeline. Any other layout name will fail to render.
+- ONLY the layouts listed above are valid ("hero", "narrative_paragraph", "radar_chart", "comparison_table", "kpi_grid", "heatmap", "risk_flags_list", "timeline", "callout_quote"). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual, express it as a kpi_grid (stat tiles), a radar_chart, a heatmap, a comparison_table or a timeline. Any other layout name will fail to render.
 - Honour the exact data shapes above. Positional-alignment gotchas are load-bearing: radar_chart series values align to axes by index and must match axes length; heatmap values is a rows x cols matrix; kpi_grid delta and narrative_paragraph highlights are OBJECTS (malformed values are silently ignored); comparison_table rows are flat dicts keyed by column key with the first column as the row label.
 - Every mandatory visual (radar_chart, heatmap, evidence_kpis grid, risks list, next_action callout) must appear once and be fully populated with real values - no zeros, no placeholders, no empty cells.
 - Never claim high confidence when evidence is missing. Reflect honest confidence in the maturity grid, the radar benchmark, and the next_action attribution.
