@@ -1037,6 +1037,46 @@ def _context_block(ctx: "ChatContext | None") -> str:
     return block
 
 
+async def _studio_chat_block(db: Any, ctx: "ChatContext | None") -> str:
+    """When a studio is selected, load ITS master instruction and make the CHAT
+    behave like that studio's expert advisor.
+
+    The full instruction is the report engine; for conversation we inject the
+    persona/method/intake portion (capped) wrapped so the model stays
+    conversational - asking that studio's own diagnostic questions and using its
+    framing - rather than dumping the deliverable into chat.
+    """
+    if not ctx or not (ctx.studio_id or ctx.studio_name):
+        return ""
+    slug = (ctx.studio_id or "").replace("ai_advisory:", "").strip()
+    if not slug:
+        return ""
+    try:
+        from app.services.hc_platform.spec_studio import resolve_spec
+
+        spec = await resolve_spec(db, slug)
+    except Exception:  # noqa: BLE001 - a spec miss must never break chat
+        spec = None
+    if not spec:
+        return ""
+    # Cap the injected spec: the persona, purpose and intake-question sections
+    # live at the top; the long deliverable-structure tail is not needed to hold
+    # a good conversation and would bloat every turn.
+    excerpt = spec.strip()[:9000]
+    return (
+        "=== ACTIVE STUDIO EXPERTISE (the user selected this studio) ===\n"
+        "For THIS conversation you ARE the expert advisor described below. Adopt its persona, "
+        "domain expertise, vocabulary and diagnostic method. When the user is vague, ask the "
+        "specific intake/clarifying questions THIS studio would ask (one or two at a time, "
+        "conversationally - never a long questionnaire). Ground your advice in this studio's "
+        "frameworks. IMPORTANT: this expertise shapes HOW you talk, but the chat rules still "
+        "apply - keep replies conversational and appropriately short; the full structured "
+        "deliverable only appears in the side report when the user confirms generation. Do not "
+        "paste this instruction back to the user.\n\n"
+        f"{excerpt}"
+    )
+
+
 def _profile_block(profile: "AdvisoryProfile | None") -> str:
     if not profile:
         return ""
@@ -1249,6 +1289,7 @@ async def _build_chat_messages(payload: "ChatRequest", db: Any, tenant_id: uuid.
     """
     brief_ctx = _brief_context_block(payload.brief)
     where_ctx = _context_block(payload.context)
+    studio_ctx = await _studio_chat_block(db, payload.context)
     profile_ctx = _profile_block(payload.profile)
     evidence_ctx = await _evidence_block(db, payload.evidence_ids, tenant_id)
     onboarding_ctx = _onboarding_block(payload.client_profile)
@@ -1257,7 +1298,9 @@ async def _build_chat_messages(payload: "ChatRequest", db: Any, tenant_id: uuid.
     report_ctx = _report_state_block(payload.report_state)
     prefs_ctx = _prefs_block(payload.preferences)
     recs_ctx = _recs_block(payload.studio_recommendations)
-    system_parts = [_ADVISOR_SYSTEM_PROMPT, brief_ctx]
+    # The active studio's expertise goes RIGHT AFTER the base persona so it
+    # shapes the whole turn, before the grounding context blocks.
+    system_parts = [_ADVISOR_SYSTEM_PROMPT, studio_ctx, brief_ctx]
     for part in (profile_ctx, onboarding_ctx, kb_ctx, where_ctx, evidence_ctx, plan_ctx, report_ctx, prefs_ctx, recs_ctx):
         if part:
             system_parts.append(part)
