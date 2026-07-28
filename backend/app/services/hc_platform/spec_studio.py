@@ -78,19 +78,29 @@ async def resolve_spec(db: Any, slug: str | None) -> str | None:
 _OUTPUT_CONTRACT = """
 === PLATFORM OUTPUT CONTRACT (overrides any formatting guidance above) ===
 
-You are generating the comprehensive deliverable defined in "Recommended Output Structure" above. This must read and look like a top-tier consulting deck: rich, varied, dense and quantified - NOT a wall of narrative and tables. Respond with ONLY a JSON object (no markdown fence) shaped as a StudioOutputDocument:
+You are generating the comprehensive deliverable defined in the studio instruction above. This must read and look like a top-tier consulting deck: rich, varied, dense and quantified - NOT a wall of narrative and tables. Respond with ONLY a JSON object (no markdown fence) shaped as a StudioOutputDocument:
 
 {
   "title": "...",                 // deliverable title including the organization name
   "subtitle": "...",              // one line: deliverable type, organization, scope
-  "sections": [ ... ]             // 15 sections, in this exact order (hero band first)
+  "sections": [ ... ]             // the mandatory core below, PLUS scope sections - see SIZING
 }
 
 Each section: {"id": "...", "title": "...", "layout": "...", "data": {...}, "footnote": "optional"}
 
-Every section must earn its place: real numbers, real axes, real matrix cells. Never emit a chart, grid, heatmap or list with placeholder or zero values. The radar_chart, heatmap, kpi_grid, bar_chart, risk_flags_list and callout_quote below are MANDATORY and must each render with fully populated data.
+Every section must earn its place: real numbers, real axes, real matrix cells. Never emit a chart, grid, heatmap or list with placeholder or zero values.
 
-THE 15 SECTIONS (in this exact order, exact ids):
+=== SIZING: MATCH THE DELIVERABLE TO THE ASK (this is critical) ===
+The studio instruction above describes a BROAD capability - many scope areas, deliverable types, frameworks, methods and KPI families. It is illustrative, not a fixed template. You MUST size the report to what the user actually asked for:
+- NARROW / focused ask (one problem, e.g. "help with critical-role risk"): the mandatory core below (~11-15 sections) is enough. Do not pad.
+- BROAD ask (e.g. "build our full workforce plan", "design the whole program", "comprehensive strategy"): go LONG - 20 to 35+ sections. After the mandatory core, ADD one dedicated section for EACH relevant scope area, framework, deliverable component or KPI family the studio instruction covers that bears on the user's request. A full workforce plan, for instance, should carry sections for demand forecasting, supply forecasting, gap analysis, headcount/FTE, skills-based planning, segmentation, critical roles, capacity, productivity, cost, sourcing mix, future/emerging roles, localization, scenarios, and so on - each as its own section with the layout that best fits (a table, a kpi_grid, a bar_chart, a heatmap, a timeline).
+- Depth tiers, when present in the context (Basic/Thinking/Expert/Deepthinking), scale this: Basic stays near the core; Deepthinking pushes to the top of the range.
+Never collapse a broad, multi-part deliverable into the minimum core. If the instruction defines 20+ scope areas and the user asked for the full deliverable, the report should visibly cover them.
+
+=== EXTRA / EXPANSION SECTIONS ===
+Beyond the mandatory core, add as many scope sections as the ask warrants, each: {"id": "<slug>", "title": "<the scope area's name>", "layout": "<best-fit layout>", "data": {...}, "footnote": "..."}. Use varied layouts (comparison_table, kpi_grid, bar_chart, heatmap, timeline, radar_chart, narrative_paragraph) so the document stays a designed deck, not a wall of tables. Do NOT use narrative_paragraph for more than ~1 in 4 sections. Every added section must carry real, org-specific numbers just like the core.
+
+THE MANDATORY CORE SECTIONS (always present, in this order, exact ids; ADD scope sections after per SIZING - a natural place is right after target_state, before governance):
 
 0. id "hero", layout "hero"  (MANDATORY at-a-glance band, ALWAYS the first section)
    data: {
@@ -222,7 +232,7 @@ THE 15 SECTIONS (in this exact order, exact ids):
 
 RULES:
 - Ground every section in the specific choices the client made in onboarding and the challenge brief (their priorities, flagged challenges and severity, strategic drivers, advisory questions, industry, region, size, uploaded evidence). Name those choices explicitly and build the diagnosis, radar scores, heatmap cells, maturity rating and recommendations directly on them. The executive summary must reflect their stated situation back in their own terms. Never produce generic content that ignores their inputs.
-- ONLY the layouts listed above are valid ("hero", "narrative_paragraph", "radar_chart", "comparison_table", "kpi_grid", "heatmap", "risk_flags_list", "timeline", "callout_quote"). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual, express it as a kpi_grid (stat tiles), a radar_chart, a heatmap, a comparison_table or a timeline. Any other layout name will fail to render.
+- ONLY these layouts are valid ("hero", "narrative_paragraph", "radar_chart", "comparison_table", "kpi_grid", "bar_chart", "heatmap", "risk_flags_list", "timeline", "callout_quote"). bar_chart data: {"items": [{"label": "...", "value": <n>, "sentiment": "good|warning|bad|neutral", "benchmark": <n>}], "max": 100, "valueFormat": "percent"} (5-8 bars, benchmark optional). NEVER invent layout names such as "infographic" - when the client asks for an infographic or visual, express it as a kpi_grid (stat tiles), a radar_chart, a heatmap, a comparison_table or a timeline. Any other layout name will fail to render.
 - Honour the exact data shapes above. Positional-alignment gotchas are load-bearing: radar_chart series values align to axes by index and must match axes length; heatmap values is a rows x cols matrix; kpi_grid delta and narrative_paragraph highlights are OBJECTS (malformed values are silently ignored); comparison_table rows are flat dicts keyed by column key with the first column as the row label.
 - Every mandatory visual (radar_chart, heatmap, evidence_kpis grid, risks list, next_action callout) must appear once and be fully populated with real values - no zeros, no placeholders, no empty cells.
 - Never claim high confidence when evidence is missing. Reflect honest confidence in the maturity grid, the radar benchmark, and the next_action attribution.
@@ -270,7 +280,9 @@ async def generate_spec_report(
             {"role": "user", "content": user_msg},
         ],
         response_format={"type": "json_object"},
-        **completion_params(model, temperature=0.4, max_tokens=8000),
+        # Headroom for long, broad deliverables (up to ~35 sections). The
+        # model still sizes to the ask; this only lifts the ceiling.
+        **completion_params(model, temperature=0.4, max_tokens=16000),
     )
     document = json.loads(resp.choices[0].message.content or "{}")
     if not isinstance(document.get("sections"), list) or not document["sections"]:
