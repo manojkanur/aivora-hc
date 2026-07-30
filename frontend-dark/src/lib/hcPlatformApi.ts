@@ -1258,16 +1258,16 @@ export const hcAiAdvisoryAPI = {
     report_state?: Record<string, unknown> | null
     preferences?: { length?: string; style?: string; instructions?: string } | null
     studio_recommendations?: Array<{ id: string; name: string; category: string; reason: string }>
-  }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null; studio?: string | null }>(`${HC_BASE}/ai-advisory/chat`, body),
+  }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null; studio?: string | null; visuals?: Record<string, unknown>[] | null }>(`${HC_BASE}/ai-advisory/chat`, body),
   /**
    * Streaming chat: streams the reply text token-by-token, then resolves with
-   * the structured {plan, finalize, studio} meta. Calls onToken for each chunk.
+   * the structured {plan, finalize, studio, visuals} meta. Calls onToken for each chunk.
    */
   chatStream: async (
     body: Record<string, unknown>,
     onToken: (t: string) => void,
     signal?: AbortSignal,
-  ): Promise<{ plan: ChatPlan | null; finalize: 'summary' | 'detailed' | null; studio: string | null }> => {
+  ): Promise<{ plan: ChatPlan | null; finalize: 'summary' | 'detailed' | null; studio: string | null; visuals?: Record<string, unknown>[] | null }> => {
     let token: string | null = localStorage.getItem('auth_token_dark')
     if (!token) {
       try { token = JSON.parse(localStorage.getItem('aivora-auth-dark') || '{}')?.state?.token ?? null } catch { token = null }
@@ -1282,7 +1282,7 @@ export const hcAiAdvisoryAPI = {
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    let meta = { plan: null as ChatPlan | null, finalize: null as 'summary' | 'detailed' | null, studio: null as string | null }
+    let meta = { plan: null as ChatPlan | null, finalize: null as 'summary' | 'detailed' | null, studio: null as string | null, visuals: null as Record<string, unknown>[] | null }
     while (true) {
       const { done, value } = await reader.read()
       if (done) break

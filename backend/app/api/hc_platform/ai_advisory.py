@@ -303,6 +303,7 @@ class ChatResponse(BaseModel):
     plan: ChatPlan | None = None
     finalize: str | None = None  # 'summary' | 'detailed' once the user confirms
     studio: str | None = None    # builder slug for the chosen studio, when known
+    visuals: list[dict[str, Any]] | None = None  # inline renderer sections shown in the chat bubble
 
 
 _ADVISOR_SYSTEM_PROMPT = """You are a senior Human Capital consultant embedded inside the Aivora HC platform, advising the user in a live conversation. You have twenty years of experience across McKinsey, Mercer and in-house HR leadership roles. You speak plainly, in a warm but decisive tone, like a trusted advisor sitting next to the client.
@@ -384,13 +385,18 @@ The plan is a PREVIEW of the report's outline, not a multi-turn chore:
 - On every other turn (greeting, question, clarifying, advising) return "plan": null. Never open a standalone plan to "work through".
 
 Turning the conversation into a report:
-- When the user asks you to build/create/generate/make/write/draft the report, deliverable, framework, strategy, program, roadmap or document - or says "yes", "go ahead", "do it", "proceed", "create the report" after you offered - treat that as CONFIRMATION. On that turn: keep the chat reply SHORT (2-4 sentences confirming what you will build), set "finalize" to "detailed" (or "summary" if they asked for the simple version), set "studio" (see below), and emit the outline "plan". The platform then generates the full report in the side panel.
-- Do NOT keep asking "summary or detailed?" repeatedly. Ask it at most once; if they already named a report or said "detailed"/"full", just finalize. If unclear, default to "detailed".
-- A request to export, download or make the document of something already discussed counts as confirmation - finalize immediately.
+COLLABORATE VISUALLY, THEN LET THE USER GENERATE THE REPORT:
+- You do NOT generate the final report yourself, and you never set "finalize". The full formatted report is produced ONLY when the user runs the "/generate report" command. Your job in chat is to do the thinking WITH them and get the content and the visuals right first.
+- Work insight-first and VISUAL-first. When your answer contains data - numbers, a breakdown, stages, a distribution, scores, KPIs, a comparison, a maturity picture, a timeline - present that data AS A CHART or infographic right in the chat (via "visuals"), not just as prose. Show, do not tell.
+- Treat the charts as a shared draft. When the user says things like "make sourcing 15", "add a bar for referrals", "show it as a radar", "combine these", or "research the benchmark and update it" - return the UPDATED visual reflecting their change. Iterate with them until they are happy.
+- When the user asks you to build/create/generate the report, or says "yes/go ahead/proceed", do NOT finalize. Instead confirm briefly and tell them to run "/generate report" (or click Generate report) when the content and charts look right. Keep collaborating until then.
+- Keep replies conversational and appropriately short; the long structured deliverable is the report, produced later by /generate report.
 
 OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
-{"reply": "<your full markdown reply>", "plan": {...} or null, "finalize": null or "summary" or "detailed", "studio": null or "<studio-slug>"}
-Send the FULL updated plan every turn while one is active; send null when no plan is running.
+{"reply": "<your markdown reply>", "plan": {...} or null, "finalize": null, "studio": null or "<studio-slug>", "visuals": null or [ <renderer section> ]}
+- "finalize" is ALWAYS null. Reports are generated only by the user's /generate report command.
+- "visuals": 1-2 renderer sections visualising the exact numbers in your reply, or null if the reply has no data to chart. Each section: {"id": str, "title": short label, "layout": one of ["kpi_grid","bar_chart","progress_bar_list","radar_chart","heatmap","comparison_table","timeline"], "data": {...that layout's exact shape...}}. Use progress_bar_list for stage/status/distribution counts, kpi_grid for headline metrics, bar_chart for comparisons, radar_chart for multi-dimension scoring, heatmap for a matrix. Use REAL numbers; never fabricate a chart when there is no data.
+- Send the FULL updated plan every turn while one is active; send null when no plan is running.
 """
 
 
@@ -1151,6 +1157,17 @@ def _clean(text: str) -> str:
     return (text or "").translate(_TYPO_MAP).strip()
 
 
+def _clean_json(value: Any) -> Any:
+    """Recursively typography-clean strings inside a JSON-ish structure."""
+    if isinstance(value, str):
+        return _clean(value)
+    if isinstance(value, list):
+        return [_clean_json(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _clean_json(v) for k, v in value.items()}
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Evidence uploads: extract text from a document so chat can ground answers in it
 # ---------------------------------------------------------------------------
@@ -1404,13 +1421,8 @@ async def advisor_chat(
         # Model ignored the JSON contract - treat the whole payload as the reply.
         reply = _clean(raw)
 
+    # finalize is intentionally always null: reports only via /generate report.
     finalize = None
-    try:
-        raw_finalize = data.get("finalize")
-        if raw_finalize in ("summary", "detailed"):
-            finalize = raw_finalize
-    except (NameError, AttributeError):
-        pass
 
     studio_slug = None
     try:
@@ -1420,9 +1432,19 @@ async def advisor_chat(
     except (NameError, AttributeError):
         pass
 
+    visuals: list[dict[str, Any]] | None = None
+    try:
+        raw_v = data.get("visuals")
+        if isinstance(raw_v, list):
+            vv = [_clean_json(v) for v in raw_v[:3]
+                  if isinstance(v, dict) and isinstance(v.get("layout"), str) and isinstance(v.get("data"), dict)]
+            visuals = vv or None
+    except (NameError, AttributeError):
+        pass
+
     if not reply:
         reply = "I lost my thread there. Can you say a bit more about what you are trying to figure out?"
-    return ChatResponse(reply=reply, followup_questions=[], plan=plan, finalize=finalize, studio=studio_slug)
+    return ChatResponse(reply=reply, followup_questions=[], plan=plan, finalize=finalize, studio=studio_slug, visuals=visuals)
 
 
 _STREAM_REPLY_SUFFIX = (
@@ -1434,12 +1456,29 @@ _STREAM_REPLY_SUFFIX = (
 )
 
 _STRUCTURE_PROMPT = (
-    "You are a silent post-processor. Given the advisor's latest reply and the conversation, output "
-    "ONLY a JSON object {\"plan\": {\"title\": str, \"steps\": [{\"title\": str, \"status\": "
-    "\"pending|in_progress|done\", \"note\": str}]} | null, \"finalize\": \"summary\"|\"detailed\"|null, "
-    "\"studio\": \"<slug>\"|null}. Set plan only if the advisor laid out or updated a multi-step plan. "
-    "Set finalize only if the advisor and client just agreed to generate a summary or detailed report. "
-    "Set studio to the single most relevant studio slug if a specific deliverable is being produced, else null."
+    "You are a silent post-processor for an HC advisory chat. Given the advisor's latest reply and the "
+    "conversation, output ONLY a JSON object: {\"plan\": {\"title\": str, \"steps\": [{\"title\": str, "
+    "\"status\": \"pending|in_progress|done\", \"note\": str}]} | null, \"finalize\": null, "
+    "\"studio\": \"<slug>\"|null, \"visuals\": [ <section> ] | null}.\n"
+    "- plan: only if the advisor laid out or updated a multi-step plan, else null.\n"
+    "- finalize: ALWAYS null (reports are generated only when the user explicitly runs /generate report).\n"
+    "- studio: the single most relevant studio slug if one is clearly in focus, else null.\n"
+    "- visuals: THE IMPORTANT ONE. If the advisor's reply presents data, numbers, a breakdown, a comparison, "
+    "a distribution, stages, scores, a maturity picture, a timeline or KPIs that would land better AS A CHART, "
+    "produce 1-2 renderer sections that visualise exactly those numbers - so the user sees the insight as an "
+    "infographic right in the chat. Each section: {\"id\": str, \"title\": short label, \"layout\": one of "
+    "[\"kpi_grid\",\"bar_chart\",\"progress_bar_list\",\"radar_chart\",\"heatmap\",\"comparison_table\",\"timeline\"], "
+    "\"data\": {...matching that layout's exact shape...}}. Use REAL numbers from the reply; never invent a chart "
+    "when the reply has no data. If the reply is purely conversational (a question, a greeting, plain advice with "
+    "no figures), set visuals to null. Prefer progress_bar_list for stage/status/distribution counts, kpi_grid for "
+    "headline metrics, bar_chart for comparisons, radar_chart for multi-dimension scoring, heatmap for a matrix.\n"
+    "Layout data shapes: kpi_grid {\"columns\":3,\"items\":[{\"label\":str,\"value\":num|str,\"unit\":str,\"sublabel\":str}]}; "
+    "bar_chart {\"items\":[{\"label\":str,\"value\":num,\"sentiment\":\"good|warning|bad|neutral\"}],\"max\":num,\"valueFormat\":\"percent|number\"}; "
+    "progress_bar_list {\"items\":[{\"label\":str,\"value\":num,\"sentiment\":\"accent|good|warning|bad|neutral|info\"}],\"columns\":2,\"max\":num}; "
+    "radar_chart {\"axes\":[str],\"series\":[{\"name\":str,\"values\":[num]}],\"max\":5}; "
+    "comparison_table {\"columns\":[{\"key\":str,\"label\":str}],\"rows\":[{<key>:str}]}; "
+    "heatmap {\"rows\":[str],\"cols\":[str],\"values\":[[0-1]],\"valueFormat\":\"percent\"}; "
+    "timeline {\"horizons\":[{\"label\":str,\"actions\":[{\"title\":str,\"owner\":str}]}]}."
 )
 
 
@@ -1577,24 +1616,35 @@ async def advisor_chat_stream(
                 return {"title": _clean(str(raw_plan["title"]))[:160], "steps": steps}
             return None
 
+        visuals: list[dict[str, Any]] | None = None
+
+        def _coerce_visuals(raw_v: Any) -> list[dict[str, Any]] | None:
+            if not isinstance(raw_v, list):
+                return None
+            ok: list[dict[str, Any]] = []
+            for v in raw_v[:3]:
+                if isinstance(v, dict) and isinstance(v.get("layout"), str) and isinstance(v.get("data"), dict):
+                    ok.append(_clean_json(v))
+            return ok or None
+
         # Fast path: the model already emitted the full envelope - reuse its
-        # plan/finalize/studio instead of a second round-trip.
+        # plan/studio instead of a second round-trip. finalize is always null now
+        # (reports only via /generate report).
         if mode == "json":
             try:
                 env = _json.loads(raw)
                 plan = _coerce_plan(env.get("plan"))
-                if env.get("finalize") in ("summary", "detailed"):
-                    finalize = env["finalize"]
                 rs = env.get("studio")
                 if isinstance(rs, str) and rs.strip():
                     studio_slug = rs.strip().lower().replace("_", "-")
-                yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': finalize, 'studio': studio_slug}})}\n\n"
+                visuals = _coerce_visuals(env.get("visuals"))
+                yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': None, 'studio': studio_slug, 'visuals': visuals}})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
             except Exception:  # noqa: BLE001
                 pass
 
-        # Otherwise, a second fast pass to extract structure from the same context.
+        # Otherwise, a second fast pass to extract structure + visuals from context.
         try:
             struct_messages = [
                 {"role": "system", "content": _STRUCTURE_PROMPT},
@@ -1604,19 +1654,18 @@ async def advisor_chat_stream(
                 model=model,
                 messages=struct_messages,
                 response_format={"type": "json_object"},
-                **completion_params(model, temperature=0.0, max_tokens=800),
+                **completion_params(model, temperature=0.0, max_tokens=2500),
             )
             data = _json.loads(sresp.choices[0].message.content or "{}")
             plan = _coerce_plan(data.get("plan"))
-            if data.get("finalize") in ("summary", "detailed"):
-                finalize = data["finalize"]
             rs = data.get("studio")
             if isinstance(rs, str) and rs.strip():
                 studio_slug = rs.strip().lower().replace("_", "-")
+            visuals = _coerce_visuals(data.get("visuals"))
         except Exception:  # noqa: BLE001
             pass
 
-        yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': finalize, 'studio': studio_slug}})}\n\n"
+        yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': None, 'studio': studio_slug, 'visuals': visuals}})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(

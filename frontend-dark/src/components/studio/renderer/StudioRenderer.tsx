@@ -311,6 +311,23 @@ function SectionShell({
   )
 }
 
+/**
+ * Render a SINGLE renderer section standalone (no cover/footer chrome) - used to
+ * show inline charts/infographics inside a chat bubble during collaboration.
+ * An optional caption/title is shown above the visual.
+ */
+export function StudioSection({ section }: { section: StudioOutputSection }) {
+  if (!section || !section.layout) return null
+  return (
+    <div className="space-y-1.5">
+      {section.title && (
+        <p className="text-xs font-semibold text-slate-300">{section.title}</p>
+      )}
+      {renderLayout(section)}
+    </div>
+  )
+}
+
 export default function StudioOutput({ document, onRegenerateSection }: StudioOutputProps) {
   const showRegen =
     !!onRegenerateSection &&

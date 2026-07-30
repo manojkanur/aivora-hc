@@ -17,7 +17,7 @@ import { getTier, getDimension } from '../lib/advisory/scoring'
 import { topRecommendations, getStudio } from '../lib/advisory/recommendations'
 import chatPersona from '../lib/seeds/chatPersona.json'
 import type { AnswerValue, Question } from '../lib/advisory/types'
-import StudioOutput, { type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
+import StudioOutput, { StudioSection, type StudioOutputDocument, type StudioOutputSection } from '../components/studio/renderer/StudioRenderer'
 import { hcAiAdvisoryAPI, hcSkillsAPI, type AdvisoryProfile, type ChatPlan, type SummaryReport, type AdvisorySkill, type AdvisoryRevisionRow } from '../lib/hcPlatformApi'
 import { useClientProfileStore } from '../store/clientProfile'
 import { useCreditsStore } from '../store/credits'
@@ -153,7 +153,7 @@ export function AssistantMarkdown({ content }: { content: string }) {
 // Real conversational chat — the primary tab
 // ---------------------------------------------------------------------------
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; id: string; plan?: ChatPlan | null }
+type ChatMessage = { role: 'user' | 'assistant'; content: string; id: string; plan?: ChatPlan | null; visuals?: StudioOutputSection[] | null }
 type Attachment = { evidence_id: string; filename: string }
 
 const CHAT_STORAGE_KEY = 'aivora-advisor-chat-v2'
@@ -1176,20 +1176,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       preferences: prefs,
     }
 
-    const applyResult = (reply: string, nextPlan: ChatPlan | null, finalize: 'summary' | 'detailed' | null, studio: string | null) => {
+    const applyResult = (_reply: string, nextPlan: ChatPlan | null, _finalize: 'summary' | 'detailed' | null, studio: string | null) => {
       setPlan(nextPlan)
+      // Capture the inferred studio, but do NOT auto-generate a report. The report
+      // is produced only when the user runs /generate report (collaborate first).
       if (studio && !selectedSkill) setSuggestedSkill(studio)
-      if (finalize === 'summary' || finalize === 'detailed') {
-        const chosen = selectedSkill ?? studio  // the user's chosen studio always wins
-        if (report) {
-          // A report is already open: this is a refinement request from the chat.
-          // Regenerate directly, no approval card.
-          const withReply = [...next, { role: 'assistant' as const, content: reply, id: `a-${Date.now()}` }]
-          void finalizeSession(finalize, withReply, nextPlan, chosen, clean)
-        } else {
-          setPendingApproval({ type: finalize, studio: chosen })
-        }
-      }
     }
 
     const assistantId = `a-${Date.now()}`
@@ -1202,7 +1193,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       })
       const nextPlan = meta.plan ?? null
       const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
-      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc, plan: planChanged && nextPlan ? nextPlan : undefined } : m))
+      const nextVisuals = (Array.isArray(meta.visuals) ? meta.visuals : null) as StudioOutputSection[] | null
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc, plan: planChanged && nextPlan ? nextPlan : undefined, visuals: nextVisuals } : m))
       applyResult(acc, nextPlan, meta.finalize, meta.studio)
     } catch {
       try {
@@ -1210,9 +1202,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         const reply = res.data.reply
         const nextPlan = res.data.plan ?? null
         const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
+        const fbVisuals = (Array.isArray(res.data.visuals) ? res.data.visuals : null) as StudioOutputSection[] | null
         setMessages(prev => {
           const withoutPlaceholder = prev.filter(m => m.id !== assistantId)
-          return [...withoutPlaceholder, { role: 'assistant', content: reply, id: assistantId, plan: planChanged && nextPlan ? nextPlan : undefined }]
+          return [...withoutPlaceholder, { role: 'assistant', content: reply, id: assistantId, plan: planChanged && nextPlan ? nextPlan : undefined, visuals: fbVisuals }]
         })
         applyResult(reply, nextPlan, res.data.finalize ?? null, res.data.studio ?? null)
       } catch (err: unknown) {
@@ -1321,12 +1314,33 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   // ── Slash-command studio picker ──
   // When the draft is exactly "/<query>" (a single leading-slash token), show a
   // filterable menu of all 27 studios. Picking one sets the active studio.
-  const slashMatch = /^\/([\w-]*)$/.exec(draft)
+  // Allow a leading-slash token OR the multi-word "/generate report" command.
+  const slashMatch = /^\/([\w-]* ?[\w-]*)$/.exec(draft)
   const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : null
-  const slashResults = slashQuery !== null
-    ? skills.filter(s => s.slug.toLowerCase().includes(slashQuery) || s.name.toLowerCase().includes(slashQuery))
+  const studioResults = slashQuery !== null
+    ? skills.filter(s => s.slug.toLowerCase().includes(slashQuery.replace(/\s+/g, '-')) || s.name.toLowerCase().includes(slashQuery))
     : []
-  const slashOpen = slashQuery !== null && slashResults.length > 0
+  // Synthetic "Generate report" command shown at the top of the menu.
+  const canGenReport = messages.some(m => m.role === 'user') && !!(selectedSkill || suggestedSkill)
+  const showGenCommand = slashQuery !== null && canGenReport &&
+    ('generate report'.includes(slashQuery) || 'generate'.includes(slashQuery) || slashQuery === '')
+  const slashOpen = slashQuery !== null && (studioResults.length > 0 || showGenCommand)
+  const runGenerateReport = () => {
+    setDraft('')
+    setSlashIdx(0)
+    if (!selectedSkill && suggestedSkill) setSelectedSkill(suggestedSkill)
+    void finalizeSession('detailed', messages, plan, selectedSkill ?? suggestedSkill)
+  }
+  // Unified menu list: the Generate-report command (if available) then studios.
+  type SlashItem = { kind: 'gen' } | { kind: 'studio'; skill: AdvisorySkill }
+  const slashItems: SlashItem[] = [
+    ...(showGenCommand ? [{ kind: 'gen' } as SlashItem] : []),
+    ...studioResults.map(s => ({ kind: 'studio', skill: s } as SlashItem)),
+  ]
+  const runSlashItem = (item: SlashItem) => {
+    if (item.kind === 'gen') runGenerateReport()
+    else pickStudioSlash(item.skill)
+  }
   const pickStudioSlash = (s: AdvisorySkill) => {
     // Multi-studio combine (client #4): the FIRST pick is the primary studio;
     // subsequent picks stack as extras (up to 3 studios total, de-duplicated).
@@ -1463,8 +1477,16 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                     <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                       <Sparkles className="w-4 h-4 text-blue-400" />
                     </div>
-                    <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3">
+                    <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 min-w-0">
                       <AssistantMarkdown content={m.content} />
+                      {/* Inline visuals: charts/infographics the advisor drafted in this turn */}
+                      {Array.isArray(m.visuals) && m.visuals.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          {m.visuals.map((v, vi) => (
+                            <StudioSection key={v.id ?? `v-${vi}`} section={v} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -1520,14 +1542,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600 mr-1">Turn this into a</span>
-              <button onClick={() => requestGeneration('detailed')} disabled={!!finalizing}
+              <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600 mr-1">When ready</span>
+              <button onClick={runGenerateReport} disabled={!!finalizing}
+                title="Build the full report from this conversation (or type /generate report)"
                 className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 hover:bg-blue-500 px-3 py-1 text-[11px] font-semibold text-white transition-colors disabled:opacity-50">
-                <FileText className="w-3 h-3" /> Detailed report
-              </button>
-              <button onClick={() => requestGeneration('summary')} disabled={!!finalizing}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 px-3 py-1 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
-                <FileBarChart2 className="w-3 h-3" /> Summary
+                <FileText className="w-3 h-3" /> Generate report
               </button>
               {/* Depth tier (client #8) */}
               <span className="ml-1 inline-flex items-center rounded-full border border-[#1e2433] bg-[#0c0e14] overflow-hidden" title="How deep should the report go?">
@@ -1574,25 +1593,42 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             <div className="absolute bottom-full left-0 right-0 mb-2 z-40 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#161b28]">
                 <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">
-                  {selectedSkill ? 'Studios · add up to 2 more to combine' : 'Studios · pick one to shape the report'}
+                  {selectedSkill ? 'Commands · studios · generate report' : 'Commands · pick a studio'}
                 </span>
-                <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{slashResults.length}</span>
+                <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{slashItems.length}</span>
               </div>
               <div className="max-h-[min(45vh,22rem)] overflow-y-auto overscroll-contain">
-                {slashResults.map((s, i) => (
-                  <button key={s.slug}
-                    ref={el => { if (i === slashIdx && el) el.scrollIntoView({ block: 'nearest' }) }}
-                    onMouseEnter={() => setSlashIdx(i)} onClick={() => pickStudioSlash(s)}
-                    className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',
-                      i === slashIdx ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
-                    <span className="w-7 h-7 rounded-lg bg-[#131720] border border-[#1e2433] flex items-center justify-center flex-shrink-0">
-                      <LayoutGrid className="w-3.5 h-3.5 text-blue-400" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-white truncate">{s.name}</span>
-                      <span className="block text-[11px] text-slate-500 truncate">/{s.slug}</span>
-                    </span>
-                  </button>
+                {slashItems.map((item, i) => (
+                  item.kind === 'gen' ? (
+                    <button key="gen"
+                      ref={el => { if (i === slashIdx && el) el.scrollIntoView({ block: 'nearest' }) }}
+                      onMouseEnter={() => setSlashIdx(i)} onClick={() => runSlashItem(item)}
+                      className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors border-b border-[#161b28]',
+                        i === slashIdx ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
+                      <span className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center flex-shrink-0">
+                        <FileBarChart2 className="w-3.5 h-3.5 text-blue-400" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-white truncate">Generate report</span>
+                        <span className="block text-[11px] text-slate-500 truncate">Build the full report from this conversation</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-600 flex-shrink-0">/generate report</span>
+                    </button>
+                  ) : (
+                    <button key={item.skill.slug}
+                      ref={el => { if (i === slashIdx && el) el.scrollIntoView({ block: 'nearest' }) }}
+                      onMouseEnter={() => setSlashIdx(i)} onClick={() => runSlashItem(item)}
+                      className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',
+                        i === slashIdx ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
+                      <span className="w-7 h-7 rounded-lg bg-[#131720] border border-[#1e2433] flex items-center justify-center flex-shrink-0">
+                        <LayoutGrid className="w-3.5 h-3.5 text-blue-400" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-white truncate">{item.skill.name}</span>
+                        <span className="block text-[11px] text-slate-500 truncate">/{item.skill.slug}</span>
+                      </span>
+                    </button>
+                  )
                 ))}
               </div>
             </div>
@@ -1643,9 +1679,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             <textarea ref={textareaRef} value={draft} onChange={e => { setDraft(e.target.value); setSlashIdx(0) }}
               onKeyDown={e => {
                 if (slashOpen) {
-                  if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIdx(i => Math.min(i + 1, slashResults.length - 1)); return }
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIdx(i => Math.min(i + 1, slashItems.length - 1)); return }
                   if (e.key === 'ArrowUp') { e.preventDefault(); setSlashIdx(i => Math.max(i - 1, 0)); return }
-                  if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickStudioSlash(slashResults[slashIdx]); return }
+                  if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); const it = slashItems[slashIdx]; if (it) runSlashItem(it); return }
                   if (e.key === 'Escape') { e.preventDefault(); setDraft(''); return }
                 }
                 onKeyDown(e)
