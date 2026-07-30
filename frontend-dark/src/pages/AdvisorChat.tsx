@@ -624,6 +624,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  // Edit an already-sent user message (Claude-style): re-runs from that point.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const getProfileFor = useClientProfileStore(st => st.getProfileFor)
   const [attachments, setAttachments] = useState<Attachment[]>(() => {
@@ -1173,6 +1176,24 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     }
   }
 
+  // Edit a previously sent user message: replace its text, drop everything after
+  // it (the old reply + later turns), and re-run from that point - like Claude.
+  const editMessage = async (id: string, newText: string, history?: ChatMessage[]) => {
+    const clean = newText.trim()
+    if (!clean || sending) return
+    const base = history ?? messages
+    const idx = base.findIndex(m => m.id === id)
+    if (idx < 0) return
+    setEditingId(null)
+    setError(null)
+    const truncated = base.slice(0, idx)  // everything BEFORE the edited message
+    const editedMsg: ChatMessage = { role: 'user', content: clean, id: `u-${Date.now()}` }
+    const next = [...truncated, editedMsg]
+    setMessages(next)
+    setSending(true)
+    await runTurn(next)
+  }
+
   const sendMessage = async (content: string) => {
     const clean = content.trim()
     if (!clean || sending) return
@@ -1182,6 +1203,12 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setMessages(next)
     setDraft('')
     setSending(true)
+    await runTurn(next)
+  }
+
+  // Shared turn runner: builds the payload from the given message list, streams
+  // the reply (typewriter), and applies plan/visuals. Used by send and edit.
+  const runTurn = async (next: ChatMessage[]) => {
     const payload = {
       messages: next.map(m => ({ role: m.role, content: m.content })),
       brief: (briefContent as unknown as Record<string, unknown>) ?? (brief ? (brief as unknown as Record<string, unknown>) : null),
@@ -1205,10 +1232,38 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     const assistantId = `a-${Date.now()}`
     try {
       setMessages(prev => [...prev, { role: 'assistant', content: '', id: assistantId }])
-      let acc = ''
-      const meta = await hcAiAdvisoryAPI.chatStream(payload, (tok) => {
-        acc += tok
-        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
+      // Typewriter effect: the network hands us chunks (which some models buffer
+      // into a few large deltas). We reveal them char-by-char at a steady pace so
+      // the reply always types out smoothly, catching up faster when far behind.
+      let acc = ''          // full text received so far
+      let shown = 0         // chars revealed to the UI
+      let done = false
+      let rafId = 0
+      const tick = () => {
+        if (shown < acc.length) {
+          // Reveal proportional to how far behind we are (min 1, so it never stalls),
+          // capped so a huge burst still animates rather than snapping.
+          const behind = acc.length - shown
+          const step = Math.max(1, Math.min(behind, Math.ceil(behind / 8), 12))
+          shown += step
+          const text = acc.slice(0, shown)
+          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: text } : m))
+        }
+        if (!done || shown < acc.length) {
+          rafId = requestAnimationFrame(tick)
+        }
+      }
+      rafId = requestAnimationFrame(tick)
+
+      const meta = await hcAiAdvisoryAPI.chatStream(payload, (tok) => { acc += tok })
+      done = true
+      // Ensure the full text is shown even if the animation is mid-flight.
+      await new Promise<void>(resolve => {
+        const finish = () => {
+          if (shown >= acc.length) { cancelAnimationFrame(rafId); resolve() }
+          else requestAnimationFrame(finish)
+        }
+        finish()
       })
       const nextPlan = meta.plan ?? null
       const planChanged = JSON.stringify(nextPlan) !== JSON.stringify(plan)
@@ -1500,8 +1555,36 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                       )}
                     </div>
                   </div>
-                ) : (
+                ) : editingId === m.id ? (
                   <div className="flex justify-end">
+                    <div className="w-full max-w-[85%] rounded-2xl border border-blue-500/40 bg-[#0c0e14] p-2">
+                      <textarea autoFocus value={editDraft}
+                        onChange={e => setEditDraft(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void editMessage(m.id, editDraft) }
+                          if (e.key === 'Escape') { e.preventDefault(); setEditingId(null) }
+                        }}
+                        rows={Math.min(8, Math.max(2, editDraft.split('\n').length))}
+                        className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none resize-none px-2 py-1.5 leading-relaxed" />
+                      <div className="flex items-center justify-end gap-2 px-1 pt-1">
+                        <button onClick={() => setEditingId(null)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+                        <button onClick={() => void editMessage(m.id, editDraft)} disabled={!editDraft.trim() || sending}
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50">
+                          Save &amp; resend
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="group flex justify-end items-start gap-1.5">
+                    <button
+                      onClick={() => { setEditingId(m.id); setEditDraft(m.content) }}
+                      disabled={sending}
+                      title="Edit and resend"
+                      className="mt-1.5 flex-shrink-0 w-7 h-7 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                     <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
                       {m.content}
                     </div>
