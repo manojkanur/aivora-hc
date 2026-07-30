@@ -1258,6 +1258,7 @@ export const hcAiAdvisoryAPI = {
     report_state?: Record<string, unknown> | null
     preferences?: { length?: string; style?: string; instructions?: string } | null
     studio_recommendations?: Array<{ id: string; name: string; category: string; reason: string }>
+    model?: string | null
   }) => post<{ reply: string; followup_questions?: string[]; plan?: ChatPlan | null; finalize?: 'summary' | 'detailed' | null; studio?: string | null; visuals?: Record<string, unknown>[] | null }>(`${HC_BASE}/ai-advisory/chat`, body),
   /**
    * Streaming chat: streams the reply text token-by-token, then resolves with

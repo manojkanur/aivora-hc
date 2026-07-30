@@ -18,7 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.platform_setting import PlatformSetting
 
 LLM_CONFIG_KEY = "llm_config"
-DEFAULT_GLOBAL_MODEL = "gpt-5.1"
+# Default routes through OpenRouter (Claude) so the platform works without an
+# OpenAI key. Admin can override in the LLM Config tab; the user's per-chat
+# model pick takes precedence over this.
+DEFAULT_GLOBAL_MODEL = "anthropic/claude-opus-4.8"
 
 _CACHE_TTL_SECONDS = 30.0
 _cache: dict[str, tuple[float, dict[str, Any]]] = {}

@@ -1182,6 +1182,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       plan_state: plan,
       report_state: report ? ((report.kind === 'detailed' ? report.document : report.summary) as unknown as Record<string, unknown>) : undefined,
       preferences: prefs,
+      model: selectedModel || undefined,
     }
 
     const applyResult = (_reply: string, nextPlan: ChatPlan | null, _finalize: 'summary' | 'detailed' | null, studio: string | null) => {

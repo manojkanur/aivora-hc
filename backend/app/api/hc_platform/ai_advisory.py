@@ -286,6 +286,7 @@ class ChatRequest(BaseModel):
     report_state: dict[str, Any] | None = None    # the report the client is currently viewing
     preferences: dict[str, Any] | None = None     # {length: default|longer|shorter, style: str, instructions: str}
     studio_recommendations: list[dict[str, Any]] | None = None  # deterministic recs from the client's answers
+    model: str | None = None  # LLM chosen in the UI (OpenRouter/OpenAI id); overrides the admin default
 
 
 class PlanStep(BaseModel):
@@ -1070,18 +1071,49 @@ def _context_block(ctx: "ChatContext | None") -> str:
     return block
 
 
-async def _studio_chat_block(db: Any, ctx: "ChatContext | None") -> str:
-    """When a studio is selected, load ITS master instruction and make the CHAT
-    behave like that studio's expert advisor.
+_STUDIO_KEYWORDS: list[tuple[str, str]] = [
+    ("workforce planning", "workforce-planning"), ("workforce plan", "workforce-planning"),
+    ("headcount", "workforce-planning"), ("capacity planning", "workforce-planning"),
+    ("talent mobility", "mobility"), ("internal mobility", "mobility"), ("career path", "mobility"),
+    ("succession", "succession"), ("bench strength", "succession"),
+    ("hipo", "hipo-development"), ("high potential", "hipo-development"), ("high-potential", "hipo-development"),
+    ("leadership development", "leadership-development"), ("leadership bench", "leadership-development"),
+    ("leadership program", "leadership-development"),
+    ("capability assessment", "capability-assessment"), ("capability gap", "capability-assessment"),
+    ("skills development", "skills-development"), ("skill gap", "skills-development"),
+    ("reskilling", "skills-development"), ("upskilling", "skills-development"),
+    ("learning and training", "learning-training"), ("training program", "learning-training"), ("l&d", "learning-training"),
+    ("performance management", "performance-management"), ("appraisal", "performance-management"),
+    ("early career", "early-career"), ("early-career", "early-career"), ("graduate program", "early-career"),
+    ("coaching", "coaching-mentoring"), ("mentoring", "coaching-mentoring"),
+    ("talent acquisition", "talent-acquisition"), ("recruitment", "talent-acquisition"),
+]
 
-    The full instruction is the report engine; for conversation we inject the
-    persona/method/intake portion (capped) wrapped so the model stays
-    conversational - asking that studio's own diagnostic questions and using its
-    framing - rather than dumping the deliverable into chat.
+
+def _detect_studio_from_text(text: str) -> str | None:
+    """Best-effort studio slug from free text (longest matching keyword wins)."""
+    low = (text or "").lower()
+    best: tuple[int, str] | None = None
+    for kw, slug in _STUDIO_KEYWORDS:
+        if kw in low and (best is None or len(kw) > best[0]):
+            best = (len(kw), slug)
+    return best[1] if best else None
+
+
+async def _studio_chat_block(db: Any, ctx: "ChatContext | None", messages: "list[ChatMessage] | None" = None) -> str:
+    """Make the CHAT behave like a studio's expert advisor.
+
+    Uses the explicitly selected studio (ctx.studio_id) when present; otherwise
+    AUTO-DETECTS the studio from the recent conversation, so asking about
+    "workforce planning" gets the Workforce Planning expert even without picking
+    it from the "/" menu. The persona/method/intake portion of the instruction
+    is injected (capped) so the model asks that studio's own diagnostic
+    questions and uses its framing, staying conversational.
     """
-    if not ctx or not (ctx.studio_id or ctx.studio_name):
-        return ""
-    slug = (ctx.studio_id or "").replace("ai_advisory:", "").strip()
+    slug = (((ctx.studio_id or ctx.studio_name) if ctx else "") or "").replace("ai_advisory:", "").strip().lower().replace(" ", "-")
+    if not slug and messages:
+        recent = " ".join(m.content for m in messages[-6:] if getattr(m, "role", "") == "user")
+        slug = _detect_studio_from_text(recent) or ""
     if not slug:
         return ""
     try:
@@ -1333,7 +1365,7 @@ async def _build_chat_messages(payload: "ChatRequest", db: Any, tenant_id: uuid.
     """
     brief_ctx = _brief_context_block(payload.brief)
     where_ctx = _context_block(payload.context)
-    studio_ctx = await _studio_chat_block(db, payload.context)
+    studio_ctx = await _studio_chat_block(db, payload.context, payload.messages)
     profile_ctx = _profile_block(payload.profile)
     evidence_ctx = await _evidence_block(db, payload.evidence_ids, tenant_id)
     onboarding_ctx = _onboarding_block(payload.client_profile)
@@ -1387,15 +1419,16 @@ async def advisor_chat(
     messages = await _build_chat_messages(payload, db, current_tenant.id)
 
     try:
-        from app.services.model_settings import completion_params, get_global_model
+        from app.services.llm_models import completion_params_for, get_llm_client, resolve_model
+        from app.services.model_settings import get_global_model
 
-        model = await get_global_model(db)
-        client = _get_client()
+        model = resolve_model(payload.model or await get_global_model(db))
+        client = get_llm_client(model)
         resp = await client.chat.completions.create(
             model=model,
             messages=messages,
             response_format={"type": "json_object"},
-            **completion_params(model, temperature=0.55, max_tokens=4096),
+            **completion_params_for(model, temperature=0.55, max_tokens=4096),
         )
         raw = resp.choices[0].message.content or ""
     except Exception as exc:  # noqa: BLE001
@@ -1499,18 +1532,20 @@ async def advisor_chat_stream(
     end. Falls back cleanly: on any error the client can retry the JSON /chat.
     """
     from app.config import settings
-    from app.services.ai_orchestrator import _get_client
-    from app.services.model_settings import completion_params, get_global_model
+    from app.services.llm_models import completion_params_for, get_llm_client, resolve_model
+    from app.services.model_settings import get_global_model
     from fastapi.responses import StreamingResponse
 
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(status_code=503, detail="Advisor needs the OpenAI key configured.")
+    if not settings.OPENAI_API_KEY and not settings.OPENROUTER_API_KEY:
+        raise HTTPException(status_code=503, detail="Advisor needs an OpenAI or OpenRouter key configured.")
 
     messages = await _build_chat_messages(payload, db, current_tenant.id)
     # Ask for plain text (not JSON) so we can stream it straight to the user.
     messages[0] = {"role": "system", "content": messages[0]["content"] + _STREAM_REPLY_SUFFIX}
-    model = await get_global_model(db)
-    client = _get_client()
+    # The model the user picked in the UI drives the chat (via OpenRouter);
+    # falls back to the admin global model.
+    model = resolve_model(payload.model or await get_global_model(db))
+    client = get_llm_client(model)
 
     async def event_stream():
         import json as _json
@@ -1551,7 +1586,7 @@ async def advisor_chat_stream(
                 model=model,
                 messages=messages,
                 stream=True,
-                **completion_params(model, temperature=0.55, max_tokens=4096),
+                **completion_params_for(model, temperature=0.55, max_tokens=4096),
             )
             async for chunk in stream:
                 delta = chunk.choices[0].delta.content if chunk.choices else None
@@ -1656,7 +1691,7 @@ async def advisor_chat_stream(
                 model=model,
                 messages=struct_messages,
                 response_format={"type": "json_object"},
-                **completion_params(model, temperature=0.0, max_tokens=2500),
+                **completion_params_for(model, temperature=0.0, max_tokens=2500),
             )
             data = _json.loads(sresp.choices[0].message.content or "{}")
             plan = _coerce_plan(data.get("plan"))
