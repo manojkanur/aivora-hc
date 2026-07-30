@@ -1329,7 +1329,7 @@ export const hcAiAdvisoryAPI = {
     `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 240000 },
   ),
   // Curated LLM catalogue for the chat model picker (OpenRouter + OpenAI).
-  listModels: () => get<{ models: AdvisoryModel[]; default: string; openrouter_ready: boolean }>(
+  listModels: () => get<{ models: AdvisoryModel[]; tiers?: AdvisoryTier[]; default: string; openrouter_ready: boolean }>(
     `${HC_BASE}/ai-advisory/models`),
 
   // --- Threads: many advisory chats per workspace ---------------------------
@@ -1387,6 +1387,12 @@ export interface AdvisoryModel {
   provider: string
   hint?: string
   default?: boolean
+}
+
+export interface AdvisoryTier {
+  id: string
+  label: string
+  hint?: string
 }
 
 export interface AdvisorySessionState {

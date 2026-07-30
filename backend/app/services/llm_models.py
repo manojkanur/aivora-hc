@@ -19,22 +19,62 @@ from app.config import settings
 # Keep this a tight, high-quality set. `id` is what we send to the provider;
 # OpenRouter ids are "provider/model". `default` marks the pre-selected option.
 MODEL_CATALOGUE: list[dict[str, Any]] = [
+    # Anthropic
     {"id": "anthropic/claude-opus-4.1", "label": "Claude Opus 4.1", "provider": "Anthropic",
      "hint": "Deepest reasoning, best for premium reports", "default": True},
     {"id": "anthropic/claude-sonnet-4.5", "label": "Claude Sonnet 4.5", "provider": "Anthropic",
      "hint": "Fast, excellent quality"},
+    {"id": "anthropic/claude-opus-4", "label": "Claude Opus 4", "provider": "Anthropic",
+     "hint": "Premium reasoning"},
+    {"id": "anthropic/claude-3.7-sonnet", "label": "Claude 3.7 Sonnet", "provider": "Anthropic",
+     "hint": "Balanced, reliable"},
+    {"id": "anthropic/claude-3.5-haiku", "label": "Claude 3.5 Haiku", "provider": "Anthropic",
+     "hint": "Fastest, low cost"},
+    # OpenAI
     {"id": "openai/gpt-5.1", "label": "GPT-5.1", "provider": "OpenAI",
      "hint": "Strong all-round reasoning"},
+    {"id": "openai/gpt-5", "label": "GPT-5", "provider": "OpenAI",
+     "hint": "Flagship reasoning"},
+    {"id": "openai/gpt-4.1", "label": "GPT-4.1", "provider": "OpenAI",
+     "hint": "Capable, long context"},
     {"id": "openai/gpt-4o", "label": "GPT-4o", "provider": "OpenAI",
      "hint": "Fast and capable"},
+    {"id": "openai/o3", "label": "OpenAI o3", "provider": "OpenAI",
+     "hint": "Deep step-by-step reasoning"},
+    {"id": "openai/o4-mini", "label": "OpenAI o4-mini", "provider": "OpenAI",
+     "hint": "Fast reasoning, low cost"},
+    # Google
     {"id": "google/gemini-2.5-pro", "label": "Gemini 2.5 Pro", "provider": "Google",
      "hint": "Long-context analysis"},
     {"id": "google/gemini-2.5-flash", "label": "Gemini 2.5 Flash", "provider": "Google",
      "hint": "Very fast, low cost"},
+    {"id": "google/gemini-2.0-flash-001", "label": "Gemini 2.0 Flash", "provider": "Google",
+     "hint": "Fast general use"},
+    # xAI
     {"id": "x-ai/grok-4", "label": "Grok 4", "provider": "xAI",
      "hint": "Strong reasoning alternative"},
+    {"id": "x-ai/grok-3", "label": "Grok 3", "provider": "xAI",
+     "hint": "Capable general model"},
+    # DeepSeek
     {"id": "deepseek/deepseek-r1", "label": "DeepSeek R1", "provider": "DeepSeek",
      "hint": "Cost-effective deep reasoning"},
+    {"id": "deepseek/deepseek-chat-v3.1", "label": "DeepSeek V3.1", "provider": "DeepSeek",
+     "hint": "Fast, very low cost"},
+    # Meta / Mistral / Qwen
+    {"id": "meta-llama/llama-3.3-70b-instruct", "label": "Llama 3.3 70B", "provider": "Meta",
+     "hint": "Open-weight, solid quality"},
+    {"id": "mistralai/mistral-large-2411", "label": "Mistral Large", "provider": "Mistral",
+     "hint": "Strong European model"},
+    {"id": "qwen/qwen-2.5-72b-instruct", "label": "Qwen 2.5 72B", "provider": "Qwen",
+     "hint": "Capable, multilingual"},
+]
+
+# Depth tiers surfaced in the chat (shown in the tier dropdown).
+TIER_CATALOGUE: list[dict[str, str]] = [
+    {"id": "basic", "label": "Basic", "hint": "Fast, lean output"},
+    {"id": "thinking", "label": "Thinking", "hint": "Balanced default"},
+    {"id": "expert", "label": "Expert", "hint": "Partner-grade depth"},
+    {"id": "deepthinking", "label": "Deep", "hint": "Most thorough, most sources"},
 ]
 
 _CATALOGUE_IDS = {m["id"] for m in MODEL_CATALOGUE}

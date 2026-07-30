@@ -652,10 +652,17 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [tier, setTier] = useState<'basic' | 'thinking' | 'expert' | 'deepthinking'>('thinking')
   // Model picker (OpenRouter + OpenAI): which brain generates the report.
   const [models, setModels] = useState<import('../lib/hcPlatformApi').AdvisoryModel[]>([])
+  const [tiers, setTiers] = useState<import('../lib/hcPlatformApi').AdvisoryTier[]>([
+    { id: 'basic', label: 'Basic', hint: 'Fast, lean output' },
+    { id: 'thinking', label: 'Thinking', hint: 'Balanced default' },
+    { id: 'expert', label: 'Expert', hint: 'Partner-grade depth' },
+    { id: 'deepthinking', label: 'Deep', hint: 'Most thorough' },
+  ])
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     try { return localStorage.getItem('aivora-advisor-model') || '' } catch { return '' }
   })
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [tierMenuOpen, setTierMenuOpen] = useState(false)
   // Public share link (client #5)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
@@ -729,6 +736,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       if (cancelled) return
       const list = Array.isArray(res.data.models) ? res.data.models : []
       setModels(list)
+      if (Array.isArray(res.data.tiers) && res.data.tiers.length > 0) setTiers(res.data.tiers)
       // Adopt the server default only if the user has no saved choice.
       setSelectedModel(prev => prev || res.data.default || (list[0]?.id ?? ''))
     }).catch(() => { /* non-fatal - falls back to the admin global model server-side */ })
@@ -1659,46 +1667,83 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
             </div>
-            {/* Persistent controls (Claude-style): model picker + depth tier, always visible */}
-            <div className="flex items-center flex-wrap gap-1.5 px-1 pt-2 mt-1 border-t border-[#161b28]">
-              {/* Model picker */}
+            {/* Persistent controls (Claude-style): model + depth tier dropdowns, always visible, mobile-responsive */}
+            <div className="flex items-center gap-2 px-1 pt-2 mt-1 border-t border-[#161b28] min-w-0">
+              {/* Model picker dropdown */}
               {models.length > 0 && (
-                <div className="relative">
-                  <button onClick={() => setModelMenuOpen(o => !o)} disabled={!!finalizing}
-                    className="inline-flex items-center gap-1 rounded-lg border border-[#1e2433] bg-[#0c0e14] px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-blue-500/40 transition-colors disabled:opacity-50">
-                    <Sparkles className="w-3 h-3 text-blue-400" />
-                    <span className="max-w-[130px] truncate">{models.find(m => m.id === selectedModel)?.label ?? 'Model'}</span>
-                    <ChevronDown className="w-3 h-3" />
+                <div className="relative flex-shrink-0">
+                  <button onClick={() => { setModelMenuOpen(o => !o); setTierMenuOpen(false) }} disabled={!!finalizing}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] pl-2 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                    <span className="max-w-[100px] sm:max-w-[150px] truncate">{models.find(m => m.id === selectedModel)?.label ?? 'Model'}</span>
+                    <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', modelMenuOpen && 'rotate-180')} />
                   </button>
                   {modelMenuOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 z-40 w-72 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)] max-h-[min(55vh,26rem)] overflow-y-auto">
-                      <div className="px-3 py-1.5 border-b border-[#161b28] text-[10px] uppercase tracking-widest font-bold text-slate-600">Model</div>
-                      {models.map(m => (
-                        <button key={m.id}
-                          onClick={() => { setSelectedModel(m.id); try { localStorage.setItem('aivora-advisor-model', m.id) } catch { /* ignore */ }; setModelMenuOpen(false) }}
-                          className={cn('w-full flex items-start gap-2.5 px-3 py-2 text-left transition-colors', m.id === selectedModel ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
-                          <span className="mt-0.5 w-4 flex-shrink-0">{m.id === selectedModel && <Check className="w-3.5 h-3.5 text-blue-400" />}</span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold text-white truncate">{m.label} <span className="text-slate-500 font-normal">· {m.provider}</span></span>
-                            {m.hint && <span className="block text-[10px] text-slate-500 truncate">{m.hint}</span>}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setModelMenuOpen(false)} />
+                      <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+                        <div className="px-3.5 py-2 border-b border-[#161b28] flex items-center justify-between">
+                          <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Model</span>
+                          <span className="text-[10px] text-slate-600 tabular-nums">{models.length}</span>
+                        </div>
+                        <div className="max-h-[min(60vh,28rem)] overflow-y-auto overscroll-contain py-1">
+                          {models.map((m, i) => {
+                            const showProvider = i === 0 || models[i - 1].provider !== m.provider
+                            return (
+                              <div key={m.id}>
+                                {showProvider && (
+                                  <div className="px-3.5 pt-2 pb-1 text-[9px] uppercase tracking-widest font-bold text-slate-600">{m.provider}</div>
+                                )}
+                                <button
+                                  onClick={() => { setSelectedModel(m.id); try { localStorage.setItem('aivora-advisor-model', m.id) } catch { /* ignore */ }; setModelMenuOpen(false) }}
+                                  className={cn('w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-colors', m.id === selectedModel ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-[13px] font-semibold text-white truncate">{m.label}</span>
+                                    {m.hint && <span className="block text-[11px] text-slate-500 truncate">{m.hint}</span>}
+                                  </span>
+                                  {m.id === selectedModel && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
-              {/* Depth tier segmented pills */}
-              <span className="inline-flex items-center rounded-lg border border-[#1e2433] bg-[#0c0e14] overflow-hidden" title="How deep should the generated report go?">
-                {(['basic', 'thinking', 'expert', 'deepthinking'] as const).map(t => (
-                  <button key={t} onClick={() => setTier(t)} disabled={!!finalizing}
-                    className={cn('px-2.5 py-1 text-[10px] font-semibold capitalize transition-colors disabled:opacity-50',
-                      tier === t ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white')}>
-                    {t === 'deepthinking' ? 'Deep' : t}
-                  </button>
-                ))}
-              </span>
-              <span className="ml-auto text-[10px] text-slate-600 hidden sm:block">Type <span className="font-mono text-slate-500">/generate report</span> when ready</span>
+              {/* Depth tier dropdown */}
+              <div className="relative flex-shrink-0">
+                <button onClick={() => { setTierMenuOpen(o => !o); setModelMenuOpen(false) }} disabled={!!finalizing}
+                  title="How deep should the generated report go?"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] pl-2.5 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                  <span className="truncate">{tiers.find(t => t.id === tier)?.label ?? 'Thinking'}</span>
+                  <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', tierMenuOpen && 'rotate-180')} />
+                </button>
+                {tierMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setTierMenuOpen(false)} />
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(15rem,calc(100vw-2rem))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+                      <div className="px-3.5 py-2 border-b border-[#161b28] text-[10px] uppercase tracking-widest font-bold text-slate-500">Report depth</div>
+                      <div className="max-h-[min(50vh,20rem)] overflow-y-auto overscroll-contain py-1">
+                        {tiers.map(t => (
+                          <button key={t.id}
+                            onClick={() => { setTier(t.id as typeof tier); setTierMenuOpen(false) }}
+                            className={cn('w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-colors', t.id === tier ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[13px] font-semibold text-white truncate">{t.label}</span>
+                              {t.hint && <span className="block text-[11px] text-slate-500 truncate">{t.hint}</span>}
+                            </span>
+                            {t.id === tier && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              <span className="ml-auto text-[10px] text-slate-600 hidden md:block flex-shrink-0">Type <span className="font-mono text-slate-500">/generate report</span> when ready</span>
             </div>
           </div>
           </div>
