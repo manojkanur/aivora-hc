@@ -658,8 +658,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     { id: 'expert', label: 'Expert', hint: 'Partner-grade depth' },
     { id: 'deepthinking', label: 'Deep', hint: 'Most thorough' },
   ])
+  // Default to Claude Opus 4.8 until the live catalogue loads (and unless the
+  // user has a saved pick), so the model button never shows a bare "Model".
+  const DEFAULT_MODEL_ID = 'anthropic/claude-opus-4.8'
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    try { return localStorage.getItem('aivora-advisor-model') || '' } catch { return '' }
+    try { return localStorage.getItem('aivora-advisor-model') || DEFAULT_MODEL_ID } catch { return DEFAULT_MODEL_ID }
   })
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [tierMenuOpen, setTierMenuOpen] = useState(false)
@@ -710,6 +713,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   }
 
   const selectedSkillObj = selectedSkill ? skills.find(s => s.slug === selectedSkill) ?? null : null
+  // Readable model button label: catalogue label if loaded, else a tidy name
+  // derived from the id, so the button never shows a bare "Model".
+  const modelLabel = models.find(m => m.id === selectedModel)?.label
+    || (selectedModel ? selectedModel.split('/').pop()!.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Model')
   const extraSkillObjs = extraStudios.map(slug => skills.find(s => s.slug === slug)).filter(Boolean) as AdvisorySkill[]
   // Clearing the primary promotes the first extra so the combine never leaves
   // orphaned extras with no primary.
@@ -737,8 +744,9 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       const list = Array.isArray(res.data.models) ? res.data.models : []
       setModels(list)
       if (Array.isArray(res.data.tiers) && res.data.tiers.length > 0) setTiers(res.data.tiers)
-      // Adopt the server default only if the user has no saved choice.
-      setSelectedModel(prev => prev || res.data.default || (list[0]?.id ?? ''))
+      // Adopt the server default unless the user has an explicit saved choice.
+      const saved = (() => { try { return localStorage.getItem('aivora-advisor-model') } catch { return null } })()
+      if (!saved) setSelectedModel(res.data.default || DEFAULT_MODEL_ID || (list[0]?.id ?? ''))
     }).catch(() => { /* non-fatal - falls back to the admin global model server-side */ })
     return () => { cancelled = true }
   }, [])
@@ -1676,7 +1684,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   <button onClick={() => { setModelMenuOpen(o => !o); setTierMenuOpen(false) }} disabled={!!finalizing}
                     className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] pl-2 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
                     <Sparkles className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                    <span className="max-w-[100px] sm:max-w-[150px] truncate">{models.find(m => m.id === selectedModel)?.label ?? 'Model'}</span>
+                    <span className="max-w-[100px] sm:max-w-[150px] truncate">{modelLabel}</span>
                     <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', modelMenuOpen && 'rotate-180')} />
                   </button>
                   {modelMenuOpen && (
