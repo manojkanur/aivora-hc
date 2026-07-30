@@ -1753,7 +1753,10 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   className={cn('inline-flex items-center gap-1.5 rounded-full border pl-2.5 pr-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50',
                     selectedSkillObj ? 'border-blue-500/50 bg-blue-500/10 text-blue-300' : 'border-[#1e2433] bg-[#0c0e14] text-slate-200 hover:border-blue-500/50 hover:text-white')}>
                   <LayoutGrid className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                  <span className="max-w-[110px] sm:max-w-[150px] truncate">{selectedSkillObj?.name ?? 'Studio'}</span>
+                  {(() => {
+                    const count = (selectedSkill ? 1 : 0) + extraStudios.length
+                    return <span className="whitespace-nowrap">{count > 0 ? `Studio (${count})` : 'Studio'}</span>
+                  })()}
                   <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', studioMenuOpen && 'rotate-180')} />
                 </button>
                 {studioMenuOpen && (
