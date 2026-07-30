@@ -226,12 +226,13 @@ async def list_advisory_models(current_user: CurrentUser) -> dict[str, Any]:
     is surfaced so the UI can hint if a key is missing.
     """
     from app.config import settings
-    from app.services.llm_models import MODEL_CATALOGUE, TIER_CATALOGUE, default_model_id
+    from app.services.llm_models import TIER_CATALOGUE, default_model_id, get_model_catalogue
 
+    catalogue = await get_model_catalogue()
     return {
-        "models": MODEL_CATALOGUE,
+        "models": catalogue,
         "tiers": TIER_CATALOGUE,
-        "default": default_model_id(),
+        "default": next((m["id"] for m in catalogue if m.get("default")), default_model_id()),
         "openrouter_ready": bool(settings.OPENROUTER_API_KEY),
     }
 
