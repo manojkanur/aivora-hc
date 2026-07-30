@@ -398,7 +398,7 @@ COLLABORATE VISUALLY, THEN LET THE USER GENERATE THE REPORT:
 OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
 {"reply": "<your markdown reply>", "plan": {...} or null, "finalize": null, "studio": null or "<studio-slug>", "visuals": null or [ <renderer section> ]}
 - "finalize" is ALWAYS null. Reports are generated only by the user's /generate report command.
-- "visuals": 1-2 renderer sections visualising the exact numbers in your reply, or null if the reply has no data to chart. Each section: {"id": str, "title": short label, "layout": one of ["kpi_grid","bar_chart","progress_bar_list","radar_chart","heatmap","comparison_table","timeline"], "data": {...that layout's exact shape...}}. Use progress_bar_list for stage/status/distribution counts, kpi_grid for headline metrics, bar_chart for comparisons, radar_chart for multi-dimension scoring, heatmap for a matrix. Use REAL numbers; never fabricate a chart when there is no data.
+- "visuals": 1-2 renderer sections visualising the exact numbers in your reply, or null if the reply has no data to chart. Each section: {"id": str, "title": short label, "layout": one of ["kpi_grid","bar_chart","progress_bar_list","pie_chart","donut_chart","radar_chart","heatmap","comparison_table","timeline"], "data": {...that layout's exact shape...}}. You CAN render a real pie/donut in chat - when the user asks for a pie or donut, or the data is a share/composition of a whole (e.g. a build/buy/borrow/automate mix), use "pie_chart" (data: {"items":[{"label":str,"value":num}],"valueFormat":"percent"}) or "donut_chart" (same shape). NEVER tell the user you cannot draw a pie - just draw it. Use progress_bar_list for stage/status counts, kpi_grid for headline metrics, bar_chart for comparisons, radar_chart for multi-dimension scoring, heatmap for a matrix. Use REAL numbers; never fabricate a chart when there is no data.
 - Send the FULL updated plan every turn while one is active; send null when no plan is running.
 """
 
@@ -1502,13 +1502,16 @@ _STRUCTURE_PROMPT = (
     "a distribution, stages, scores, a maturity picture, a timeline or KPIs that would land better AS A CHART, "
     "produce 1-2 renderer sections that visualise exactly those numbers - so the user sees the insight as an "
     "infographic right in the chat. Each section: {\"id\": str, \"title\": short label, \"layout\": one of "
-    "[\"kpi_grid\",\"bar_chart\",\"progress_bar_list\",\"radar_chart\",\"heatmap\",\"comparison_table\",\"timeline\"], "
+    "[\"kpi_grid\",\"bar_chart\",\"progress_bar_list\",\"pie_chart\",\"donut_chart\",\"radar_chart\",\"heatmap\",\"comparison_table\",\"timeline\"], "
     "\"data\": {...matching that layout's exact shape...}}. Use REAL numbers from the reply; never invent a chart "
     "when the reply has no data. If the reply is purely conversational (a question, a greeting, plain advice with "
-    "no figures), set visuals to null. Prefer progress_bar_list for stage/status/distribution counts, kpi_grid for "
-    "headline metrics, bar_chart for comparisons, radar_chart for multi-dimension scoring, heatmap for a matrix.\n"
+    "no figures), set visuals to null. If the reply or the user asks for a pie/donut, OR the data is a share of a "
+    "whole (a sourcing mix, a budget split, a composition), use pie_chart or donut_chart. Prefer progress_bar_list "
+    "for stage/status counts, kpi_grid for headline metrics, bar_chart for comparisons, radar_chart for "
+    "multi-dimension scoring, heatmap for a matrix.\n"
     "Layout data shapes: kpi_grid {\"columns\":3,\"items\":[{\"label\":str,\"value\":num|str,\"unit\":str,\"sublabel\":str}]}; "
     "bar_chart {\"items\":[{\"label\":str,\"value\":num,\"sentiment\":\"good|warning|bad|neutral\"}],\"max\":num,\"valueFormat\":\"percent|number\"}; "
+    "pie_chart / donut_chart {\"items\":[{\"label\":str,\"value\":num}],\"valueFormat\":\"percent\"}; "
     "progress_bar_list {\"items\":[{\"label\":str,\"value\":num,\"sentiment\":\"accent|good|warning|bad|neutral|info\"}],\"columns\":2,\"max\":num}; "
     "radar_chart {\"axes\":[str],\"series\":[{\"name\":str,\"values\":[num]}],\"max\":5}; "
     "comparison_table {\"columns\":[{\"key\":str,\"label\":str}],\"rows\":[{<key>:str}]}; "
