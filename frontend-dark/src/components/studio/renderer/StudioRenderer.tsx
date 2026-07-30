@@ -7,6 +7,7 @@ import './report-paper.css'
 import KpiGrid from './sections/KpiGrid'
 import RadarChart from './sections/RadarChart'
 import HorizontalBarChart from './sections/HorizontalBarChart'
+import ProgressBarList from './sections/ProgressBarList'
 import ComparisonTable from './sections/ComparisonTable'
 import RankedList from './sections/RankedList'
 import Heatmap from './sections/Heatmap'
@@ -69,6 +70,11 @@ function renderLayout(section: StudioOutputSection) {
     case 'bar_chart':
     case 'bar':
       return <HorizontalBarChart title={t} data={data} footnote={f} />
+
+    case 'progress_bar_list':
+    case 'progress_bars':
+    case 'stage_bars':
+      return <ProgressBarList title={t} data={data} footnote={f} />
 
     case 'heatmap':
     case 'maturity_heatmap':
