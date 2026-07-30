@@ -666,6 +666,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   })
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [tierMenuOpen, setTierMenuOpen] = useState(false)
+  const [studioMenuOpen, setStudioMenuOpen] = useState(false)
+  const [studioQuery, setStudioQuery] = useState('')
   // Public share link (client #5)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
@@ -1328,32 +1330,24 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
     setPendingApproval({ type, studio: selectedSkill ?? suggestedSkill })
   }
 
-  // ── Slash-command studio picker ──
-  // When the draft is exactly "/<query>" (a single leading-slash token), show a
-  // filterable menu of all 27 studios. Picking one sets the active studio.
-  // Allow a leading-slash token OR the multi-word "/generate report" command.
+  // ── Slash command ──
+  // The "/" menu is now JUST the /generate report command (studios moved to the
+  // Studio dropdown in the composer). Matches a leading-slash token or the
+  // "/generate report" phrase.
   const slashMatch = /^\/([\w-]* ?[\w-]*)$/.exec(draft)
   const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : null
-  const studioResults = slashQuery !== null
-    ? skills.filter(s => s.slug.toLowerCase().includes(slashQuery.replace(/\s+/g, '-')) || s.name.toLowerCase().includes(slashQuery))
-    : []
-  // Synthetic "Generate report" command shown at the top of the menu.
   const canGenReport = messages.some(m => m.role === 'user') && !!(selectedSkill || suggestedSkill)
   const showGenCommand = slashQuery !== null && canGenReport &&
     ('generate report'.includes(slashQuery) || 'generate'.includes(slashQuery) || slashQuery === '')
-  const slashOpen = slashQuery !== null && (studioResults.length > 0 || showGenCommand)
+  const slashOpen = showGenCommand
   const runGenerateReport = () => {
     setDraft('')
     setSlashIdx(0)
     if (!selectedSkill && suggestedSkill) setSelectedSkill(suggestedSkill)
     void finalizeSession('detailed', messages, plan, selectedSkill ?? suggestedSkill)
   }
-  // Unified menu list: the Generate-report command (if available) then studios.
   type SlashItem = { kind: 'gen' } | { kind: 'studio'; skill: AdvisorySkill }
-  const slashItems: SlashItem[] = [
-    ...(showGenCommand ? [{ kind: 'gen' } as SlashItem] : []),
-    ...studioResults.map(s => ({ kind: 'studio', skill: s } as SlashItem)),
-  ]
+  const slashItems: SlashItem[] = showGenCommand ? [{ kind: 'gen' } as SlashItem] : []
   const runSlashItem = (item: SlashItem) => {
     if (item.kind === 'gen') runGenerateReport()
     else pickStudioSlash(item.skill)
@@ -1573,7 +1567,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             <div className="absolute bottom-full left-0 right-0 mb-2 z-40 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#161b28]">
                 <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">
-                  {selectedSkill ? 'Commands · studios · generate report' : 'Commands · pick a studio'}
+                  Command
                 </span>
                 <span className="text-[10px] font-semibold text-slate-500 tabular-nums">{slashItems.length}</span>
               </div>
@@ -1667,7 +1661,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 onKeyDown(e)
               }}
               rows={1} disabled={sending} autoFocus
-              placeholder={brief ? `Ask about ${brief.organizationName || 'your organisation'}...  (type / for studios)` : 'Ask anything, or type / to pick a studio...'}
+              placeholder={brief ? `Ask about ${brief.organizationName || 'your organisation'}...` : 'Ask anything about your HC challenge...'}
               className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center" />
             <button onClick={() => sendMessage(draft)} disabled={!draft.trim() || sending} title="Send (Enter)"
               className={draft.trim() && !sending
@@ -1747,6 +1741,52 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                             {t.id === tier && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
                           </button>
                         ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              {/* Studio dropdown (compact, searchable) - like Model & Thinking */}
+              <div className="relative flex-shrink-0">
+                <button onClick={() => { setStudioMenuOpen(o => !o); setModelMenuOpen(false); setTierMenuOpen(false); setStudioQuery('') }} disabled={!!finalizing}
+                  title="Pick the studio to shape the report"
+                  className={cn('inline-flex items-center gap-1.5 rounded-full border pl-2.5 pr-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50',
+                    selectedSkillObj ? 'border-blue-500/50 bg-blue-500/10 text-blue-300' : 'border-[#1e2433] bg-[#0c0e14] text-slate-200 hover:border-blue-500/50 hover:text-white')}>
+                  <LayoutGrid className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                  <span className="max-w-[110px] sm:max-w-[150px] truncate">{selectedSkillObj?.name ?? 'Studio'}</span>
+                  <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', studioMenuOpen && 'rotate-180')} />
+                </button>
+                {studioMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setStudioMenuOpen(false)} />
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+                      <div className="px-2.5 py-2 border-b border-[#161b28] flex items-center gap-2">
+                        <Search className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                        <input autoFocus value={studioQuery} onChange={e => setStudioQuery(e.target.value)}
+                          placeholder="Search studios..."
+                          className="flex-1 bg-transparent text-xs text-white placeholder:text-slate-600 outline-none" />
+                        {selectedSkill && (
+                          <button onClick={() => { clearPrimaryStudio(); setStudioMenuOpen(false) }}
+                            className="text-[10px] font-semibold text-slate-500 hover:text-red-400 transition-colors flex-shrink-0">Clear</button>
+                        )}
+                      </div>
+                      <div className="max-h-[min(55vh,24rem)] overflow-y-auto overscroll-contain py-1">
+                        {skills.filter(s => !studioQuery || s.name.toLowerCase().includes(studioQuery.toLowerCase()) || s.slug.toLowerCase().includes(studioQuery.toLowerCase())).map(s => (
+                          <button key={s.slug}
+                            onClick={() => { pickStudioSlash(s); setStudioMenuOpen(false) }}
+                            className={cn('w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
+                              s.slug === selectedSkill || extraStudios.includes(s.slug) ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
+                            <span className="w-6 h-6 rounded-lg bg-[#131720] border border-[#1e2433] flex items-center justify-center flex-shrink-0">
+                              <LayoutGrid className="w-3 h-3 text-blue-400" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[13px] font-semibold text-white truncate">{s.name}</span>
+                              <span className="block text-[10px] text-slate-500 truncate">/{s.slug}</span>
+                            </span>
+                            {(s.slug === selectedSkill || extraStudios.includes(s.slug)) && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                          </button>
+                        ))}
+                        {skills.length === 0 && <div className="px-3.5 py-3 text-xs text-slate-500">Loading studios...</div>}
                       </div>
                     </div>
                   </>
