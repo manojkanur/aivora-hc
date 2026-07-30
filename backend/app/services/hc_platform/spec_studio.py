@@ -78,7 +78,16 @@ async def resolve_spec(db: Any, slug: str | None) -> str | None:
 _OUTPUT_CONTRACT = """
 === PLATFORM OUTPUT CONTRACT (overrides any formatting guidance above) ===
 
-You are generating the comprehensive deliverable defined in the studio instruction above. This must read and look like a top-tier consulting deck: rich, varied, dense and quantified - NOT a wall of narrative and tables. Respond with ONLY a JSON object (no markdown fence) shaped as a StudioOutputDocument:
+You are generating the comprehensive deliverable defined in the studio instruction above. This must read and look like a top-tier consulting INFOGRAPHIC deck - the analysis is carried by charts, tiles, heatmaps and tables, NOT by paragraphs.
+
+=== VISUAL-FIRST (this is the most important rule) ===
+The reader should get the whole story from the VISUALS. Text is a bot smell - minimise it.
+- Prose (narrative_paragraph) is allowed in AT MOST 2 sections total: the executive summary and (optionally) the target-state framing. Every OTHER data point MUST be expressed as a visual: kpi_grid, bar_chart, radar_chart, heatmap, comparison_table, timeline, risk_flags_list, or the callout_quote.
+- Any time you are about to write a paragraph that lists facts, numbers, options, steps, pros/cons or comparisons - STOP and turn it into a table, a kpi_grid or a chart instead.
+- Every visual may carry ONE short caption via "data.narration" (a single plain sentence, <= 20 words) explaining what it shows. That caption REPLACES paragraphs - do not also write prose saying the same thing.
+- Prefer 5-8 crisp data points per visual over long lists. Numbers on every tile, bar, cell and row. No walls of text anywhere.
+
+Respond with ONLY a JSON object (no markdown fence) shaped as a StudioOutputDocument:
 
 {
   "title": "...",                 // deliverable title including the organization name
@@ -98,7 +107,7 @@ The studio instruction above describes a BROAD capability - many scope areas, de
 Never collapse a broad, multi-part deliverable into the minimum core. If the instruction defines 20+ scope areas and the user asked for the full deliverable, the report should visibly cover them.
 
 === EXTRA / EXPANSION SECTIONS ===
-Beyond the mandatory core, add as many scope sections as the ask warrants, each: {"id": "<slug>", "title": "<the scope area's name>", "layout": "<best-fit layout>", "data": {...}, "footnote": "..."}. Use varied layouts (comparison_table, kpi_grid, bar_chart, heatmap, timeline, radar_chart, narrative_paragraph) so the document stays a designed deck, not a wall of tables. Do NOT use narrative_paragraph for more than ~1 in 4 sections. Every added section must carry real, org-specific numbers just like the core.
+Beyond the mandatory core, add as many scope sections as the ask warrants, each: {"id": "<slug>", "title": "<the scope area's name>", "layout": "<best-fit VISUAL layout>", "data": {...}, "footnote": "..."}. Expansion sections must be VISUALS - comparison_table, kpi_grid, bar_chart, heatmap, timeline or radar_chart - NEVER narrative_paragraph (the 2-prose-section cap is hard and covers the whole document). Each carries a short "data.narration" caption instead of prose, and real org-specific numbers.
 
 THE MANDATORY CORE SECTIONS (always present, in this order, exact ids; ADD scope sections after per SIZING - a natural place is right after target_state, before governance):
 
@@ -118,12 +127,13 @@ THE MANDATORY CORE SECTIONS (always present, in this order, exact ids; ADD scope
    }
    highlights is a list of OBJECTS; each "phrase" MUST appear verbatim (case-insensitive) inside body or it is dropped. 3-5 highlights.
 
-2. id "diagnosis", layout "narrative_paragraph"
+2. id "diagnosis", layout "comparison_table"  (VISUAL, not prose)
    data: {
-     "body": "Current-state diagnosis: the problem types identified per the spec's dimensions, the root causes behind them, written specifically for this organization. Reference the maturity radar that follows so the prose and the visual reinforce each other.",
-     "highlights": [{"phrase": "<verbatim substring>", "sentiment": "good|warning|bad|neutral"}]
+     "columns": [{"key": "problem", "label": "Problem"}, {"key": "root_cause", "label": "Root Cause"}, {"key": "impact", "label": "Business Impact", "highlight": true}],
+     "rows": [{"problem": "...", "root_cause": "...", "impact": "..."}],
+     "narration": "One-line caption on the core diagnosis."
    }
-   3-5 highlight objects, same verbatim rule.
+   5-8 rows. Flat dicts keyed by column key; first column is the row label. This replaces the diagnosis paragraph - do NOT write a narrative version of it.
 
 3. id "maturity_radar", layout "radar_chart"
    data: {
@@ -253,9 +263,16 @@ async def generate_spec_report(
 
     ``spec`` is the studio's master instruction; pass the DB-resolved one when
     available, else it falls back to the on-disk file for this slug.
+
+    ``model`` may be a direct OpenAI id (e.g. "gpt-5.1") or an OpenRouter
+    "provider/model" id (e.g. "anthropic/claude-opus-4.1"); the right client is
+    resolved automatically.
     """
-    from app.services.ai_orchestrator import _get_client
-    from app.services.model_settings import completion_params
+    from app.services.llm_models import (
+        completion_params_for,
+        get_llm_client,
+        resolve_model,
+    )
 
     if spec is None:
         spec = load_spec(slug)
@@ -272,7 +289,8 @@ async def generate_spec_report(
         else "No conversation transcript - generate the comprehensive deliverable directly from the client context, stating the additional assumptions this forces."
     )
 
-    client = _get_client()
+    model = resolve_model(model)
+    client = get_llm_client(model)
     resp = await client.chat.completions.create(
         model=model,
         messages=[
@@ -282,7 +300,7 @@ async def generate_spec_report(
         response_format={"type": "json_object"},
         # Headroom for long, broad deliverables (up to ~35 sections). The
         # model still sizes to the ask; this only lifts the ceiling.
-        **completion_params(model, temperature=0.4, max_tokens=16000),
+        **completion_params_for(model, temperature=0.4, max_tokens=16000),
     )
     document = json.loads(resp.choices[0].message.content or "{}")
     if not isinstance(document.get("sections"), list) or not document["sections"]:

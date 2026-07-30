@@ -218,6 +218,23 @@ async def list_prompt_templates(
     return [PromptTemplateRead.model_validate(r) for r in rows]
 
 
+@router.get("/models")
+async def list_advisory_models(current_user: CurrentUser) -> dict[str, Any]:
+    """Curated LLM catalogue for the chat model picker (OpenRouter + OpenAI).
+
+    Only the picker list is returned; whether OpenRouter is actually configured
+    is surfaced so the UI can hint if a key is missing.
+    """
+    from app.config import settings
+    from app.services.llm_models import MODEL_CATALOGUE, default_model_id
+
+    return {
+        "models": MODEL_CATALOGUE,
+        "default": default_model_id(),
+        "openrouter_ready": bool(settings.OPENROUTER_API_KEY),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Conversational advisor: multi-turn chat with a senior HC consultant persona
 # ---------------------------------------------------------------------------
@@ -425,6 +442,7 @@ class FinalizeReportRequest(BaseModel):
     studio: str | None = None  # primary builder slug; spec-backed studios use their master instruction
     extra_studios: list[str] = []  # additional studios to weave into ONE unified report (client #4)
     tier: str | None = None  # depth tier (client #8): basic | thinking | expert | deepthinking
+    model: str | None = None  # LLM to generate with (OpenRouter id or OpenAI id); user-selected in chat
     report_state: dict[str, Any] | None = None  # existing report being revised, if any
     plan_state: dict[str, Any] | None = None
     brief: dict[str, Any] | None = None
@@ -483,7 +501,7 @@ THE CONSULTING ARC - follow this section spine (10-13 sections). Each arrow is a
 11. Closing -> callout_quote stating the single most important next action and your confidence level.
 You MAY add one or two supporting sections (a second bar_chart, a nine_box_grid, a swimlane of workstreams, an extra kpi_grid) where the session justifies it, staying within 12 total.
 
-MANDATORY LAYOUT VARIETY - the report is INVALID unless it contains at least one of EACH of these: a "hero" band as the FIRST section; a kpi_grid right after it; radar_chart OR heatmap; bar_chart; comparison_table; recommendation_cards; risk_flags_list; timeline; and a closing callout_quote. Do NOT use narrative_paragraph for more than 3 sections in the whole document. Do not repeat the same layout back-to-back where a different one would carry the point better. Let the visuals do the analytical work.
+VISUAL-FIRST - the analysis is carried by CHARTS, TILES, HEATMAPS and TABLES, not paragraphs. Prose (narrative_paragraph) is allowed in AT MOST 2 sections total (the executive summary, and optionally the recommended-model framing). Any data point, list, comparison, set of options or steps MUST become a visual (kpi_grid, bar_chart, radar_chart, heatmap, comparison_table, timeline, recommendation_cards, risk_flags_list) - never a paragraph. Give each visual one short caption via "data.narration" (<= 20 words) instead of surrounding prose. MANDATORY LAYOUT VARIETY - the report is INVALID unless it contains at least one of EACH: a "hero" band FIRST; a kpi_grid right after it; radar_chart OR heatmap; bar_chart; comparison_table; recommendation_cards; risk_flags_list; timeline; and a closing callout_quote. Do not repeat the same layout back-to-back. Let the visuals do the analytical work.
 
 REAL DATA DENSITY - non-negotiable. Every kpi value, every bar value, every heatmap cell, every radar score, every benchmark and every scorecard target must be a CONCRETE NUMBER tied to this org's industry, region and size. Attach a benchmark wherever one plausibly exists. NO "TBD", no "N/A", no vague placeholders, no round-number hand-waving ("~50%", "roughly half") unless you state the basis. If a number is your estimate, say so in the narrative or footnote and give the reasoning; if it rests on public data, cite the source URL in that section's footnote. Prefer a defensible specific figure (e.g. 14.2%, 1.8x, 63 days) over a soft generality every time.
 
@@ -821,13 +839,20 @@ async def finalize_report(
 
     tier_block = _tier_directive(payload.tier)
 
+    # Which LLM generates this report: the user's chat selection wins; otherwise
+    # fall back to the admin global model. OpenRouter ids ("provider/model") route
+    # through OpenRouter, bare ids stay on OpenAI.
+    from app.services.llm_models import resolve_model as _resolve_model
+    from app.services.model_settings import get_global_model as _get_global_model
+
+    chosen_model = payload.model or await _get_global_model(db)
+    chosen_model = _resolve_model(chosen_model)
+
     # Uploaded documents (e.g. PDFs) so the report can cite them by name.
     evidence_ctx = await _evidence_block(db, payload.evidence_ids, current_tenant.id)
 
     if payload.report_type == "detailed" and resolved_spec:
         try:
-            from app.services.model_settings import get_global_model
-
             document = await generate_spec_report(
                 payload.studio or "",
                 spec=resolved_spec,
@@ -843,7 +868,7 @@ async def finalize_report(
                     web_sources,
                     revise_block,
                 ],
-                model=await get_global_model(db),
+                model=chosen_model,
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=502, detail=f"Report generation failed: {exc}")
@@ -887,10 +912,10 @@ async def finalize_report(
     system = "\n\n".join(parts)
 
     try:
-        from app.services.model_settings import completion_params, get_global_model
+        from app.services.llm_models import completion_params_for, get_llm_client
 
-        model = await get_global_model(db)
-        client = _get_client()
+        model = chosen_model
+        client = get_llm_client(model)
         resp = await client.chat.completions.create(
             model=model,
             messages=[
@@ -898,7 +923,7 @@ async def finalize_report(
                 {"role": "user", "content": f"WORKING SESSION TRANSCRIPT:\n\n{transcript}\n\nGenerate the {payload.report_type} report now."},
             ],
             response_format={"type": "json_object"},
-            **completion_params(model, temperature=0.4, max_tokens=8000),
+            **completion_params_for(model, temperature=0.4, max_tokens=8000),
         )
         import json as _json
         data = _json.loads(resp.choices[0].message.content or "{}")

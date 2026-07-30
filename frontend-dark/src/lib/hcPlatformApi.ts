@@ -1317,6 +1317,7 @@ export const hcAiAdvisoryAPI = {
     studio?: string | null
     extra_studios?: string[]  // additional studios woven into one unified report (client #4)
     tier?: string | null  // depth tier (client #8): basic | thinking | expert | deepthinking
+    model?: string | null  // LLM to generate with (OpenRouter/OpenAI id)
     report_state?: Record<string, unknown> | null
     plan_state?: ChatPlan | null
     brief?: Record<string, unknown> | null
@@ -1327,6 +1328,9 @@ export const hcAiAdvisoryAPI = {
   }) => post<{ report_type: string; document?: Record<string, unknown> | null; summary?: SummaryReport | null }>(
     `${HC_BASE}/ai-advisory/finalize-report`, body, { timeout: 240000 },
   ),
+  // Curated LLM catalogue for the chat model picker (OpenRouter + OpenAI).
+  listModels: () => get<{ models: AdvisoryModel[]; default: string; openrouter_ready: boolean }>(
+    `${HC_BASE}/ai-advisory/models`),
 
   // --- Threads: many advisory chats per workspace ---------------------------
   listThreads: (workspaceId: string) =>
@@ -1375,6 +1379,14 @@ export const hcAiAdvisoryAPI = {
     get<AdvisoryRevisionRow[]>(`${HC_BASE}/ai-advisory/session/${workspaceId}/revisions`),
   clearSession: (workspaceId: string) =>
     post<{ ok: boolean }>(`${HC_BASE}/ai-advisory/session/${workspaceId}/clear`, {}),
+}
+
+export interface AdvisoryModel {
+  id: string
+  label: string
+  provider: string
+  hint?: string
+  default?: boolean
 }
 
 export interface AdvisorySessionState {

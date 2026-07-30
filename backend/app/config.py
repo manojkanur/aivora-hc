@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = "sk-change_me"
     AI_MODEL: str = "gpt-4o"
 
+    # OpenRouter (multi-model provider for report/advisory generation).
+    # OpenAI-API compatible; used when a model id is namespaced "provider/model".
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+
     # AWS / S3
     AWS_ACCESS_KEY_ID: str = "AKIAIOSFODNN7EXAMPLE"
     AWS_SECRET_ACCESS_KEY: str = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"

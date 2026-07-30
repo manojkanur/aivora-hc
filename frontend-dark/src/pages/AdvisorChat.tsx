@@ -650,6 +650,12 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   const [revsOpen, setRevsOpen] = useState(false)
   // Output depth tier (client #8): basic | thinking | expert | deepthinking
   const [tier, setTier] = useState<'basic' | 'thinking' | 'expert' | 'deepthinking'>('thinking')
+  // Model picker (OpenRouter + OpenAI): which brain generates the report.
+  const [models, setModels] = useState<import('../lib/hcPlatformApi').AdvisoryModel[]>([])
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    try { return localStorage.getItem('aivora-advisor-model') || '' } catch { return '' }
+  })
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
   // Public share link (client #5)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
@@ -713,6 +719,19 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
   useEffect(() => {
     let cancelled = false
     hcSkillsAPI.list().then(res => { if (!cancelled) setSkills(Array.isArray(res.data) ? res.data : []) }).catch(() => { /* non-fatal */ })
+    return () => { cancelled = true }
+  }, [])
+
+  // ── Load the LLM model catalogue for the picker ──
+  useEffect(() => {
+    let cancelled = false
+    hcAiAdvisoryAPI.listModels().then(res => {
+      if (cancelled) return
+      const list = Array.isArray(res.data.models) ? res.data.models : []
+      setModels(list)
+      // Adopt the server default only if the user has no saved choice.
+      setSelectedModel(prev => prev || res.data.default || (list[0]?.id ?? ''))
+    }).catch(() => { /* non-fatal - falls back to the admin global model server-side */ })
     return () => { cancelled = true }
   }, [])
 
@@ -871,6 +890,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         studio: targetStudio,
         extra_studios: combineStudios.length > 0 ? combineStudios : undefined,
         tier,
+        model: selectedModel || undefined,
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
         report_type: type,
         report_state: isSameStudio ? ((report!.kind === 'detailed' ? report!.document : report!.summary) as unknown as Record<string, unknown>) : undefined,
@@ -1519,6 +1539,33 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   </button>
                 ))}
               </span>
+              {/* Model picker (Claude-style) */}
+              {models.length > 0 && (
+                <div className="relative">
+                  <button onClick={() => setModelMenuOpen(o => !o)} disabled={!!finalizing}
+                    className="inline-flex items-center gap-1 rounded-full border border-[#1e2433] bg-[#0c0e14] px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:border-blue-500/40 transition-colors disabled:opacity-50">
+                    <Sparkles className="w-3 h-3 text-blue-400" />
+                    <span className="max-w-[120px] truncate">{models.find(m => m.id === selectedModel)?.label ?? 'Model'}</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {modelMenuOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-64 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)] max-h-[min(50vh,24rem)] overflow-y-auto">
+                      <div className="px-3 py-1.5 border-b border-[#161b28] text-[10px] uppercase tracking-widest font-bold text-slate-600">Model - which brain generates the report</div>
+                      {models.map(m => (
+                        <button key={m.id}
+                          onClick={() => { setSelectedModel(m.id); try { localStorage.setItem('aivora-advisor-model', m.id) } catch { /* ignore */ }; setModelMenuOpen(false) }}
+                          className={cn('w-full flex items-start gap-2.5 px-3 py-2 text-left transition-colors', m.id === selectedModel ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
+                          <span className="mt-0.5 w-4 flex-shrink-0">{m.id === selectedModel && <Check className="w-3.5 h-3.5 text-blue-400" />}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-semibold text-white truncate">{m.label} <span className="text-slate-500 font-normal">· {m.provider}</span></span>
+                            {m.hint && <span className="block text-[10px] text-slate-500 truncate">{m.hint}</span>}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {/* Slash-command studio menu - floats ABOVE the composer so the full
