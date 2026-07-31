@@ -977,64 +977,80 @@ def _render_carousel_slide(index: int, total: int, title: str, body: str) -> byt
 _FALLBACK_KPI = {"value": "6", "label": "capability dimensions we assess"}
 
 
+_FALLBACK_POSTER = {
+    "eyebrow": "Aivora HC Insight",
+    "title": "Human capital, elevated",
+    "hero": {"value": "6", "label": "capability dimensions we assess"},
+    "insight": "Great HC decisions start with the right diagnosis.",
+    "tag": "Human Capital, elevated",
+}
+
+
 async def _generate_single(prompt: str) -> tuple[str, list[bytes]]:
-    """LLM chooses a layout (kpi/bars/donut/compare/stats) and returns typed data."""
+    """LLM composes a data-rich infographic; rendered as a WHITE consulting
+    dashboard one-pager (Deloitte/EY style)."""
     from app.config import settings
     from app.services.ai_orchestrator import _get_client
+    from app.services.social_poster import render_poster
     import json
 
-    fallback_head = prompt.strip().split("\n")[0][:80] or "Aivora HC Insight"
-    fallback_sub = "Aivora HC advisory · human capital, elevated."
     fallback_caption = prompt.strip()
 
     if not settings.OPENAI_API_KEY:
-        return fallback_caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
+        return fallback_caption, [render_poster(_FALLBACK_POSTER)]
 
     system = (
-        "You are Aivora HC's LinkedIn author. Return STRICT JSON. Keys: "
-        "caption (string, 400-900 chars, 2-4 paragraphs, at most 3 focused "
-        "hashtags at the end, no em-dashes, use plain hyphens); "
-        "headline (max 70 chars, punchy, no trailing period); "
-        "subhead (max 110 chars, supporting line); "
-        "layout (one of: kpi, bars, donut, compare, stats); "
-        "data (object shaped by layout).\n\n"
-        "Layout schemas — choose the one that best fits the story:\n"
-        "  * kpi     -> data.kpi = {value (max 6 chars, e.g. '87%' or '3x'), "
-        "label (max 40 chars), note (max 100 chars, optional)}. Use when there is one hero number.\n"
-        "  * bars    -> data.bars = 3-5 items of {label (max 30 chars), "
-        "value (numeric string), unit (optional, e.g. '%')}. Use for a ranked comparison.\n"
-        "  * donut   -> data.donut = {percent (0-100 number), label (max 30 chars), "
-        "points (3 short strings, max 45 chars each)}. Use for a proportion + supporting points.\n"
-        "  * compare -> data.compare = {left: {label (e.g. 'BEFORE'), title (max 30 chars), "
-        "points (3 strings)}, right: {label (e.g. 'AFTER'), title (max 30 chars), points (3 strings)}}. "
-        "Use for before/after or wrong/right contrasts.\n"
-        "  * stats   -> data.stats = 3 items of {value (max 6 chars), label (max 35 chars)}. "
-        "Use for three related numbers.\n\n"
-        "Pick real, useful data. Numbers must be plausible even when illustrative."
+        "You are Aivora HC's senior consulting content designer, producing a "
+        "board-grade LinkedIn infographic in the style of Deloitte / EY / McKinsey. "
+        "Return STRICT JSON with these keys:\n"
+        "- caption: 500-900 chars, 2-4 short paragraphs, at most 3 focused hashtags "
+        "at the end, no em-dashes (plain hyphens only), specific and insight-led (not fluffy).\n"
+        "- eyebrow: 2-4 word category label, e.g. 'Workforce Planning'.\n"
+        "- title: the headline, max 60 chars, sharp and specific (no trailing period).\n"
+        "- hero: {value: a single hero metric max 6 chars e.g. '85%' or '3.2x', "
+        "label: max 40 chars describing it, note: optional max 90 chars}.\n"
+        "- kpis: EXACTLY 3 items of {value (max 7 chars), label (max 32 chars)} - three "
+        "supporting metrics that reinforce the story.\n"
+        "- bars: 3-5 items of {label (max 18 chars), value (0-100 number), unit (optional, e.g. '%')} "
+        "- a ranked breakdown (stages, drivers, segments...).\n"
+        "- donut: {percent (0-100 number), label (max 26 chars), points: 3 short strings max 40 chars} "
+        "- a share-of-a-whole with 3 takeaways.\n"
+        "- insight: ONE sharp takeaway sentence, max 120 chars.\n"
+        "- tag: 'Human Capital, elevated'.\n\n"
+        "Compose REAL, specific, plausible numbers for the topic (these are illustrative but must "
+        "look like genuine consulting data - never round-number filler like '100% / 50%'). Every "
+        "field is used in the visual, so fill them all. The numbers across hero, kpis, bars and donut "
+        "should tell ONE coherent data story about the topic."
     )
-    user = f"Draft a LinkedIn post about:\n\n{prompt.strip()}"
+    user = f"Create the LinkedIn infographic + caption for:\n\n{prompt.strip()}"
 
     try:
         client = _get_client()
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            temperature=0.55,
-            max_tokens=1000,
+            temperature=0.5,
+            max_tokens=1400,
             response_format={"type": "json_object"},
         )
         data = json.loads(resp.choices[0].message.content or "{}")
         caption = _clean(data.get("caption") or "")
-        headline = _clean(data.get("headline") or "")
-        subhead = _clean(data.get("subhead") or "")
-        layout = str(data.get("layout") or "kpi").strip().lower()
-        payload = _clean_payload(data.get("data") or {})
-        if not caption or not headline:
+        if not caption:
             raise ValueError("empty llm output")
-        img = _render_data_card(layout, headline, subhead or fallback_sub, payload)
-        return caption, [img]
+        # Typography-clean the poster fields too.
+        poster = _clean_payload({
+            "eyebrow": data.get("eyebrow"),
+            "title": data.get("title"),
+            "hero": data.get("hero"),
+            "kpis": data.get("kpis"),
+            "bars": data.get("bars"),
+            "donut": data.get("donut"),
+            "insight": data.get("insight"),
+            "tag": data.get("tag") or "Human Capital, elevated",
+        })
+        return caption, [render_poster(poster)]
     except Exception:
-        return fallback_caption, [_render_layout_kpi(fallback_head, fallback_sub, _FALLBACK_KPI)]
+        return fallback_caption, [render_poster(_FALLBACK_POSTER)]
 
 
 async def _generate_hero(prompt: str) -> tuple[str, list[bytes]]:
