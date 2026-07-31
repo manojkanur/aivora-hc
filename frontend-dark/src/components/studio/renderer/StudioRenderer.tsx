@@ -9,6 +9,8 @@ import RadarChart from './sections/RadarChart'
 import HorizontalBarChart from './sections/HorizontalBarChart'
 import ProgressBarList from './sections/ProgressBarList'
 import DonutChart from './sections/DonutChart'
+import HeroStat from './sections/HeroStat'
+import ProcessStrip from './sections/ProcessStrip'
 import ComparisonTable from './sections/ComparisonTable'
 import RankedList from './sections/RankedList'
 import Heatmap from './sections/Heatmap'
@@ -82,6 +84,16 @@ function renderLayout(section: StudioOutputSection) {
     case 'pie_chart':
     case 'pie':
       return <DonutChart title={t} data={data} footnote={f} />
+
+    case 'hero_stat':
+    case 'hero_metric':
+    case 'big_stat':
+      return <HeroStat title={t} data={data} footnote={f} />
+
+    case 'process_strip':
+    case 'process_flow':
+    case 'workflow_strip':
+      return <ProcessStrip title={t} data={data} footnote={f} />
 
     case 'heatmap':
     case 'maturity_heatmap':
