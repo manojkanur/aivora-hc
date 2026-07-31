@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   ArrowUpRight,
@@ -125,6 +126,47 @@ const valueSize: Record<2 | 3 | 4, string> = {
   2: 'text-4xl sm:text-5xl',
   3: 'text-3xl sm:text-4xl',
   4: 'text-2xl sm:text-3xl',
+}
+
+/**
+ * Count-up animation for a KPI value. If the value is (or contains) a number,
+ * it rolls up from 0 to the target on mount, preserving any prefix/suffix and
+ * decimal precision. Non-numeric values render as-is.
+ */
+function AnimatedValue({ value }: { value: string | number }) {
+  const raw = String(value)
+  const match = raw.match(/-?\d[\d,]*\.?\d*/)
+  const [display, setDisplay] = useState<string>(match ? raw.replace(match[0], '0') : raw)
+  const startedRef = useRef(false)
+
+  useEffect(() => {
+    if (!match || startedRef.current) return
+    startedRef.current = true
+    const numStr = match[0].replace(/,/g, '')
+    const target = parseFloat(numStr)
+    if (!Number.isFinite(target)) { setDisplay(raw); return }
+    const decimals = (numStr.split('.')[1] || '').length
+    const hasComma = match[0].includes(',')
+    const dur = 750
+    const t0 = performance.now()
+    let rafId = 0
+    const fmt = (n: number) => {
+      const s = decimals > 0 ? n.toFixed(decimals) : Math.round(n).toString()
+      const withCommas = hasComma ? Number(s).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : s
+      return raw.replace(match[0], withCommas)
+    }
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / dur)
+      const eased = 1 - Math.pow(1 - p, 3)  // easeOutCubic
+      setDisplay(fmt(target * eased))
+      if (p < 1) rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return <>{display}</>
 }
 
 function magnitudeOf(value: string | number): number {
@@ -262,7 +304,7 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
                     String(item.value).length > 10 ? 'text-2xl' : valueSize[columns],
                   ].join(' ')}
                 >
-                  {item.value}
+                  <AnimatedValue value={item.value} />
                 </div>
                 {item.unit && (
                   <div className="text-sm text-slate-500 tabular-nums">{item.unit}</div>
