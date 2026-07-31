@@ -27,3 +27,4 @@ python-multipart==0.0.17
 aiofiles==24.1.0
 sentry-sdk[fastapi]==2.19.2
 pymupdf==1.24.14
+composio==0.18.1

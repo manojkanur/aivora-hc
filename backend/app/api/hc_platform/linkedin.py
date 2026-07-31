@@ -214,8 +214,24 @@ def _bad_gateway(resp: httpx.Response, step: str) -> HTTPException:
 auth_router = APIRouter(prefix="/auth/linkedin", tags=["linkedin-oauth"])
 
 
+def _use_composio() -> bool:
+    from app.config import settings as _s
+    return bool(getattr(_s, "COMPOSIO_API_KEY", ""))
+
+
 @auth_router.get("/connect", response_model=ConnectUrlOut)
 async def linkedin_connect(current_user: CurrentUser) -> ConnectUrlOut:
+    # Composio path: it owns the OAuth + token refresh.
+    if _use_composio():
+        from app.services.composio_linkedin import initiate_connection
+        try:
+            res = await initiate_connection(str(current_user.id))
+            if res.get("redirect_url"):
+                return ConnectUrlOut(url=res["redirect_url"])
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"Composio connect failed: {str(exc)[:200]}")
+        raise HTTPException(status_code=502, detail="Composio did not return a connect URL")
+
     cid, _secret, redirect = _require_configured()
     state = _state_put(current_user.id, current_user.tenant_id)
     params = {
@@ -322,6 +338,9 @@ LinkedIn connected. You can close this window.
 
 @auth_router.get("/status", response_model=StatusOut)
 async def linkedin_status(current_user: CurrentUser, db: DBDep) -> StatusOut:
+    if _use_composio():
+        from app.services.composio_linkedin import is_connected
+        return StatusOut(connected=await is_connected(str(current_user.id)))
     conn = await _get_connection(db, current_user.tenant_id, current_user.id)
     if conn is None:
         return StatusOut(connected=False)
@@ -334,6 +353,13 @@ async def linkedin_status(current_user: CurrentUser, db: DBDep) -> StatusOut:
 
 @auth_router.post("/disconnect", response_model=DisconnectOut)
 async def linkedin_disconnect(current_user: CurrentUser, db: DBDep) -> DisconnectOut:
+    if _use_composio():
+        from app.services.composio_linkedin import disconnect as composio_disconnect
+        try:
+            await composio_disconnect(str(current_user.id))
+        except Exception:  # noqa: BLE001 - best-effort
+            pass
+        return DisconnectOut(connected=False)
     await db.execute(
         delete(LinkedInConnection).where(
             LinkedInConnection.tenant_id == current_user.tenant_id,
@@ -1267,6 +1293,20 @@ async def linkedin_generate(payload: GenerateIn, _current_user: AdminUser) -> Ge
 @router.post("/publish", response_model=ShareOut)
 async def linkedin_publish(payload: PublishIn, current_user: AdminUser, db: DBDep) -> ShareOut:
     """Post caption + (optional) images to LinkedIn. Used after /generate."""
+    # Composio path: managed connector with OAuth + token refresh.
+    if _use_composio():
+        from app.services.composio_linkedin import create_post
+        try:
+            res = await create_post(str(current_user.id), payload.caption, payload.visibility)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"Composio post failed: {str(exc)[:200]}")
+        pid = res.get("post_id") or ""
+        return ShareOut(
+            post_id=pid,
+            share_url=res.get("url") or (f"https://www.linkedin.com/feed/update/{pid}/" if pid else ""),
+            caption=payload.caption,
+        )
+
     conn = await _get_connection(db, current_user.tenant_id, current_user.id)
     if conn is None:
         raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED, detail="LinkedIn not connected")

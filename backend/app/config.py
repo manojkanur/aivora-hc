@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
+    # Composio - managed connector for LinkedIn posting (OAuth + token refresh).
+    COMPOSIO_API_KEY: str = ""
+    COMPOSIO_LINKEDIN_AUTH_CONFIG_ID: str = ""
+
     # AWS / S3
     AWS_ACCESS_KEY_ID: str = "AKIAIOSFODNN7EXAMPLE"
     AWS_SECRET_ACCESS_KEY: str = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
