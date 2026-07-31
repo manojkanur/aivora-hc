@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { useCountUp } from './useCountUp'
 
 /**
  * Labeled horizontal progress bars with counts - the signature "By stage"
@@ -51,27 +52,24 @@ function colorFor(item: Item, i: number): string {
   return PALETTE[i % PALETTE.length]
 }
 
-function fmt(v: number, f?: string): string {
-  if (f === 'percent') return `${v}%`
-  return String(v)
-}
-
 function Row({ item, i, max, valueFormat }: { item: Item; i: number; max: number; valueFormat?: string }) {
   const pct = max > 0 ? Math.min(100, Math.max(2, (item.value / max) * 100)) : 0
   const color = colorFor(item, i)
+  const animated = useCountUp(item.value)
+  const shown = valueFormat === 'percent' ? `${Math.round(animated)}%` : String(Math.round(animated))
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span className="w-28 flex-shrink-0 text-sm text-slate-300 truncate" title={item.label}>{item.label}</span>
+    <div className="group flex items-center gap-3 py-1.5">
+      <span className="w-28 flex-shrink-0 text-sm text-slate-300 group-hover:text-white transition-colors truncate" title={item.label}>{item.label}</span>
       <div className="flex-1 h-2.5 rounded-full bg-[#1e2433] overflow-hidden">
         <motion.div
           className="h-full rounded-full"
-          style={{ backgroundColor: color }}
+          style={{ background: `linear-gradient(90deg, ${color}cc, ${color})`, boxShadow: `0 0 8px ${color}44` }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.04 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: i * 0.05 }}
         />
       </div>
-      <span className="w-8 flex-shrink-0 text-right text-sm font-bold text-white tabular-nums">{fmt(item.value, valueFormat)}</span>
+      <span className="w-8 flex-shrink-0 text-right text-sm font-bold text-white tabular-nums">{shown}</span>
     </div>
   )
 }

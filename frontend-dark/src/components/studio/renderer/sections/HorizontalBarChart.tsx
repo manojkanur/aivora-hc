@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { SourceBadge } from './SourceBadge'
+import { useCountUp } from './useCountUp'
 
 export interface HorizontalBarChartData {
   items: Array<{
@@ -231,6 +232,7 @@ function BarsSvg({
   padRight: number
   height: number
 }) {
+  const [hover, setHover] = useState<number | null>(null)
   // Use a viewBox-less responsive layout: width adapts via the wrapper, we use percentages
   // for the bar widths. The fixed left label gutter is rendered as a separate column.
   return (
@@ -336,20 +338,24 @@ function BarsSvg({
                         ? 'to-slate-400/30'
                         : 'to-blue-400/30'
 
+              const dim = hover !== null && hover !== i
               return (
                 <div
                   key={`row-${i}`}
-                  className="absolute left-0"
+                  className="absolute left-0 transition-opacity duration-200"
+                  onMouseEnter={() => setHover(i)}
+                  onMouseLeave={() => setHover(null)}
                   style={{
                     top: topOffset,
                     height: barH,
                     right: padRight,
+                    opacity: dim ? 0.4 : 1,
                   }}
                 >
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct * 100}%` }}
-                    transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.05 }}
+                    transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: i * 0.06 }}
                     className={[
                       'h-full rounded-r-md relative overflow-hidden',
                       'bg-gradient-to-r',
@@ -357,21 +363,18 @@ function BarsSvg({
                       gradientVia,
                       gradientTo,
                     ].join(' ')}
-                    style={{ boxShadow: `0 0 0 1px ${r.fill}33 inset` }}
+                    style={{ boxShadow: hover === i ? `0 0 0 1px ${r.fill}, 0 0 12px ${r.fill}55` : `0 0 0 1px ${r.fill}33 inset` }}
                   />
                   {showValues && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, ease: 'easeOut', delay: i * 0.05 + 0.35 }}
-                      className="absolute top-1/2 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-slate-200 whitespace-nowrap pl-2"
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-slate-100 whitespace-nowrap pl-2"
                       style={{
                         left: `calc(${pct * 100}% )`,
                         fontFamily: 'Inter, system-ui, sans-serif',
                       }}
                     >
-                      {formatValue(r.value, valueFormat)}
-                    </motion.div>
+                      <CountValue value={r.value} valueFormat={valueFormat} />
+                    </div>
                   )}
                 </div>
               )
@@ -396,6 +399,12 @@ function BarsSvg({
       </div>
     </div>
   )
+}
+
+// Count-up value label that respects the chart's format.
+function CountValue({ value, valueFormat }: { value: number; valueFormat: HorizontalBarChartData['valueFormat'] }) {
+  const v = useCountUp(value)
+  return <>{formatValue(v, valueFormat)}</>
 }
 
 function LegendDot({ color, label }: { color: string; label: string }) {
