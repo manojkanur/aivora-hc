@@ -216,9 +216,11 @@ export function heatmap({
                   const v = values[ri]?.[ci] ?? NaN
                   const x = rowLabelWidth + ci * cellSize
                   const isHover = hover && hover.r === ri && hover.c === ci
+                  // Diagonal-wave stagger: cells fill top-left -> bottom-right.
+                  const delay = (ri + ci) * 0.035
                   return (
                     <g key={`cell-${ri}-${ci}`}>
-                      <rect
+                      <motion.rect
                         x={x + 1}
                         y={y + 1}
                         width={cellSize - 2}
@@ -227,6 +229,9 @@ export function heatmap({
                         fill={colorFor(v)}
                         stroke={isHover ? '#1d4ed8' : '#e2e8f0'}
                         strokeWidth={isHover ? 2 : 1}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: isHover ? 1.06 : 1 }}
+                        transition={{ duration: 0.35, delay, ease: 'easeOut' }}
                         onMouseEnter={(e) => {
                           const target = e.currentTarget as SVGRectElement
                           const rect = target.getBoundingClientRect()
@@ -240,7 +245,7 @@ export function heatmap({
                           })
                         }}
                         onMouseLeave={() => setHover(null)}
-                        style={{ cursor: 'pointer', transition: 'stroke 120ms ease' }}
+                        style={{ cursor: 'pointer', transformOrigin: `${x + cellSize / 2}px ${y + cellSize / 2}px` }}
                       />
                       {cellSize >= 36 && Number.isFinite(v) && (
                         <text

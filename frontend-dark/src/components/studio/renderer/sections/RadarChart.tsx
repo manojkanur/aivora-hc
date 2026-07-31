@@ -134,17 +134,29 @@ export function radarchart({ title, data, footnote }: RadarChartProps) {
                 content={<CustomTooltip />}
                 cursor={{ stroke: '#1e2433', strokeWidth: 1 }}
               />
-              {seriesConfig.map((s) => (
+              <defs>
+                {seriesConfig.map((s, i) => (
+                  <radialGradient key={s.name} id={`radar-fill-${i}`} cx="50%" cy="50%" r="65%">
+                    <stop offset="0%" stopColor={s.color} stopOpacity={0.45} />
+                    <stop offset="100%" stopColor={s.color} stopOpacity={0.08} />
+                  </radialGradient>
+                ))}
+              </defs>
+              {seriesConfig.map((s, i) => (
                 <Radar
                   key={s.name}
                   name={s.name}
                   dataKey={s.name}
                   stroke={s.color}
-                  strokeWidth={2}
-                  fill={s.color}
-                  fillOpacity={0.25}
+                  strokeWidth={2.5}
+                  fill={`url(#radar-fill-${i})`}
+                  fillOpacity={1}
+                  dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: s.color, stroke: '#0f1117', strokeWidth: 2 }}
                   isAnimationActive
-                  animationDuration={600}
+                  animationBegin={i * 150}
+                  animationDuration={900}
+                  animationEasing="ease-out"
                 />
               ))}
               {showLegend && (
