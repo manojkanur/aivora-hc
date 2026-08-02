@@ -1222,11 +1222,18 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       model: selectedModel || undefined,
     }
 
-    const applyResult = (_reply: string, nextPlan: ChatPlan | null, _finalize: 'summary' | 'detailed' | null, studio: string | null) => {
+    const applyResult = (reply: string, nextPlan: ChatPlan | null, finalize: 'summary' | 'detailed' | null, studio: string | null) => {
       setPlan(nextPlan)
-      // Capture the inferred studio, but do NOT auto-generate a report. The report
-      // is produced only when the user runs /generate report (collaborate first).
       if (studio && !selectedSkill) setSuggestedSkill(studio)
+      // Conversational generate (Claude-style): when the user confirms in chat,
+      // the advisor sets finalize -> we build the report automatically from the
+      // collaborated content. No button needed.
+      if (finalize === 'detailed' || finalize === 'summary') {
+        const chosen = selectedSkill ?? studio ?? suggestedSkill
+        if (chosen && !selectedSkill) setSelectedSkill(chosen)
+        const withReply = [...next, { role: 'assistant' as const, content: reply, id: `a-gen-${Date.now()}` }]
+        void finalizeSession(finalize, withReply, nextPlan, chosen)
+      }
     }
 
     const assistantId = `a-${Date.now()}`

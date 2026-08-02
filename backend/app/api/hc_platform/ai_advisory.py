@@ -387,17 +387,17 @@ The plan is a PREVIEW of the report's outline, not a multi-turn chore:
 - Only emit a "plan" on the SAME turn that you set "finalize" (i.e. when the report is about to be generated). In that case the plan is a short outline of the report you are about to produce: a title and 3-8 concrete section titles, ALL with status "pending" (do not mark any done yourself). The platform animates this outline to completion while it builds the report; you do not advance it.
 - On every other turn (greeting, question, clarifying, advising) return "plan": null. Never open a standalone plan to "work through".
 
-Turning the conversation into a report:
-COLLABORATE VISUALLY, THEN LET THE USER GENERATE THE REPORT:
-- You do NOT generate the final report yourself, and you never set "finalize". The full formatted report is produced ONLY when the user runs the "/generate report" command. Your job in chat is to do the thinking WITH them and get the content and the visuals right first.
-- Work INSIGHT-first and VISUAL-first. Never just describe or narrate a chart ("here is your sourcing mix as a pie"). Lead with the INSIGHT - what the numbers MEAN for this client and what to do about it - then show the chart that backs it. A good reply reads like: [the sharp takeaway in 1-2 sentences] + [the chart] + [the one implication or next move]. When your answer contains data - a breakdown, stages, a distribution, scores, KPIs, a comparison, a maturity picture, a timeline - present that data as a chart/infographic via "visuals" AND say what it tells us. Show AND interpret, never just render.
-- Treat the charts as a shared draft. When the user says things like "make sourcing 15", "add a bar for referrals", "show it as a radar", "combine these", or "research the benchmark and update it" - return the UPDATED visual reflecting their change. Iterate with them until they are happy.
-- When the user asks you to build/create/generate the report, or says "yes/go ahead/proceed", do NOT finalize. Instead confirm briefly and tell them to run "/generate report" (or click Generate report) when the content and charts look right. Keep collaborating until then.
-- Keep replies conversational and appropriately short; the long structured deliverable is the report, produced later by /generate report.
+Turning the conversation into a report (CONVERSATIONAL, like Claude):
+- Collaborate first. Do the thinking WITH the user - answer, show visuals, refine the numbers together. Do not rush to a report.
+- Work INSIGHT-first and VISUAL-first. Never just describe or narrate a chart ("here is your sourcing mix as a pie"). Lead with the INSIGHT - what the numbers MEAN for this client and what to do about it - then show the chart that backs it. A good reply reads like: [the sharp takeaway in 1-2 sentences] + [the chart] + [the one implication or next move]. When your answer contains data - a breakdown, stages, scores, KPIs, a comparison, a maturity picture, a timeline - present it as a chart/infographic via "visuals" AND say what it tells us. Show AND interpret, never just render.
+- Treat the charts as a shared draft. When the user says "make sourcing 15", "add a bar for referrals", "show it as a radar" etc. - return the UPDATED visual. Iterate until they are happy.
+- OFFER the report naturally. Once you have enough to build a solid deliverable, ASK conversationally, e.g. "Want me to pull this together into the full report?" - do NOT finalize on that turn; keep "finalize" null while you are only offering.
+- GENERATE when they say yes. If the user confirms ("yes", "go ahead", "do it", "build it", "generate", "create the report", "let's do it", "please"), OR asks you directly to build/create/generate/produce the report or deliverable, then on THAT turn: set "finalize" to "detailed" (or "summary" if they asked for the simple version), set "studio" to the right slug, keep the chat reply short (1-2 sentences: "On it - building your report now."), and emit the outline "plan". The platform then generates the full formatted report.
+- Keep replies conversational and appropriately short; the long structured deliverable is the report.
 
 OUTPUT FORMAT: respond with ONLY a JSON object (no markdown fence):
-{"reply": "<your markdown reply>", "plan": {...} or null, "finalize": null, "studio": null or "<studio-slug>", "visuals": null or [ <renderer section> ]}
-- "finalize" is ALWAYS null. Reports are generated only by the user's /generate report command.
+{"reply": "<your markdown reply>", "plan": {...} or null, "finalize": null or "detailed" or "summary", "studio": null or "<studio-slug>", "visuals": null or [ <renderer section> ]}
+- "finalize": null while advising/offering; set to "detailed"/"summary" ONLY on the turn the user confirms they want the report built.
 - "visuals": 1-2 renderer sections visualising the exact numbers in your reply, or null if the reply has no data to chart. Each section: {"id": str, "title": short label, "layout": one of ["kpi_grid","bar_chart","progress_bar_list","pie_chart","donut_chart","radar_chart","heatmap","comparison_table","timeline"], "data": {...that layout's exact shape...}}. You CAN render a real pie/donut in chat - when the user asks for a pie or donut, or the data is a share/composition of a whole (e.g. a build/buy/borrow/automate mix), use "pie_chart" (data: {"items":[{"label":str,"value":num}],"valueFormat":"percent"}) or "donut_chart" (same shape). NEVER tell the user you cannot draw a pie - just draw it. Use progress_bar_list for stage/status counts, kpi_grid for headline metrics, bar_chart for comparisons, radar_chart for multi-dimension scoring, heatmap for a matrix. Use REAL numbers; never fabricate a chart when there is no data.
 - Send the FULL updated plan every turn while one is active; send null when no plan is running.
 """
@@ -1090,6 +1090,32 @@ _STUDIO_KEYWORDS: list[tuple[str, str]] = [
 ]
 
 
+# Deterministic "the user just confirmed they want the report built" detector.
+_CONFIRM_PHRASES = (
+    "generate the report", "generate report", "build the report", "build it",
+    "create the report", "make the report", "produce the report", "produce it",
+    "go ahead", "let's do it", "lets do it", "do it", "sounds good", "yes please",
+    "go for it", "please build", "please generate", "please create", "proceed",
+)
+_CONFIRM_WORDS = {"yes", "yep", "yeah", "ok", "okay", "sure", "go", "proceed", "please", "confirm", "correct"}
+
+
+def _user_confirmed_report(messages: "list[ChatMessage]") -> bool:
+    """True if the latest user message is a clear affirmative / build request."""
+    last = next((m for m in reversed(messages) if getattr(m, "role", "") == "user"), None)
+    if not last:
+        return False
+    t = (last.content or "").strip().lower()
+    if not t or len(t) > 60:
+        # Long messages are usually new questions, not a bare confirm.
+        if not any(p in t for p in _CONFIRM_PHRASES):
+            return False
+    if any(p in t for p in _CONFIRM_PHRASES):
+        return True
+    words = {w.strip(".,!?") for w in t.split()}
+    return bool(words & _CONFIRM_WORDS) and len(words) <= 6
+
+
 def _detect_studio_from_text(text: str) -> str | None:
     """Best-effort studio slug from free text (longest matching keyword wins)."""
     low = (text or "").lower()
@@ -1456,8 +1482,15 @@ async def advisor_chat(
         # Model ignored the JSON contract - treat the whole payload as the reply.
         reply = _clean(raw)
 
-    # finalize is intentionally always null: reports only via /generate report.
+    # finalize is set by the model on the turn the user confirms they want the
+    # report built (conversational generate).
     finalize = None
+    try:
+        rf = data.get("finalize")
+        if rf in ("summary", "detailed"):
+            finalize = rf
+    except (NameError, AttributeError):
+        pass
 
     studio_slug = None
     try:
@@ -1496,7 +1529,13 @@ _STRUCTURE_PROMPT = (
     "\"status\": \"pending|in_progress|done\", \"note\": str}]} | null, \"finalize\": null, "
     "\"studio\": \"<slug>\"|null, \"visuals\": [ <section> ] | null}.\n"
     "- plan: only if the advisor laid out or updated a multi-step plan, else null.\n"
-    "- finalize: ALWAYS null (reports are generated only when the user explicitly runs /generate report).\n"
+    "- finalize: look at the LATEST user message. If it is an affirmative or a build request - any of: "
+    "'yes', 'yep', 'yeah', 'ok', 'okay', 'sure', 'go', 'go ahead', 'do it', 'build it', 'build the report', "
+    "'generate', 'generate the report', 'create the report', 'make the report', 'produce it', 'proceed', "
+    "'let's do it', 'please do', 'sounds good' - especially when the advisor just offered to build the "
+    "report OR the advisor's reply says it is building the report now, then set finalize to \"detailed\" "
+    "(or \"summary\" if the user asked for the simple/short version). Otherwise null. When in doubt but the "
+    "user clearly said yes/go/build, choose \"detailed\".\n"
     "- studio: the single most relevant studio slug if one is clearly in focus, else null.\n"
     "- visuals: THE IMPORTANT ONE. If the advisor's reply presents data, numbers, a breakdown, a comparison, "
     "a distribution, stages, scores, a maturity picture, a timeline or KPIs that would land better AS A CHART, "
@@ -1668,8 +1707,7 @@ async def advisor_chat_stream(
             return ok or None
 
         # Fast path: the model already emitted the full envelope - reuse its
-        # plan/studio instead of a second round-trip. finalize is always null now
-        # (reports only via /generate report).
+        # plan/studio/finalize instead of a second round-trip.
         if mode == "json":
             try:
                 env = _json.loads(raw)
@@ -1677,8 +1715,10 @@ async def advisor_chat_stream(
                 rs = env.get("studio")
                 if isinstance(rs, str) and rs.strip():
                     studio_slug = rs.strip().lower().replace("_", "-")
+                if env.get("finalize") in ("summary", "detailed"):
+                    finalize = env["finalize"]
                 visuals = _coerce_visuals(env.get("visuals"))
-                yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': None, 'studio': studio_slug, 'visuals': visuals}})}\n\n"
+                yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': finalize, 'studio': studio_slug, 'visuals': visuals}})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
             except Exception:  # noqa: BLE001
@@ -1701,11 +1741,19 @@ async def advisor_chat_stream(
             rs = data.get("studio")
             if isinstance(rs, str) and rs.strip():
                 studio_slug = rs.strip().lower().replace("_", "-")
+            if data.get("finalize") in ("summary", "detailed"):
+                finalize = data["finalize"]
             visuals = _coerce_visuals(data.get("visuals"))
         except Exception:  # noqa: BLE001
             pass
 
-        yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': None, 'studio': studio_slug, 'visuals': visuals}})}\n\n"
+        # Deterministic safety net: if the user clearly confirmed (yes/go/build it)
+        # and there is a real conversation to build from, finalize even if the
+        # structure model was too cautious.
+        if not finalize and _user_confirmed_report(payload.messages) and len(payload.messages) >= 2:
+            finalize = "detailed"
+
+        yield f"data: {_json.dumps({'meta': {'plan': plan, 'finalize': finalize, 'studio': studio_slug, 'visuals': visuals}})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
