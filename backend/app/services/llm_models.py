@@ -57,6 +57,16 @@ MODEL_CATALOGUE: list[dict[str, Any]] = [
      "hint": "Capable, multilingual"},
 ]
 
+# Report/advisory generation falls back through these (fast + reliable on
+# OpenRouter) when the user's chosen model errors or times out, so "generate
+# report" never fails on a flaky pick. Order = try order.
+RELIABLE_FALLBACKS = [
+    "anthropic/claude-opus-4.8",
+    "openai/gpt-4o",
+    "google/gemini-3.6-flash",
+    "anthropic/claude-sonnet-5",
+]
+
 # Providers we surface from the live OpenRouter catalogue (in this order).
 _FEATURED_PROVIDERS = ["anthropic", "openai", "google", "x-ai", "deepseek", "meta-llama", "mistralai", "qwen"]
 _PROVIDER_LABEL = {

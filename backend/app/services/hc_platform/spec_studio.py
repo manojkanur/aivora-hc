@@ -292,20 +292,45 @@ async def generate_spec_report(
         else "No conversation transcript - generate the comprehensive deliverable directly from the client context, stating the additional assumptions this forces."
     )
 
-    model = resolve_model(model)
-    client = get_llm_client(model)
-    resp = await client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_msg},
-        ],
-        response_format={"type": "json_object"},
-        # Headroom for long, broad deliverables (up to ~35 sections). The
-        # model still sizes to the ask; this only lifts the ceiling.
-        **completion_params_for(model, temperature=0.4, max_tokens=16000),
-    )
-    document = json.loads(resp.choices[0].message.content or "{}")
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user_msg},
+    ]
+
+    async def _call(m: str) -> str:
+        import asyncio
+
+        client = get_llm_client(m)
+        # Per-call timeout so a hanging/unavailable model cannot stall the request.
+        resp = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=m,
+                messages=messages,
+                response_format={"type": "json_object"},
+                **completion_params_for(m, temperature=0.4, max_tokens=16000),
+            ),
+            timeout=150,
+        )
+        return resp.choices[0].message.content or "{}"
+
+    # Try the chosen model; if it errors/times out, fall back to a reliable
+    # default so "generate report" never fails on a flaky model pick.
+    primary = resolve_model(model)
+    from app.services.llm_models import RELIABLE_FALLBACKS
+
+    fallbacks = [f for f in RELIABLE_FALLBACKS if f != primary]
+    raw = None
+    last_err: Exception | None = None
+    for m in [primary, *fallbacks]:
+        try:
+            raw = await _call(m)
+            break
+        except Exception as exc:  # noqa: BLE001 - try the next model
+            last_err = exc
+            continue
+    if raw is None:
+        raise RuntimeError(f"All models failed: {last_err}")
+    document = json.loads(raw)
     if not isinstance(document.get("sections"), list) or not document["sections"]:
         raise ValueError("Spec report came back without sections")
 
