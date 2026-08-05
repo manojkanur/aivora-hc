@@ -47,14 +47,14 @@ export function CreditTopupModal({ isOpen, onClose }: CreditTopupModalProps) {
               className={cn(
                 'relative p-4 rounded-xl border text-left transition-all',
                 selected === bundle.id
-                  ? 'border-[#3b82f6] bg-[#3b82f6] text-white'
-                  : 'border-[#1e2433] bg-[#131720] hover:border-[#252d3f] hover:bg-[#0E0E0E]'
+                  ? 'border-[#2E7DFA] bg-[#2E7DFA] text-white'
+                  : 'border-[#2A3648] bg-[#1B2431] hover:border-[#252d3f] hover:bg-[#0E0E0E]'
               )}
             >
               {bundle.bestValue && (
                 <span className={cn(
                   'absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-xs font-semibold',
-                  selected === bundle.id ? 'bg-[#131720] text-[#3b82f6]' : 'bg-[#3b82f6] text-white'
+                  selected === bundle.id ? 'bg-[#1B2431] text-[#2E7DFA]' : 'bg-[#2E7DFA] text-white'
                 )}>
                   Best value
                 </span>
@@ -80,7 +80,7 @@ export function CreditTopupModal({ isOpen, onClose }: CreditTopupModalProps) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 p-3 bg-[#0E0E0E] rounded-lg border border-[#1e2433]">
+        <div className="flex items-center gap-2 p-3 bg-[#0E0E0E] rounded-lg border border-[#2A3648]">
           <Zap className="w-4 h-4 text-slate-600 flex-shrink-0" />
           <p className="text-xs text-slate-300">
             Credits never expire. Unused credits roll over to the next month.

@@ -123,12 +123,12 @@ export function StudioOutputDashboard(props: StudioOutputDashboardProps) {
 
         <div className="flex items-center gap-1.5">
           {onAskAi && (
-            <button onClick={onAskAi} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2433] bg-[#0c0e14] text-slate-300 text-xs hover:border-blue-500/40 hover:text-white">
+            <button onClick={onAskAi} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2A3648] bg-[#0B1220] text-slate-300 text-xs hover:border-blue-500/40 hover:text-white">
               <MessageSquareText className="w-3.5 h-3.5" /> Ask AI
             </button>
           )}
           {onNewRun && (
-            <button onClick={onNewRun} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2433] bg-[#0c0e14] text-slate-300 text-xs hover:border-blue-500/40 hover:text-white">
+            <button onClick={onNewRun} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2A3648] bg-[#0B1220] text-slate-300 text-xs hover:border-blue-500/40 hover:text-white">
               <RefreshCw className="w-3.5 h-3.5" /> New run
             </button>
           )}
@@ -178,7 +178,7 @@ export function StudioOutputDashboard(props: StudioOutputDashboardProps) {
         {/* Left column: Org intel + maturity */}
         <div className="lg:col-span-1 space-y-4">
           {orgIntel && (
-            <section className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 sm:p-5">
+            <section className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 sm:p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Organization intelligence</h3>
               <div className="space-y-2.5 text-sm">
                 {orgIntel.industry && <Row Icon={Building2} label="Industry" value={orgIntel.industry} />}
@@ -202,7 +202,7 @@ export function StudioOutputDashboard(props: StudioOutputDashboardProps) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 }}
-              className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 sm:p-5"
+              className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 sm:p-5"
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Recommendations</h3>
@@ -232,7 +232,7 @@ export function StudioOutputDashboard(props: StudioOutputDashboardProps) {
           )}
 
           {(notes !== undefined) && (
-            <section className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 sm:p-5">
+            <section className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 sm:p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Advisory notes</h3>
               {notes && notes.trim().length > 0 ? (
                 <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{notes}</p>
@@ -256,7 +256,7 @@ export function StudioOutputDashboard(props: StudioOutputDashboardProps) {
       </div>
 
       {/* ── Live Deliverables strip ────────────────────────────────── */}
-      <section className="rounded-2xl border border-[#1e2433] bg-gradient-to-br from-[#101525] to-[#0c0e14] p-4">
+      <section className="rounded-2xl border border-[#2A3648] bg-gradient-to-br from-[#0B1220] to-[#0B1220] p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-300" /> Live Deliverables Canvas
@@ -274,7 +274,7 @@ export function StudioOutputDashboard(props: StudioOutputDashboardProps) {
             <button
               key={d}
               onClick={onOpenCanvas}
-              className="text-left rounded-xl border border-[#1e2433] bg-[#0f1117] hover:border-[#2a3048] hover:bg-[#111420] p-3 group transition-all"
+              className="text-left rounded-xl border border-[#2A3648] bg-[#0f1117] hover:border-[#2a3048] hover:bg-[#111420] p-3 group transition-all"
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-[10px] text-slate-500 tabular-nums">{i + 1}</span>
@@ -327,7 +327,7 @@ function MaturityHeatmap({ maturity }: { maturity: Array<{ label: string; level:
   const counts = { High: 0, Medium: 0, Low: 0 }
   for (const d of dims) counts[d.level]++
   return (
-    <section className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 sm:p-5">
+    <section className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Maturity heatmap</h3>
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest">
@@ -368,12 +368,12 @@ function WorkforceRiskCard({ recommendations }: { recommendations: Array<{ tone?
   const lLen = (lPct / 100) * C
 
   return (
-    <section className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 sm:p-5">
+    <section className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 sm:p-5">
       <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Workforce risk</h3>
       <div className="flex items-center gap-4">
         <div className="relative w-28 h-28 flex-shrink-0">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="#1e2433" strokeWidth="10" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#2A3648" strokeWidth="10" />
             <circle cx="50" cy="50" r="42" fill="none" stroke="#ef4444" strokeWidth="10"
                     strokeDasharray={`${hLen} ${C - hLen}`} strokeDashoffset="0" />
             <circle cx="50" cy="50" r="42" fill="none" stroke="#f59e0b" strokeWidth="10"
@@ -468,7 +468,7 @@ function RenderValue({ value }: { value: unknown }): React.ReactElement | null {
   }
   if (typeof value === 'object') {
     return (
-      <div className="space-y-2 pl-2 border-l border-[#1e2433]">
+      <div className="space-y-2 pl-2 border-l border-[#2A3648]">
         {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
           <div key={k}>
             <div className="text-xs font-bold uppercase tracking-widest text-slate-500">{prettyKey(k)}</div>

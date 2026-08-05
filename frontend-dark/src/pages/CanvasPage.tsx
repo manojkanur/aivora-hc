@@ -35,18 +35,18 @@ interface BrandSettings {
 
 const DEFAULT_BRAND: BrandSettings = {
   logoDataUrl: null,
-  accentColor: '#3b82f6',
-  bgColor: '#0c0e14',
+  accentColor: '#2E7DFA',
+  bgColor: '#0B1220',
   textColor: '#e2e8f0',
 }
 
 const PRESET_THEMES = [
-  { label: 'Dark Blue',   bg: '#0c0e14', accent: '#3b82f6', text: '#e2e8f0' },
+  { label: 'Dark Blue',   bg: '#0B1220', accent: '#2E7DFA', text: '#e2e8f0' },
   { label: 'Navy',        bg: '#0f172a', accent: '#6366f1', text: '#e2e8f0' },
   { label: 'Slate',       bg: '#1e293b', accent: '#38bdf8', text: '#f1f5f9' },
   { label: 'Dark Green',  bg: '#0d1f14', accent: '#22c55e', text: '#dcfce7' },
   { label: 'Charcoal',    bg: '#18181b', accent: '#a855f7', text: '#f4f4f5' },
-  { label: 'White',       bg: '#ffffff', accent: '#3b82f6', text: '#1e293b' },
+  { label: 'White',       bg: '#ffffff', accent: '#2E7DFA', text: '#1e293b' },
   { label: 'Warm White',  bg: '#fafaf9', accent: '#f97316', text: '#1c1917' },
   { label: 'Brand Dark',  bg: '#111827', accent: '#f59e0b', text: '#f3f4f6' },
 ]
@@ -847,16 +847,16 @@ export default function CanvasPage() {
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-[#0c0e14]">
-      <Loader2 className="w-8 h-8 animate-spin text-[#3b82f6]" />
+    <div className="flex h-screen items-center justify-center bg-[#0B1220]">
+      <Loader2 className="w-8 h-8 animate-spin text-[#2E7DFA]" />
     </div>
   )
 
   // ── Format picker ────────────────────────────────────────────────────────────
   if (!format) return (
-    <div className="min-h-screen bg-[#0c0e14] flex flex-col">
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-[#1e2433] bg-[#131720]">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-[#1a1e2e] text-slate-500 hover:text-white transition-colors">
+    <div className="min-h-screen bg-[#0B1220] flex flex-col">
+      <div className="flex items-center gap-4 px-6 py-4 border-b border-[#2A3648] bg-[#1B2431]">
+        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-[#222E3E] text-slate-500 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
@@ -893,11 +893,11 @@ export default function CanvasPage() {
   const htmlPreviewSrc = format === 'html' ? buildHtmlSrc(slides, draftTitle, brand) : ''
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#0c0e14]">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#0B1220]">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1e2433] bg-[#131720] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2A3648] bg-[#1B2431] flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => setFormat(null)} className="p-1.5 rounded-lg hover:bg-[#1a1e2e] text-slate-500 hover:text-white transition-colors">
+          <button onClick={() => setFormat(null)} className="p-1.5 rounded-lg hover:bg-[#222E3E] text-slate-500 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2">
@@ -911,14 +911,14 @@ export default function CanvasPage() {
         <div className="flex items-center gap-2">
           {format !== 'html' && (
             <button onClick={addSlide}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white border border-[#1e2433] hover:border-[#3b82f6] rounded-lg px-3 py-1.5 transition-colors">
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white border border-[#2A3648] hover:border-[#2E7DFA] rounded-lg px-3 py-1.5 transition-colors">
               <Plus className="w-3.5 h-3.5" /> Slide
             </button>
           )}
           {format === 'pptx' && (
             <button onClick={() => setPreviewAll(p => !p)}
               className={cn('flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors',
-                previewAll ? 'border-[#3b82f6] text-[#3b82f6] bg-[#3b82f6]/10' : 'border-[#1e2433] text-slate-500 hover:text-white')}>
+                previewAll ? 'border-[#2E7DFA] text-[#2E7DFA] bg-[#2E7DFA]/10' : 'border-[#2A3648] text-slate-500 hover:text-white')}>
               {previewAll ? <Edit3 className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               {previewAll ? 'Edit' : 'All slides'}
             </button>
@@ -939,12 +939,12 @@ export default function CanvasPage() {
             <span>{wordCount.toLocaleString()} words</span>
           </div>
           <button onClick={handleSaveDraft} disabled={saving}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white border border-[#1e2433] hover:border-emerald-500/50 hover:text-emerald-400 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white border border-[#2A3648] hover:border-emerald-500/50 hover:text-emerald-400 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
             {savedDraftId ? 'Saved to Inbox' : 'Save Draft'}
           </button>
           <button onClick={handleExport} disabled={exporting}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-white text-sm font-semibold transition-colors disabled:opacity-50 bg-[#3b82f6] hover:bg-[#2563eb]">
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-white text-sm font-semibold transition-colors disabled:opacity-50 bg-[#2E7DFA] hover:bg-[#175FCC]">
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Download {format.toUpperCase()}
           </button>
@@ -952,8 +952,8 @@ export default function CanvasPage() {
       </div>
 
       {/* AI prompt bar — tell the model to edit the deck and it rewrites the slide content */}
-      <div className="border-b border-[#1e2433] bg-gradient-to-r from-blue-500/5 to-violet-500/5 px-4 py-2 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_0_2px_rgba(59,130,246,0.15)]">
+      <div className="border-b border-[#2A3648] bg-gradient-to-r from-blue-500/5 to-violet-500/5 px-4 py-2 flex items-center gap-2">
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_0_2px_rgba(46,125,250,0.15)]">
           <Sparkles className="w-3.5 h-3.5 text-white" />
         </div>
         <input
@@ -981,13 +981,13 @@ export default function CanvasPage() {
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar: Brand + thumbnails (not for HTML) */}
         {format !== 'html' && (
-          <div className="w-44 flex-shrink-0 border-r border-[#1e2433] bg-[#0c0e14] flex flex-col overflow-hidden">
+          <div className="w-44 flex-shrink-0 border-r border-[#2A3648] bg-[#0B1220] flex flex-col overflow-hidden">
             <BrandPanel brand={brand} onChange={setBrand} onApplyTheme={applyThemeToAllSlides} />
             <div className="flex-1 overflow-y-auto py-2 px-2 space-y-2">
               {slides.map((slide, i) => (
                 <div key={slide.id} onClick={() => { setCurrent(i); setPreviewAll(false) }}
                   className={cn('relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all group/thumb',
-                    i === current && !previewAll ? 'border-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.3)]' : 'border-transparent hover:border-[#1e2433]')}>
+                    i === current && !previewAll ? 'border-[#2E7DFA] shadow-[0_0_8px_rgba(46,125,250,0.3)]' : 'border-transparent hover:border-[#2A3648]')}>
                   <div className="aspect-[16/9] p-1.5 relative" style={{ background: format === 'docx' ? '#ffffff' : (slide.bg || brand.bgColor) }}>
                     {i === 0 && format !== 'docx' && <div className="absolute left-0 top-0 w-0.5 h-full" style={{ background: brand.accentColor }} />}
                     {slide.elements.slice(0, 4).map(el => (
@@ -1014,7 +1014,7 @@ export default function CanvasPage() {
                 </div>
               ))}
               <button onClick={addSlide}
-                className="w-full aspect-[16/9] rounded-lg border border-dashed border-[#1e2433] hover:border-[#3b82f6] flex items-center justify-center text-slate-600 hover:text-slate-400 transition-colors">
+                className="w-full aspect-[16/9] rounded-lg border border-dashed border-[#2A3648] hover:border-[#2E7DFA] flex items-center justify-center text-slate-600 hover:text-slate-400 transition-colors">
                 <Plus className="w-5 h-5" />
               </button>
             </div>
@@ -1182,15 +1182,15 @@ export default function CanvasPage() {
 
           {/* ── HTML: live interactive slideshow preview ── */}
           {format === 'html' && (
-            <div className="flex-1 flex min-h-0 bg-[#0c0e14]">
+            <div className="flex-1 flex min-h-0 bg-[#0B1220]">
               {/* Brand + thumbnail strip */}
-              <div className="w-44 flex-shrink-0 border-r border-[#1e2433] bg-[#0c0e14] flex flex-col overflow-hidden">
+              <div className="w-44 flex-shrink-0 border-r border-[#2A3648] bg-[#0B1220] flex flex-col overflow-hidden">
                 <BrandPanel brand={brand} onChange={setBrand} onApplyTheme={applyThemeToAllSlides} />
                 <div className="flex-1 overflow-y-auto py-2 px-2 space-y-2">
                   {slides.map((slide, i) => (
                     <div key={slide.id} onClick={() => setCurrent(i)}
                       className={cn('relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all group/thumb',
-                        i === current ? 'border-[#3b82f6]' : 'border-transparent hover:border-[#1e2433]')}>
+                        i === current ? 'border-[#2E7DFA]' : 'border-transparent hover:border-[#2A3648]')}>
                       <div className="aspect-[16/9] p-1.5 relative" style={{ background: slide.bg || brand.bgColor }}>
                         {i === 0 && <div className="absolute left-0 top-0 w-0.5 h-full" style={{ background: brand.accentColor }} />}
                         {slide.elements.slice(0, 3).map(el => (
@@ -1207,7 +1207,7 @@ export default function CanvasPage() {
                     </div>
                   ))}
                   <button onClick={addSlide}
-                    className="w-full aspect-[16/9] rounded-lg border border-dashed border-[#1e2433] hover:border-[#3b82f6] flex items-center justify-center text-slate-600 hover:text-slate-400 transition-colors">
+                    className="w-full aspect-[16/9] rounded-lg border border-dashed border-[#2A3648] hover:border-[#2E7DFA] flex items-center justify-center text-slate-600 hover:text-slate-400 transition-colors">
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>

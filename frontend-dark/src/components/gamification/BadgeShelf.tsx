@@ -9,10 +9,10 @@ interface BadgeShelfProps {
 }
 
 const rarityStyles: Record<Badge['rarity'], string> = {
-  common: 'border-[#1e2433]',
-  rare: 'border-[#3b82f6] shadow-sm',
-  epic: 'border-[#3b82f6] shadow-md',
-  legendary: 'border-[#1e2433] shadow-lg ring-1 ring-[#3b82f6]',
+  common: 'border-[#2A3648]',
+  rare: 'border-[#2E7DFA] shadow-sm',
+  epic: 'border-[#2E7DFA] shadow-md',
+  legendary: 'border-[#2A3648] shadow-lg ring-1 ring-[#2E7DFA]',
 }
 
 const rarityLabel: Record<Badge['rarity'], string> = {
@@ -73,9 +73,9 @@ function BadgeItem({ badge, index, locked = false }: { badge: Badge; index: numb
         className={cn(
           'aspect-square rounded-xl border-2 flex flex-col items-center justify-center p-2 transition-all',
           locked
-            ? 'border-[#1e2433] bg-[#0E0E0E] grayscale opacity-50'
+            ? 'border-[#2A3648] bg-[#0E0E0E] grayscale opacity-50'
             : rarityStyles[badge.rarity],
-          !locked && 'hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(59,130,246,0.15)] cursor-pointer'
+          !locked && 'hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(46,125,250,0.15)] cursor-pointer'
         )}
         title={badge.name}
       >
@@ -93,7 +93,7 @@ function BadgeItem({ badge, index, locked = false }: { badge: Badge; index: numb
       </div>
 
       {/* Tooltip */}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#131720] text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#1B2431] text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
         {locked ? 'Locked' : badge.description}
       </div>
     </motion.div>

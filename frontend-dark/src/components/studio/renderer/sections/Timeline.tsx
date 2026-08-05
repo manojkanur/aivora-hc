@@ -142,7 +142,7 @@ function Dot({
           className={`absolute inline-flex h-full w-full rounded-full ${style.fill} opacity-40 animate-ping`}
         />
         <span
-          className={`relative inline-flex ${dim} rounded-full ${style.fill} ring-2 ring-offset-2 ring-offset-[#131720] ${style.ring}`}
+          className={`relative inline-flex ${dim} rounded-full ${style.fill} ring-2 ring-offset-2 ring-offset-[#1B2431] ${style.ring}`}
         />
       </span>
     )
@@ -161,7 +161,7 @@ function Dot({
               : kind === 'milestone'
                 ? 'border-blue-500/60'
                 : 'border-slate-500/60'
-          } bg-[#131720]`}
+          } bg-[#1B2431]`}
         />
       </span>
     )
@@ -231,7 +231,7 @@ function VerticalTimeline({ events }: { events: TimelineEvent[] }) {
       {/* Rail line */}
       <span
         aria-hidden
-        className="absolute left-[11px] top-1 bottom-1 w-px bg-gradient-to-b from-[#1e2433] via-[#1e2433] to-transparent"
+        className="absolute left-[11px] top-1 bottom-1 w-px bg-gradient-to-b from-[#2A3648] via-[#2A3648] to-transparent"
       />
       {events.map((event, i) => (
         <li
@@ -270,7 +270,7 @@ function HorizontalTimeline({ events }: { events: TimelineEvent[] }) {
             y1="0.5"
             x2="100%"
             y2="0.5"
-            stroke="#1e2433"
+            stroke="#2A3648"
             strokeWidth="1"
           />
         </svg>
@@ -322,7 +322,7 @@ export function timeline({ title, data, footnote }: TimelineProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-2">
@@ -342,7 +342,7 @@ export function timeline({ title, data, footnote }: TimelineProps) {
       </div>
 
       {events.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#1e2433] bg-[#0f1117] px-5 py-8 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-[#2A3648] bg-[#0f1117] px-5 py-8 text-center text-sm text-slate-500">
           No timeline events available.
         </div>
       ) : orientation === 'horizontal' ? (
@@ -353,7 +353,7 @@ export function timeline({ title, data, footnote }: TimelineProps) {
 
       {/* Stats + footnote */}
       {events.length > 0 && (
-        <div className="mt-5 pt-4 border-t border-[#1e2433] flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-5 pt-4 border-t border-[#2A3648] flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
             {(Object.keys(counts) as Kind[]).map(k =>
               counts[k] > 0 ? (

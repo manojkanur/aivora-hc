@@ -96,7 +96,7 @@ export function StudioChat({ draftId, studioName, quickPrompts, onContentPatched
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 group flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-[0_8px_28px_rgba(37,99,235,0.45)] hover:shadow-[0_8px_36px_rgba(37,99,235,0.55)]"
+          className="fixed bottom-6 right-6 z-40 group flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-[0_8px_28px_rgba(23,95,204,0.45)] hover:shadow-[0_8px_36px_rgba(23,95,204,0.55)]"
         >
           <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
             <Sparkles className="w-4 h-4" />
@@ -113,12 +113,12 @@ export function StudioChat({ draftId, studioName, quickPrompts, onContentPatched
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed bottom-6 right-6 z-40 w-[min(420px,calc(100vw-32px))] h-[min(640px,calc(100vh-100px))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] shadow-[0_24px_64px_rgba(0,0,0,0.55)] flex flex-col overflow-hidden"
+            className="fixed bottom-6 right-6 z-40 w-[min(420px,calc(100vw-32px))] h-[min(640px,calc(100vh-100px))] rounded-2xl border border-[#2A3648] bg-[#0B1220] shadow-[0_24px_64px_rgba(0,0,0,0.55)] flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[#1e2433] bg-gradient-to-r from-blue-500/10 to-violet-500/10">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[#2A3648] bg-gradient-to-r from-blue-500/10 to-violet-500/10">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center shadow-[0_0_0_2px_rgba(59,130,246,0.15)]">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center shadow-[0_0_0_2px_rgba(46,125,250,0.15)]">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -131,7 +131,7 @@ export function StudioChat({ draftId, studioName, quickPrompts, onContentPatched
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-lg border border-[#1e2433] text-slate-400 hover:text-white hover:border-blue-500/40 flex items-center justify-center"
+                className="w-8 h-8 rounded-lg border border-[#2A3648] text-slate-400 hover:text-white hover:border-blue-500/40 flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -147,14 +147,14 @@ export function StudioChat({ draftId, studioName, quickPrompts, onContentPatched
                   className={cn('flex gap-2', m.role === 'user' ? 'justify-end' : 'justify-start')}
                 >
                   {m.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-[0_0_0_2px_rgba(59,130,246,0.15)]">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-[0_0_0_2px_rgba(46,125,250,0.15)]">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
                   )}
                   <div className={cn(
                     'max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
                     m.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-sm shadow-[0_2px_8px_rgba(37,99,235,0.25)]'
+                      ? 'bg-blue-600 text-white rounded-tr-sm shadow-[0_2px_8px_rgba(23,95,204,0.25)]'
                       : 'bg-blue-500/5 border border-blue-500/15 text-slate-200 rounded-tl-sm',
                   )}>
                     <p className="whitespace-pre-wrap">{m.text}</p>
@@ -187,13 +187,13 @@ export function StudioChat({ draftId, studioName, quickPrompts, onContentPatched
 
             {/* Quick prompts */}
             {messages.length <= 2 && (
-              <div className="px-4 py-2 border-t border-[#1e2433] flex flex-wrap gap-1.5">
+              <div className="px-4 py-2 border-t border-[#2A3648] flex flex-wrap gap-1.5">
                 {prompts.map(p => (
                   <button
                     key={p}
                     onClick={() => send(p)}
                     disabled={busy}
-                    className="text-[11px] text-slate-300 bg-[#131720] border border-[#1e2433] hover:border-blue-500/40 hover:text-white px-2.5 py-1 rounded-full disabled:opacity-50"
+                    className="text-[11px] text-slate-300 bg-[#1B2431] border border-[#2A3648] hover:border-blue-500/40 hover:text-white px-2.5 py-1 rounded-full disabled:opacity-50"
                   >
                     {p}
                   </button>
@@ -202,8 +202,8 @@ export function StudioChat({ draftId, studioName, quickPrompts, onContentPatched
             )}
 
             {/* Input */}
-            <div className="px-3 py-3 border-t border-[#1e2433] bg-[#0a0c12]">
-              <div className="flex items-center gap-2 rounded-xl border border-[#1e2433] bg-[#131720] focus-within:border-blue-500/40 px-3 py-2">
+            <div className="px-3 py-3 border-t border-[#2A3648] bg-[#0a0c12]">
+              <div className="flex items-center gap-2 rounded-xl border border-[#2A3648] bg-[#1B2431] focus-within:border-blue-500/40 px-3 py-2">
                 <MessageSquareText className="w-4 h-4 text-slate-500 flex-shrink-0" />
                 <input
                   value={input}

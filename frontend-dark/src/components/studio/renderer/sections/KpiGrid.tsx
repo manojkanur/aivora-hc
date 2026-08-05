@@ -185,7 +185,7 @@ function formatDelta(n: number, unit?: string): string {
 }
 
 // Tiny inline sparkline. Renders a 40x12 viewBox polyline using the accent stroke.
-function Sparkline({ points, color = '#3b82f6' }: { points: number[]; color?: string }) {
+function Sparkline({ points, color = '#2E7DFA' }: { points: number[]; color?: string }) {
   if (!Array.isArray(points) || points.length < 2) return null
   const w = 40
   const h = 12
@@ -246,7 +246,7 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-center gap-2 mb-5">
         <BarChart3 className="w-5 h-5 text-blue-400" />
@@ -277,7 +277,7 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
                 tilePadding[columns],
                 isHero
                   ? 'border-blue-500/40 bg-blue-500/10'
-                  : 'border-[#1e2433] bg-[#0f1117]',
+                  : 'border-[#2A3648] bg-[#0f1117]',
               ].join(' ')}
             >
               {isHero && (
@@ -352,7 +352,7 @@ export function kpigrid({ title, data, footnote }: KpiGridProps) {
       </div>
 
       {footnote && (
-        <p className="mt-4 pt-4 border-t border-[#1e2433] text-xs text-slate-500 leading-relaxed">
+        <p className="mt-4 pt-4 border-t border-[#2A3648] text-xs text-slate-500 leading-relaxed">
           {footnote}
         </p>
       )}

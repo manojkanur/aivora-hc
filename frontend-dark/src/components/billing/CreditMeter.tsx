@@ -32,14 +32,14 @@ export function CreditMeter() {
           isEmpty
             ? 'border-red-800 bg-red-950/30 hover:bg-red-950/50'
             : isLow
-            ? 'border-[rgba(59,130,246,0.4)] bg-[rgba(59,130,246,0.08)] hover:bg-[rgba(59,130,246,0.12)]'
-            : 'border-[#1e2433] bg-[#131720] hover:border-[#252d3f]'
+            ? 'border-[rgba(46,125,250,0.4)] bg-[rgba(46,125,250,0.08)] hover:bg-[rgba(46,125,250,0.12)]'
+            : 'border-[#2A3648] bg-[#1B2431] hover:border-[#252d3f]'
         )}
       >
         <Coins
           className={cn(
             'w-4 h-4',
-            isEmpty ? 'text-red-400' : isLow ? 'text-[#3b82f6]' : 'text-slate-600'
+            isEmpty ? 'text-red-400' : isLow ? 'text-[#2E7DFA]' : 'text-slate-600'
           )}
         />
         {isLoading ? (
@@ -48,14 +48,14 @@ export function CreditMeter() {
           <span
             className={cn(
               'text-sm font-semibold',
-              isEmpty ? 'text-red-400' : isLow ? 'text-[#3b82f6]' : 'text-white'
+              isEmpty ? 'text-red-400' : isLow ? 'text-[#2E7DFA]' : 'text-white'
             )}
           >
             {balance}
           </span>
         )}
         {isLow && !isEmpty && (
-          <span className="text-xs text-[#3b82f6] font-medium">Low</span>
+          <span className="text-xs text-[#2E7DFA] font-medium">Low</span>
         )}
         {isEmpty && (
           <span className="text-xs text-red-400 font-medium">Empty</span>

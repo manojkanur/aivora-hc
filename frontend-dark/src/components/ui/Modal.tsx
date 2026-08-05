@@ -59,17 +59,17 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
             exit={{ opacity: 0, scale: 0.96, y: 6 }}
             transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             className={cn(
-              'relative w-full bg-[#131720] rounded-xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-[#1e2433] z-10',
+              'relative w-full bg-[#1B2431] rounded-xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-[#2A3648] z-10',
               sizeStyles[size],
               className
             )}
           >
             {title && (
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A3648]">
                 <h2 className="text-base font-semibold text-white">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg hover:bg-[#1a1e2e] text-slate-600 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-[#222E3E] text-slate-600 hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -78,7 +78,7 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
             {!title && (
               <button
                 onClick={onClose}
-                className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-[#1a1e2e] text-slate-600 hover:text-white transition-colors z-10"
+                className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-[#222E3E] text-slate-600 hover:text-white transition-colors z-10"
               >
                 <X className="w-4 h-4" />
               </button>

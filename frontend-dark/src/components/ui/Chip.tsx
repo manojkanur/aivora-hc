@@ -24,8 +24,8 @@ export function Chip({ active = false, onClick, children, variant = 'filter', cl
         active
           ? 'border-blue-500 bg-blue-500/15 text-blue-200'
           : variant === 'tag'
-            ? 'border-[#1e2433] bg-[#0f1117] text-slate-400'
-            : 'border-[#1e2433] bg-[#0f1117] text-slate-400 hover:border-blue-500/40 hover:text-slate-200',
+            ? 'border-[#2A3648] bg-[#0f1117] text-slate-400'
+            : 'border-[#2A3648] bg-[#0f1117] text-slate-400 hover:border-blue-500/40 hover:text-slate-200',
         className,
       )}
     >

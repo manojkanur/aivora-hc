@@ -39,7 +39,7 @@ export function draftToSlides(content: Record<string, unknown>): Slide[] {
   const titleKey = entries.find(([k]) => /name|title|org|organisation/i.test(k))
   slides.push({
     id: uid(),
-    accent: '#3b82f6',
+    accent: '#2E7DFA',
     elements: [
       { id: uid(), type: 'label', content: 'HC Advisory', placeholder: 'Label' },
       { id: uid(), type: 'title', content: titleKey ? String(titleKey[1]) : 'Deliverable', placeholder: 'Title' },
@@ -154,7 +154,7 @@ async function exportPdf(containerRef: React.RefObject<HTMLDivElement>, title: s
   const slides = el.querySelectorAll<HTMLElement>('[data-slide]')
 
   for (let i = 0; i < slides.length; i++) {
-    const canvas = await html2canvas(slides[i], { backgroundColor: '#0c0e14', scale: 1.5, useCORS: true })
+    const canvas = await html2canvas(slides[i], { backgroundColor: '#0B1220', scale: 1.5, useCORS: true })
     const img = canvas.toDataURL('image/jpeg', 0.92)
     if (i > 0) pdf.addPage([1280, 720], 'landscape')
     pdf.addImage(img, 'JPEG', 0, 0, 1280, 720)
@@ -217,15 +217,15 @@ function exportHtml(slides: Slide[], title: string) {
 <title>${title}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0c0e14;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0}
+  body{background:#0B1220;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0}
   .deck{width:100%;min-height:100vh}
-  .slide{width:1280px;height:720px;max-width:100vw;background:#0c0e14;border:1px solid #1e2433;margin:24px auto;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
-  .slide-cover{background:linear-gradient(135deg,#0f1623 0%,#0c0e14 100%)}
-  .slide-cover::before{content:'';position:absolute;left:0;top:0;width:6px;height:100%;background:#3b82f6;border-radius:3px 0 0 3px}
+  .slide{width:1280px;height:720px;max-width:100vw;background:#0B1220;border:1px solid #2A3648;margin:24px auto;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+  .slide-cover{background:linear-gradient(135deg,#0f1623 0%,#0B1220 100%)}
+  .slide-cover::before{content:'';position:absolute;left:0;top:0;width:6px;height:100%;background:#2E7DFA;border-radius:3px 0 0 3px}
   .slide-inner{padding:60px 80px;width:100%}
-  .slide-label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#3b82f6;margin-bottom:16px}
+  .slide-label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#2E7DFA;margin-bottom:16px}
   .slide-title{font-size:42px;font-weight:800;line-height:1.15;color:#fff;margin-bottom:12px}
-  .slide-heading{font-size:26px;font-weight:700;color:#fff;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #1e2433}
+  .slide-heading{font-size:26px;font-weight:700;color:#fff;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #2A3648}
   .slide-body{font-size:15px;line-height:1.7;color:#94a3b8;white-space:pre-wrap}
   .slide-bullet{font-size:14px;line-height:1.7;color:#94a3b8;margin-left:20px;margin-bottom:6px}
   ul{list-style:disc;padding-left:0}
@@ -271,13 +271,13 @@ function EditableEl({
 
   const baseClass = cn(
     'outline-none rounded px-1 -mx-1 cursor-text transition-colors',
-    editing ? 'bg-white/5 ring-1 ring-[#3b82f6]/50' : 'hover:bg-white/5',
+    editing ? 'bg-white/5 ring-1 ring-[#2E7DFA]/50' : 'hover:bg-white/5',
   )
 
   const typeCls = {
     title: 'text-4xl font-extrabold text-white leading-tight',
     heading: 'text-2xl font-bold text-white',
-    label: 'text-[11px] font-bold uppercase tracking-widest text-[#3b82f6]',
+    label: 'text-[11px] font-bold uppercase tracking-widest text-[#2E7DFA]',
     body: 'text-sm text-slate-400 leading-relaxed whitespace-pre-wrap',
     bullet: 'text-sm text-slate-300',
   }[el.type]
@@ -313,11 +313,11 @@ function SlideCanvas({
     <div
       data-slide
       className={cn(
-        'relative w-full aspect-[16/9] rounded-xl overflow-hidden border border-[#1e2433] shadow-[0_4px_40px_rgba(0,0,0,0.6)]',
-        isTitle ? 'bg-gradient-to-br from-[#0f1623] to-[#0c0e14]' : 'bg-[#0c0e14]',
+        'relative w-full aspect-[16/9] rounded-xl overflow-hidden border border-[#2A3648] shadow-[0_4px_40px_rgba(0,0,0,0.6)]',
+        isTitle ? 'bg-gradient-to-br from-[#0f1623] to-[#0B1220]' : 'bg-[#0B1220]',
       )}
     >
-      {isTitle && <div className="absolute left-0 top-0 w-1.5 h-full bg-[#3b82f6]" />}
+      {isTitle && <div className="absolute left-0 top-0 w-1.5 h-full bg-[#2E7DFA]" />}
 
       <div className="absolute inset-0 flex flex-col justify-center px-[8%] py-[7%] gap-3">
         {slide.elements.map(el => (
@@ -329,7 +329,7 @@ function SlideCanvas({
           >
             {el.type === 'bullet' ? (
               <div className="flex items-start gap-2">
-                <span className="mt-[0.35em] w-1.5 h-1.5 rounded-full bg-[#3b82f6] flex-shrink-0" />
+                <span className="mt-[0.35em] w-1.5 h-1.5 rounded-full bg-[#2E7DFA] flex-shrink-0" />
                 <EditableEl el={el} onUpdate={(id, c) => onUpdateEl(slide.id, id, c)} />
               </div>
             ) : (
@@ -351,7 +351,7 @@ function SlideCanvas({
       <div className="absolute bottom-3 right-4 text-[10px] text-slate-700 font-medium">{slideIndex + 1}</div>
 
       {/* Add element toolbar */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity bg-[#131720] border border-[#1e2433] rounded-lg px-2 py-1">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity bg-[#1B2431] border border-[#2A3648] rounded-lg px-2 py-1">
         {([
           ['bullet', <List className="w-3 h-3" />, 'Bullet'],
           ['body', <AlignLeft className="w-3 h-3" />, 'Text'],
@@ -452,16 +452,16 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
   if (slides.length === 0) return null
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0e14]">
+    <div className="flex flex-col h-full bg-[#0B1220]">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1e2433] bg-[#131720] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2A3648] bg-[#1B2431] flex-shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-xs font-semibold text-slate-400">
             Slide <span className="text-white">{current + 1}</span> / {slides.length}
           </span>
           <button
             onClick={addSlide}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-white border border-[#1e2433] hover:border-[#3b82f6] rounded-lg px-2.5 py-1 transition-colors"
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-white border border-[#2A3648] hover:border-[#2E7DFA] rounded-lg px-2.5 py-1 transition-colors"
           >
             <Plus className="w-3 h-3" /> Add slide
           </button>
@@ -473,21 +473,21 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
             className={cn(
               'flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors',
               previewMode
-                ? 'border-[#3b82f6] text-[#3b82f6] bg-[#3b82f6]/10'
-                : 'border-[#1e2433] text-slate-500 hover:text-white',
+                ? 'border-[#2E7DFA] text-[#2E7DFA] bg-[#2E7DFA]/10'
+                : 'border-[#2A3648] text-slate-500 hover:text-white',
             )}
           >
             {previewMode ? <Edit3 className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             {previewMode ? 'Edit' : 'Preview'}
           </button>
 
-          <div className="flex items-center gap-1 border border-[#1e2433] rounded-lg p-0.5 bg-[#0c0e14]">
+          <div className="flex items-center gap-1 border border-[#2A3648] rounded-lg p-0.5 bg-[#0B1220]">
             {exportButtons.map(({ format, icon, label }) => (
               <button
                 key={format}
                 onClick={() => handleExport(format)}
                 disabled={exporting !== null}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-400 hover:text-white hover:bg-[#1a1e2e] rounded transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-400 hover:text-white hover:bg-[#222E3E] rounded transition-colors disabled:opacity-50"
               >
                 {exporting === format ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : icon}
                 {label}
@@ -499,18 +499,18 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
 
       <div className="flex flex-1 min-h-0">
         {/* Thumbnail strip */}
-        <div className="w-32 flex-shrink-0 border-r border-[#1e2433] bg-[#0e1018] overflow-y-auto py-2 px-2 space-y-2">
+        <div className="w-32 flex-shrink-0 border-r border-[#2A3648] bg-[#0e1018] overflow-y-auto py-2 px-2 space-y-2">
           {slides.map((slide, idx) => (
             <div
               key={slide.id}
               onClick={() => setCurrent(idx)}
               className={cn(
                 'relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all group',
-                idx === current ? 'border-[#3b82f6] shadow-[0_0_12px_rgba(59,130,246,0.3)]' : 'border-transparent hover:border-[#1e2433]',
+                idx === current ? 'border-[#2E7DFA] shadow-[0_0_12px_rgba(46,125,250,0.3)]' : 'border-transparent hover:border-[#2A3648]',
               )}
             >
-              <div className="aspect-[16/9] bg-[#0c0e14] p-1.5">
-                <div className={cn('w-2 h-full absolute left-0 top-0', idx === 0 ? 'bg-[#3b82f6]/30' : '')} />
+              <div className="aspect-[16/9] bg-[#0B1220] p-1.5">
+                <div className={cn('w-2 h-full absolute left-0 top-0', idx === 0 ? 'bg-[#2E7DFA]/30' : '')} />
                 {slide.elements.slice(0, 3).map((el, i) => (
                   <div
                     key={el.id}
@@ -518,7 +518,7 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
                       'truncate mb-0.5',
                       el.type === 'title' ? 'text-[5px] font-bold text-white' :
                       el.type === 'heading' ? 'text-[4.5px] font-semibold text-white' :
-                      el.type === 'label' ? 'text-[4px] text-[#3b82f6]' :
+                      el.type === 'label' ? 'text-[4px] text-[#2E7DFA]' :
                       'text-[4px] text-slate-500',
                     )}
                   >
@@ -539,7 +539,7 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
           ))}
           <button
             onClick={addSlide}
-            className="w-full aspect-[16/9] rounded-lg border border-dashed border-[#1e2433] hover:border-[#3b82f6] flex items-center justify-center text-slate-600 hover:text-[#3b82f6] transition-colors"
+            className="w-full aspect-[16/9] rounded-lg border border-dashed border-[#2A3648] hover:border-[#2E7DFA] flex items-center justify-center text-slate-600 hover:text-[#2E7DFA] transition-colors"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -559,21 +559,21 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
                       onClick={() => setCurrent(idx)}
                       className={cn(
                         'relative w-full aspect-[16/9] rounded-xl overflow-hidden border cursor-pointer transition-all',
-                        idx === current ? 'border-[#3b82f6] shadow-[0_0_16px_rgba(59,130,246,0.25)]' : 'border-[#1e2433] hover:border-[#252d3f]',
-                        idx === 0 ? 'bg-gradient-to-br from-[#0f1623] to-[#0c0e14]' : 'bg-[#0c0e14]',
+                        idx === current ? 'border-[#2E7DFA] shadow-[0_0_16px_rgba(46,125,250,0.25)]' : 'border-[#2A3648] hover:border-[#252d3f]',
+                        idx === 0 ? 'bg-gradient-to-br from-[#0f1623] to-[#0B1220]' : 'bg-[#0B1220]',
                       )}
                     >
-                      {idx === 0 && <div className="absolute left-0 top-0 w-1.5 h-full bg-[#3b82f6]" />}
+                      {idx === 0 && <div className="absolute left-0 top-0 w-1.5 h-full bg-[#2E7DFA]" />}
                       <div className="absolute inset-0 flex flex-col justify-center px-[8%] py-[7%] gap-3">
                         {slide.elements.map(el => (
                           <div key={el.id} className={cn(
                             el.type === 'bullet' ? 'flex items-start gap-2' : '',
                           )}>
-                            {el.type === 'bullet' && <span className="mt-[0.35em] w-1.5 h-1.5 rounded-full bg-[#3b82f6] flex-shrink-0" />}
+                            {el.type === 'bullet' && <span className="mt-[0.35em] w-1.5 h-1.5 rounded-full bg-[#2E7DFA] flex-shrink-0" />}
                             <p className={cn(
                               el.type === 'title' ? 'text-4xl font-extrabold text-white' :
                               el.type === 'heading' ? 'text-2xl font-bold text-white' :
-                              el.type === 'label' ? 'text-[11px] font-bold uppercase tracking-widest text-[#3b82f6]' :
+                              el.type === 'label' ? 'text-[11px] font-bold uppercase tracking-widest text-[#2E7DFA]' :
                               el.type === 'body' ? 'text-sm text-slate-400 leading-relaxed whitespace-pre-wrap' :
                               'text-sm text-slate-300',
                             )}>
@@ -603,11 +603,11 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
 
           {/* Prev / Next nav */}
           {!previewMode && (
-            <div className="flex items-center justify-center gap-4 py-3 border-t border-[#1e2433] flex-shrink-0">
+            <div className="flex items-center justify-center gap-4 py-3 border-t border-[#2A3648] flex-shrink-0">
               <button
                 onClick={() => setCurrent(c => Math.max(0, c - 1))}
                 disabled={current === 0}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e2433] text-slate-500 hover:text-white hover:border-[#3b82f6] disabled:opacity-30 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2A3648] text-slate-500 hover:text-white hover:border-[#2E7DFA] disabled:opacity-30 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -618,7 +618,7 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
                     onClick={() => setCurrent(i)}
                     className={cn(
                       'rounded-full transition-all',
-                      i === current ? 'w-4 h-1.5 bg-[#3b82f6]' : 'w-1.5 h-1.5 bg-[#1e2433] hover:bg-[#3b82f6]/50',
+                      i === current ? 'w-4 h-1.5 bg-[#2E7DFA]' : 'w-1.5 h-1.5 bg-[#2A3648] hover:bg-[#2E7DFA]/50',
                     )}
                   />
                 ))}
@@ -626,7 +626,7 @@ export default function CanvasEditor({ content, title = 'Deliverable' }: CanvasE
               <button
                 onClick={() => setCurrent(c => Math.min(slides.length - 1, c + 1))}
                 disabled={current === slides.length - 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e2433] text-slate-500 hover:text-white hover:border-[#3b82f6] disabled:opacity-30 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2A3648] text-slate-500 hover:text-white hover:border-[#2E7DFA] disabled:opacity-30 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

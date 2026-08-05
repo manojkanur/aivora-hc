@@ -30,19 +30,14 @@ interface NetworkGraphProps {
 
 // Categorical palette — each group gets a distinct, consistent color
 const GROUP_PALETTE = [
-  '#3b82f6', // blue
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#f43f5e', // rose
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#ec4899', // pink
-  '#84cc16', // lime
-  '#eab308', // yellow
-  '#14b8a6', // teal
+  '#2E7DFA', // primary blue
+  '#17BFA0', // AI accent teal
+  '#5B96F5', // brand mid blue
+  '#0D3C82', // brand deep blue
+  '#8C96A6', // neutral
 ] as const
 
-const DEFAULT_COLOR = '#64748b'
+const DEFAULT_COLOR = '#8C96A6'
 
 // Deterministic pseudo-random from a string seed
 function seededRand(seed: number): () => number {
@@ -189,11 +184,11 @@ function computeLayout(
 function edgeStroke(kind: NetworkEdge['kind']) {
   switch (kind) {
     case 'blocked':
-      return { stroke: '#f43f5e', dash: '4 4', opacity: 0.85 }
+      return { stroke: '#D14343', dash: '4 4', opacity: 0.85 }
     case 'weak':
-      return { stroke: '#64748b', dash: '3 5', opacity: 0.55 }
+      return { stroke: '#8C96A6', dash: '3 5', opacity: 0.55 }
     default:
-      return { stroke: '#3b82f6', dash: undefined, opacity: 0.7 }
+      return { stroke: '#2E7DFA', dash: undefined, opacity: 0.7 }
   }
 }
 
@@ -223,7 +218,7 @@ export function networkgraph({ title, data, footnote }: NetworkGraphProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
@@ -247,7 +242,7 @@ export function networkgraph({ title, data, footnote }: NetworkGraphProps) {
         )}
       </div>
 
-      <div className="w-full overflow-hidden rounded-xl border border-[#1e2433] bg-[#0c0e14]">
+      <div className="w-full overflow-hidden rounded-xl border border-[#2A3648] bg-[#0B1220]">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-auto"
@@ -341,7 +336,7 @@ export function networkgraph({ title, data, footnote }: NetworkGraphProps) {
                     fontSize="11"
                     fontWeight={500}
                     fill="#e2e8f0"
-                    style={{ paintOrder: 'stroke', stroke: '#0c0e14', strokeWidth: 3 }}
+                    style={{ paintOrder: 'stroke', stroke: '#0B1220', strokeWidth: 3 }}
                   >
                     {n.label}
                   </text>
@@ -355,15 +350,15 @@ export function networkgraph({ title, data, footnote }: NetworkGraphProps) {
       {/* Edge kind legend */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
         <div className="flex items-center gap-1.5">
-          <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" /></svg>
+          <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#2E7DFA" strokeWidth="2" strokeLinecap="round" /></svg>
           <span className="text-[11px] text-slate-400">Strong</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#64748b" strokeWidth="2" strokeDasharray="3 5" strokeLinecap="round" /></svg>
+          <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#8C96A6" strokeWidth="2" strokeDasharray="3 5" strokeLinecap="round" /></svg>
           <span className="text-[11px] text-slate-400">Weak</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#f43f5e" strokeWidth="2" strokeDasharray="4 4" strokeLinecap="round" /></svg>
+          <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#D14343" strokeWidth="2" strokeDasharray="4 4" strokeLinecap="round" /></svg>
           <span className="text-[11px] text-slate-400">Blocked</span>
         </div>
         <div className="ml-auto text-[11px] text-slate-500 tabular-nums">

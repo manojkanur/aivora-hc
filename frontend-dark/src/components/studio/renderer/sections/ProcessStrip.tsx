@@ -56,7 +56,7 @@ export default function ProcessStrip({ data }: { title?: string; data: ProcessSt
   if (steps.length === 0) return null
 
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-gradient-to-r from-[#0f1522] to-[#131720] p-5 sm:p-6">
+    <div className="rounded-2xl border border-[#2A3648] bg-gradient-to-r from-[#0f1522] to-[#1B2431] p-5 sm:p-6">
       {data.eyebrow && (
         <div className="flex items-center gap-2 mb-4">
           <span className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
@@ -73,7 +73,7 @@ export default function ProcessStrip({ data }: { title?: string; data: ProcessSt
               <motion.div
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: i * 0.12, ease: 'easeOut' }}
-                className="flex items-start gap-3 flex-1 min-w-0 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-3">
+                className="flex items-start gap-3 flex-1 min-w-0 rounded-xl border border-[#2A3648] bg-[#0B1220] px-3.5 py-3">
                 <span className="w-9 h-9 rounded-full bg-blue-500/10 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
                   <Icon className="w-4 h-4 text-blue-400" />
                 </span>

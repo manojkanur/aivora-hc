@@ -98,7 +98,7 @@ export default function PublishPage() {
       {/* LinkedIn Connection Status */}
       <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={1}>
         {isConnected ? (
-          <div className="flex items-center gap-3 p-4 bg-[#131720] text-white rounded-xl">
+          <div className="flex items-center gap-3 p-4 bg-[#1B2431] text-white rounded-xl">
             <Linkedin className="w-5 h-5 text-white flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold">LinkedIn Connected</p>
@@ -107,7 +107,7 @@ export default function PublishPage() {
             <Badge variant="success">Active</Badge>
           </div>
         ) : (
-          <div className="flex items-center gap-3 p-4 bg-[#131720] border border-[#1e2433] rounded-xl">
+          <div className="flex items-center gap-3 p-4 bg-[#1B2431] border border-[#2A3648] rounded-xl">
             <Linkedin className="w-5 h-5 text-slate-600 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-white">Connect LinkedIn</p>
@@ -127,10 +127,10 @@ export default function PublishPage() {
         </h2>
         {isLoading ? (
           <div className="space-y-3">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-[#131720] rounded-xl border border-[#1e2433] shimmer" />)}
+            {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-[#1B2431] rounded-xl border border-[#2A3648] shimmer" />)}
           </div>
         ) : queue.length === 0 ? (
-          <div className="text-center py-16 bg-[#131720] rounded-xl border border-[#1e2433]">
+          <div className="text-center py-16 bg-[#1B2431] rounded-xl border border-[#2A3648]">
             <Send className="w-10 h-10 text-slate-600 mx-auto mb-3" />
             <p className="text-white font-medium">Queue is empty</p>
             <p className="text-slate-600 text-sm mt-1">Add posts to schedule and publish</p>
@@ -154,10 +154,10 @@ export default function PublishPage() {
       {log.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Publish Log</h2>
-          <div className="bg-[#131720] rounded-xl border border-[#1e2433] overflow-hidden">
+          <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#1e2433] bg-[#0E0E0E]">
+                <tr className="border-b border-[#2A3648] bg-[#0E0E0E]">
                   <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3">Content</th>
                   <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3 hidden sm:table-cell">Date</th>
                   <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3">Status</th>
@@ -165,7 +165,7 @@ export default function PublishPage() {
               </thead>
               <tbody>
                 {log.map(item => (
-                  <tr key={item.id} className="border-b border-[#1e2433] last:border-0">
+                  <tr key={item.id} className="border-b border-[#2A3648] last:border-0">
                     <td className="px-4 py-3">
                       <p className="text-sm text-slate-300 truncate max-w-xs">{item.content_preview}</p>
                     </td>
@@ -206,7 +206,7 @@ export default function PublishPage() {
               type="datetime-local"
               value={scheduledAt}
               onChange={e => setScheduledAt(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-[#1e2433] rounded-lg bg-[#131720] text-white focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+              className="w-full px-3 py-2 text-sm border border-[#2A3648] rounded-lg bg-[#1B2431] text-white focus:outline-none focus:ring-2 focus:ring-[#2E7DFA] focus:border-[#2E7DFA]"
             />
           </div>
           <div className="flex gap-3">

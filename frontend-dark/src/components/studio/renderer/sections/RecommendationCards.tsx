@@ -29,19 +29,19 @@ interface PriorityTheme {
 const PRIORITY_THEME: Record<Priority, PriorityTheme> = {
   high: {
     chip: 'text-rose-300 bg-rose-500/15 border-rose-500/40',
-    border: '#f43f5e',
+    border: '#D14343',
     dot: 'bg-rose-500',
     label: 'High priority',
   },
   medium: {
     chip: 'text-amber-300 bg-amber-500/15 border-amber-500/40',
-    border: '#f59e0b',
+    border: '#C97A1E',
     dot: 'bg-amber-500',
     label: 'Medium priority',
   },
   low: {
     chip: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/40',
-    border: '#10b981',
+    border: '#2E9E5B',
     dot: 'bg-emerald-500',
     label: 'Low priority',
   },
@@ -72,7 +72,7 @@ function LevelDots({
           <span
             key={i}
             className={`w-1.5 h-1.5 rounded-full transition-colors ${
-              i <= filled ? color : 'bg-[#1e2433]'
+              i <= filled ? color : 'bg-[#2A3648]'
             }`}
           />
         ))}
@@ -154,7 +154,7 @@ export function recommendationcards({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-center gap-2 mb-5">
         <Sparkles className="w-5 h-5 text-blue-400" />
@@ -166,7 +166,7 @@ export function recommendationcards({
       </div>
 
       {(data.items ?? []).length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#1e2433] bg-[#0f1117] py-10 text-center">
+        <div className="rounded-xl border border-dashed border-[#2A3648] bg-[#0f1117] py-10 text-center">
           <p className="text-sm text-slate-500">No recommendations yet.</p>
         </div>
       ) : (
@@ -179,7 +179,7 @@ export function recommendationcards({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04, duration: 0.3, ease: 'easeOut' }}
-                className="relative rounded-xl border border-[#1a1e2e] bg-[#0f1117] p-5 pl-[18px] flex flex-col gap-3 overflow-hidden"
+                className="relative rounded-xl border border-[#222E3E] bg-[#0f1117] p-5 pl-[18px] flex flex-col gap-3 overflow-hidden"
                 style={{ borderLeft: `3px solid ${theme.border}` }}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -226,7 +226,7 @@ export function recommendationcards({
                     {item.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 rounded-full bg-[#1a1e2e] border border-[#1e2433] text-[10px] font-medium text-slate-300"
+                        className="px-2 py-0.5 rounded-full bg-[#222E3E] border border-[#2A3648] text-[10px] font-medium text-slate-300"
                       >
                         {tag}
                       </span>
@@ -238,7 +238,7 @@ export function recommendationcards({
                   <div className="pt-1 mt-auto">
                     <a
                       href={item.cta.href || '#'}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2433] bg-transparent text-xs font-semibold text-blue-300 hover:text-white hover:bg-blue-500/10 hover:border-blue-500/40 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2A3648] bg-transparent text-xs font-semibold text-blue-300 hover:text-white hover:bg-blue-500/10 hover:border-blue-500/40 transition-colors"
                     >
                       {item.cta.label}
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -252,7 +252,7 @@ export function recommendationcards({
       )}
 
       {footnote && (
-        <p className="mt-5 pt-4 border-t border-[#1e2433] text-xs text-slate-500 leading-relaxed">
+        <p className="mt-5 pt-4 border-t border-[#2A3648] text-xs text-slate-500 leading-relaxed">
           {footnote}
         </p>
       )}

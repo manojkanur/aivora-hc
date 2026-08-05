@@ -14,7 +14,7 @@ export function SkillCreditBadge({ credits, className }: SkillCreditBadgeProps) 
     <div className="relative inline-flex">
       <div
         className={cn(
-          'flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1a1e2e] border border-[#1e2433] text-xs font-medium text-slate-300 cursor-default',
+          'flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#222E3E] border border-[#2A3648] text-xs font-medium text-slate-300 cursor-default',
           className
         )}
         onMouseEnter={() => setShowTooltip(true)}
@@ -25,7 +25,7 @@ export function SkillCreditBadge({ credits, className }: SkillCreditBadgeProps) 
       </div>
 
       {showTooltip && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-3 py-2 bg-[#131720] text-white text-xs rounded-lg whitespace-nowrap z-20 pointer-events-none shadow-[0_25px_60px_rgba(0,0,0,0.8)]">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-3 py-2 bg-[#1B2431] text-white text-xs rounded-lg whitespace-nowrap z-20 pointer-events-none shadow-[0_25px_60px_rgba(0,0,0,0.8)]">
           <div className="font-medium mb-0.5">Credit Deduction</div>
           <div className="text-white/70">{credits} credit{credits !== 1 ? 's' : ''} will be deducted when this skill runs.</div>
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />

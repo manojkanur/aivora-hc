@@ -69,7 +69,7 @@ export function calloutquote({
   const { Icon } = theme
   if (!quote) {
     return (
-      <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 text-sm text-slate-400">
+      <div className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 text-sm text-slate-400">
         {title}
       </div>
     )
@@ -80,7 +80,7 @@ export function calloutquote({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       {/* Title row */}
       <div className="flex items-center gap-2 mb-4">

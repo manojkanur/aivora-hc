@@ -1,7 +1,7 @@
 /**
  * HiPo Development Studio
  * UI: pixel-accurate match to reference screenshot
- *   - Near-black bg #0c0e14
+ *   - Near-black bg #0B1220
  *   - Header: logo + step breadcrumb pills + Save & Exit
  *   - Right panel: Aivora AI avatar + typing message
  *   - Form: dark rounded inputs, tiny ALL-CAPS labels, 2-col grid
@@ -30,15 +30,15 @@ import jsPDF from 'jspdf'
 import PptxGenJS from 'pptxgenjs'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const PAGE_BG   = 'bg-[#0c0e14]'
-const FIELD_BG  = 'bg-[#131720] border border-[#1e2433]'
+const PAGE_BG   = 'bg-[#0B1220]'
+const FIELD_BG  = 'bg-[#1B2431] border border-[#2A3648]'
 const LABEL_CLS = 'block text-[10px] font-semibold tracking-[0.15em] text-slate-400 uppercase mb-2'
-const INPUT_CLS = `w-full bg-[#131720] border border-[#1e2433] rounded-xl px-4 py-3.5 text-white text-sm
+const INPUT_CLS = `w-full bg-[#1B2431] border border-[#2A3648] rounded-xl px-4 py-3.5 text-white text-sm
   placeholder-slate-600 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30
   transition-all`
 const SELECT_CLS = INPUT_CLS + ' appearance-none cursor-pointer'
 const CHIP_ON   = 'bg-blue-600/20 border-blue-500/60 text-blue-300'
-const CHIP_OFF  = 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-slate-500 hover:text-slate-200'
+const CHIP_OFF  = 'bg-[#1B2431] border-[#2A3648] text-slate-400 hover:border-slate-500 hover:text-slate-200'
 const BTN_PRIMARY = 'flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-900/30'
 const BTN_GHOST   = 'flex items-center gap-2 px-5 py-2.5 text-slate-400 hover:text-white text-sm font-semibold transition-colors'
 
@@ -364,8 +364,8 @@ function SelectField({ label, value, onChange, options, placeholder, optional }:
       </label>
       <div className="relative">
         <select value={value} onChange={e => onChange(e.target.value)} className={SELECT_CLS}>
-          <option value="" disabled className="bg-[#131720]">{placeholder || 'Select…'}</option>
-          {options.map(o => <option key={o.value} value={o.value} className="bg-[#131720]">{o.label}</option>)}
+          <option value="" disabled className="bg-[#1B2431]">{placeholder || 'Select…'}</option>
+          {options.map(o => <option key={o.value} value={o.value} className="bg-[#1B2431]">{o.label}</option>)}
         </select>
         <ChevronDown className="w-4 h-4 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
       </div>
@@ -395,7 +395,7 @@ function ChipGroup({ label, options, selected, onToggle }: {
 // ─── Wizard header (shared across all steps) ──────────────────────────────────
 function WizardHeader({ step, onBack, onExit }: { step: number; onBack: () => void; onExit: () => void }) {
   return (
-    <header className="flex items-center gap-4 px-8 py-4 border-b border-[#1a1e2e] flex-shrink-0">
+    <header className="flex items-center gap-4 px-8 py-4 border-b border-[#222E3E] flex-shrink-0">
       {/* Left: back + logo */}
       <div className="flex items-center gap-3 min-w-[160px]">
         <button onClick={onBack} className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-500 hover:text-white">
@@ -475,7 +475,7 @@ function AIPanel({ step }: { step: number }) {
       <AnimatePresence mode="wait">
         <motion.div key={step}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-          className="bg-[#131720] border border-[#1e2433] border-l-2 border-l-blue-500 rounded-xl p-4">
+          className="bg-[#1B2431] border border-[#2A3648] border-l-2 border-l-blue-500 rounded-xl p-4">
           <p className="text-sm text-slate-300 leading-relaxed min-h-[80px]">
             {displayed}
             <span className="inline-block w-[2px] h-3.5 bg-blue-400 ml-0.5 animate-pulse align-middle" />
@@ -512,7 +512,7 @@ function StepOrg({ data, onNext }: { data: WizardData; onNext: (d: Partial<Wizar
         </h1>
         <p className="text-sm text-slate-400 mb-3">Basic context helps calibrate every model and benchmark to your specific environment.</p>
         {hadPrefill && (
-          <p className="text-[11px] text-[#60a5fa]/80 mb-7">Pre-filled from your brief - edit if needed</p>
+          <p className="text-[11px] text-[#5B96F5]/80 mb-7">Pre-filled from your brief - edit if needed</p>
         )}
         {!hadPrefill && <div className="mb-7" />}
 
@@ -614,7 +614,7 @@ function StepPriorities({ data, onNext, onBack }: { data: WizardData; onNext: (d
             {local.key_pain_points.length > 0 && (
               <div className="space-y-2">
                 {local.key_pain_points.map((pt, i) => (
-                  <div key={i} className="flex items-start gap-3 px-4 py-3 bg-[#131720] border border-[#1e2433] rounded-xl">
+                  <div key={i} className="flex items-start gap-3 px-4 py-3 bg-[#1B2431] border border-[#2A3648] rounded-xl">
                     <span className="text-[10px] font-bold text-slate-400 mt-0.5 w-4 flex-shrink-0">{i + 1}</span>
                     <span className="text-sm text-slate-300 flex-1 leading-snug">{pt}</span>
                     <button onClick={() => setLocal(p => ({ ...p, key_pain_points: p.key_pain_points.filter((_, idx) => idx !== i) }))}
@@ -672,7 +672,7 @@ function StepWorkforce({ data, onNext, onBack }: { data: WizardData; onNext: (d:
           <ChipGroup label="Employee Experience & Rewards Challenges" options={EX_REWARD_CHALLENGES} selected={local.ex_reward_challenges} onToggle={toggle('ex_reward_challenges')} />
 
           {/* Nationalization toggle */}
-          <div className="bg-[#131720] border border-[#1e2433] rounded-2xl p-5">
+          <div className="bg-[#1B2431] border border-[#2A3648] rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-white">Nationalization Programme</p>
@@ -790,7 +790,7 @@ function StepRecommendations({ data, onLaunch }: { data: WizardData; onLaunch: (
         <p className="text-sm text-slate-400 mb-8">Based on what you've shared, here's where you'll get the most value first.</p>
 
         {/* Readiness strip */}
-        <div className="flex items-center gap-4 p-4 bg-[#131720] border border-[#1e2433] rounded-xl mb-7">
+        <div className="flex items-center gap-4 p-4 bg-[#1B2431] border border-[#2A3648] rounded-xl mb-7">
           <div className="flex-1">
             <div className="flex justify-between mb-1.5">
               <span className="text-xs font-semibold text-white">Profile Readiness</span>
@@ -838,7 +838,7 @@ function StepRecommendations({ data, onLaunch }: { data: WizardData; onLaunch: (
             </p>
             <div className="grid grid-cols-2 gap-4">
               {complementary.map(j => (
-                <div key={j.id} className="bg-[#131720] border border-[#1e2433] rounded-xl p-4 hover:border-slate-600 transition-colors">
+                <div key={j.id} className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4 hover:border-slate-600 transition-colors">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="text-sm font-semibold text-white">{j.name}</h4>
                     <span className="text-[9px] px-2 py-1 bg-white/5 border border-white/10 text-slate-500 rounded-full font-medium ml-2 flex-shrink-0">{j.duration}</span>
@@ -967,7 +967,7 @@ function LearningJourneyPanel({
   }, {})
 
   return (
-    <div className="bg-[#131720] border border-[#1e2433] rounded-xl overflow-hidden">
+    <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl overflow-hidden">
 
       {/* Header */}
       <div className="px-4 pt-3 pb-2">
@@ -997,7 +997,7 @@ function LearningJourneyPanel({
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold border-2 transition-all ${
                   i < stage ? 'bg-violet-600 border-violet-500 text-white' :
                   i === stage ? 'bg-violet-500/20 border-violet-400 text-violet-300 ring-2 ring-violet-400/30' :
-                  'bg-[#0c0e14] border-[#1e2433] text-slate-700'
+                  'bg-[#0B1220] border-[#2A3648] text-slate-700'
                 }`}>
                   {i < stage ? '✓' : i + 1}
                 </div>
@@ -1006,7 +1006,7 @@ function LearningJourneyPanel({
                 </span>
               </div>
               {i < stages.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-1 rounded transition-all duration-700 ${i < stage ? 'bg-violet-500' : 'bg-[#1e2433]'}`} />
+                <div className={`flex-1 h-0.5 mx-1 rounded transition-all duration-700 ${i < stage ? 'bg-violet-500' : 'bg-[#2A3648]'}`} />
               )}
             </div>
           ))}
@@ -1018,12 +1018,12 @@ function LearningJourneyPanel({
 
       {/* Agent evolution bar */}
       {totalKnown > 0 && (
-        <div className="mx-3 mb-2 px-3 py-2 bg-[#0c0e14] rounded-lg border border-violet-500/15">
+        <div className="mx-3 mb-2 px-3 py-2 bg-[#0B1220] rounded-lg border border-violet-500/15">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[8px] text-slate-500 font-semibold">Agent Knowledge</span>
             <span className="text-[8px] text-violet-400 font-bold">{Math.min(100, totalKnown * 8)}%</span>
           </div>
-          <div className="w-full h-1.5 bg-[#1e2433] rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-[#2A3648] rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(100, totalKnown * 8)}%` }}
@@ -1091,7 +1091,7 @@ function LearningJourneyPanel({
                                   ? 'border-violet-500/50 bg-violet-500/8'
                                   : ins.applied
                                   ? 'border-emerald-500/20 bg-emerald-500/5'
-                                  : 'border-[#1e2433] bg-[#0c0e14]'
+                                  : 'border-[#2A3648] bg-[#0B1220]'
                               }`}>
                               <div className="flex items-start justify-between gap-1">
                                 <p className="text-[9px] text-slate-300 leading-snug flex-1">{ins.value}</p>
@@ -1131,12 +1131,12 @@ function LearningJourneyPanel({
 
                   {/* Cross-session memory summary */}
                   {crossSession.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[#1e2433]">
+                    <div className="mt-2 pt-2 border-t border-[#2A3648]">
                       <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
                         <span className="text-[8px] font-bold uppercase tracking-widest text-slate-700">Past Sessions</span>
                       </div>
-                      <div className="px-2 py-1.5 bg-[#0c0e14] rounded-lg border border-[#1a1e2e]">
+                      <div className="px-2 py-1.5 bg-[#0B1220] rounded-lg border border-[#222E3E]">
                         <p className="text-[8px] text-slate-600 leading-relaxed">
                           {crossSession.length} insight{crossSession.length !== 1 ? 's' : ''} carried over from {[...new Set(crossSession.map(i => i.sessionId))].length} previous session{[...new Set(crossSession.map(i => i.sessionId))].length !== 1 ? 's' : ''}.
                           The agent remembers your priorities and pain points.
@@ -2034,7 +2034,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             onClick={() => setShowExportModal(false)}>
             <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-[#131720] border border-[#1e2433] rounded-2xl p-6 w-[360px] shadow-2xl">
+              className="bg-[#1B2431] border border-[#2A3648] rounded-2xl p-6 w-[360px] shadow-2xl">
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h2 className="text-base font-bold text-white">Download Report</h2>
@@ -2048,7 +2048,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               <div className="space-y-3">
                 <button onClick={() => { setShowExportModal(false); exportToPDF() }}
                   disabled={!!exporting}
-                  className="w-full flex items-center gap-4 p-4 bg-[#0c0e14] border border-[#1e2433] hover:border-red-500/40 hover:bg-red-500/5 rounded-xl transition-all group disabled:opacity-50">
+                  className="w-full flex items-center gap-4 p-4 bg-[#0B1220] border border-[#2A3648] hover:border-red-500/40 hover:bg-red-500/5 rounded-xl transition-all group disabled:opacity-50">
                   <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center flex-shrink-0">
                     <FileDown className="w-5 h-5 text-red-400" />
                   </div>
@@ -2061,7 +2061,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
 
                 <button onClick={() => { setShowExportModal(false); exportToPPT() }}
                   disabled={!!exporting}
-                  className="w-full flex items-center gap-4 p-4 bg-[#0c0e14] border border-[#1e2433] hover:border-blue-500/40 hover:bg-blue-500/5 rounded-xl transition-all group disabled:opacity-50">
+                  className="w-full flex items-center gap-4 p-4 bg-[#0B1220] border border-[#2A3648] hover:border-blue-500/40 hover:bg-blue-500/5 rounded-xl transition-all group disabled:opacity-50">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
                     <Presentation className="w-5 h-5 text-blue-400" />
                   </div>
@@ -2086,7 +2086,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
         </span>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setEditMode(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${editMode ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:text-white hover:border-slate-500'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${editMode ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-[#1B2431] border-[#2A3648] text-slate-400 hover:text-white hover:border-slate-500'}`}>
             {editMode ? <><Check className="w-3.5 h-3.5" /> Done Editing</> : <><Pencil className="w-3.5 h-3.5" /> Edit Report</>}
           </button>
           <button type="button" onClick={() => setShowExportModal(true)}
@@ -2106,7 +2106,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
         ].map(m => (
           <motion.button key={m.label} type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             onClick={() => setActiveMetric(activeMetric === m.key ? null : m.key)}
-            className={`bg-[#131720] border rounded-xl p-3 text-left transition-all ${activeMetric === m.key ? 'border-blue-500/50 ring-1 ring-blue-500/20' : 'border-[#1e2433] hover:border-[#2a3045]'}`}>
+            className={`bg-[#1B2431] border rounded-xl p-3 text-left transition-all ${activeMetric === m.key ? 'border-blue-500/50 ring-1 ring-blue-500/20' : 'border-[#2A3648] hover:border-[#2a3045]'}`}>
             <div className="flex items-center gap-2 mb-2">
               <m.icon className={`w-3.5 h-3.5 ${m.color}`} />
               <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{m.label}</span>
@@ -2118,7 +2118,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             <AnimatePresence>
               {activeMetric === m.key && (
                 <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }} className="text-[10px] text-slate-400 mt-2 leading-snug border-t border-[#1e2433] pt-2">
+                  exit={{ opacity: 0, height: 0 }} className="text-[10px] text-slate-400 mt-2 leading-snug border-t border-[#2A3648] pt-2">
                   {m.detail}
                 </motion.p>
               )}
@@ -2133,13 +2133,13 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
         {/* Left sidebar */}
         <div className={`flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${leftCollapsed ? 'hidden lg:flex w-0 overflow-hidden opacity-0 pointer-events-none' : ''}`}>
           {/* Tab bar */}
-          <div className="flex items-center gap-0 mb-2 bg-[#131720] border border-[#1e2433] rounded-xl p-1 flex-shrink-0">
+          <div className="flex items-center gap-0 mb-2 bg-[#1B2431] border border-[#2A3648] rounded-xl p-1 flex-shrink-0">
             <button type="button" onClick={() => setLeftTab('org')}
-              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all ${leftTab === 'org' ? 'bg-[#0c0e14] text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all ${leftTab === 'org' ? 'bg-[#0B1220] text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>
               <Building2 className="w-3 h-3" /> Org Intel
             </button>
             <button type="button" onClick={() => setLeftTab('learning')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all relative ${leftTab === 'learning' ? 'bg-[#0c0e14] text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all relative ${leftTab === 'learning' ? 'bg-[#0B1220] text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>
               <Brain className="w-3 h-3" /> Learning
               {sessionInsights.length > 0 && (
                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-500 rounded-full text-[8px] text-white font-bold flex items-center justify-center">
@@ -2161,7 +2161,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                 <motion.div key="org" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.15 }}
                   className="flex flex-col gap-3">
                   {/* Org intel */}
-                  <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+                  <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
                     <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">Organization Intelligence</h3>
                     <ul className="space-y-2">
                       {[
@@ -2182,7 +2182,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                   </div>
 
                   {/* HC Priorities */}
-                  <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+                  <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
                     <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">HC Priorities</h3>
                     <div className="flex flex-wrap gap-1.5">
                       {(showAllPriorities ? data.hc_priorities : data.hc_priorities.slice(0, 5)).map(v => (
@@ -2200,7 +2200,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                   </div>
 
                   {/* Advisory status */}
-                  <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+                  <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
                     <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Advisory Status</h3>
                     <ul className="space-y-2">
                       {[
@@ -2217,7 +2217,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                   </div>
 
                   {data.nationalization_on && (
-                    <div className="bg-[#131720] border border-blue-500/20 rounded-xl p-4">
+                    <div className="bg-[#1B2431] border border-blue-500/20 rounded-xl p-4">
                       <h3 className="text-[9px] font-bold uppercase tracking-widest text-blue-400 mb-2">Nationalization</h3>
                       <p className="text-xs text-slate-300 font-semibold mb-1">{NATIONALIZATION_PROGRAMS.find(n => n.value === data.nationalization_program)?.label}</p>
                       <div className="flex items-center gap-2 text-[10px] text-slate-500">
@@ -2256,9 +2256,9 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
         </div>
 
         {/* Center: AI chat — hidden in floatingChat mode */}
-        {!floatingChat && <div className="bg-[#131720] border border-[#1e2433] rounded-xl flex flex-col overflow-hidden min-h-[400px] lg:min-h-0">
+        {!floatingChat && <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl flex flex-col overflow-hidden min-h-[400px] lg:min-h-0">
           {/* Chat header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2433] flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A3648] flex-shrink-0">
             <div className="flex items-center gap-2">
               {leftCollapsed && (
                 <button type="button" onClick={() => setLeftCollapsed(false)}
@@ -2282,7 +2282,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           <div className="flex gap-1.5 px-3 pt-2 pb-1 overflow-x-auto flex-shrink-0">
             {QUICK_PROMPTS.map(qp => (
               <button key={qp.label} type="button" onClick={() => send(qp.q)}
-                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#0c0e14] text-slate-400 hover:text-blue-300 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all whitespace-nowrap flex-shrink-0">
+                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg border border-[#2A3648] bg-[#0B1220] text-slate-400 hover:text-blue-300 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all whitespace-nowrap flex-shrink-0">
                 <qp.icon className="w-3 h-3" /> {qp.label}
               </button>
             ))}
@@ -2294,11 +2294,11 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'ai' && (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 shadow-[0_0_0_2px_rgba(59,130,246,0.15)] flex items-center justify-center flex-shrink-0 mt-1">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 shadow-[0_0_0_2px_rgba(46,125,250,0.15)] flex items-center justify-center flex-shrink-0 mt-1">
                     <Sparkles className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
-                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${m.role === 'ai' ? 'bg-blue-500/5 border border-blue-500/15 text-slate-200 rounded-tl-sm' : 'bg-blue-600 text-white rounded-tr-sm shadow-[0_2px_8px_rgba(37,99,235,0.25)]'}`}>
+                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${m.role === 'ai' ? 'bg-blue-500/5 border border-blue-500/15 text-slate-200 rounded-tl-sm' : 'bg-blue-600 text-white rounded-tr-sm shadow-[0_2px_8px_rgba(23,95,204,0.25)]'}`}>
                   {m.text}
                 </div>
                 {m.role === 'user' && (
@@ -2310,7 +2310,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             ))}
             {typing && (
               <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 shadow-[0_0_0_2px_rgba(59,130,246,0.15)] flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 shadow-[0_0_0_2px_rgba(46,125,250,0.15)] flex items-center justify-center flex-shrink-0">
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="bg-white/5 border border-white/8 rounded-2xl px-4 py-3 flex items-center gap-1">
@@ -2322,7 +2322,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-[#1e2433] flex-shrink-0 space-y-2">
+          <div className="p-3 border-t border-[#2A3648] flex-shrink-0 space-y-2">
             <div className="flex gap-2">
               <input value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
@@ -2341,7 +2341,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
         {/* Right sidebar — hidden in floatingChat mode (content promoted to main area) */}
         {!floatingChat && <div className="flex flex-col gap-3 overflow-y-auto">
           {/* Strategic priorities */}
-          <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+          <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Strategic Priorities</h3>
               <button type="button" onClick={() => setShowAllPriorities(v => !v)}
@@ -2364,7 +2364,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           </div>
 
           {/* Maturity heatmap */}
-          <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+          <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
             <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">Maturity Heatmap</h3>
             <div className="grid grid-cols-3 gap-1 mb-1">
               {[
@@ -2384,7 +2384,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           </div>
 
           {/* Workforce risk */}
-          <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+          <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
             <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">Workforce Risk</h3>
             <div className="flex items-center gap-3">
               <DonutChart high={live.risk_high} med={live.risk_med} low={live.risk_low} />
@@ -2407,11 +2407,11 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           </div>
 
           {/* Leadership pipeline */}
-          <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+          <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
             <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">Leadership Pipeline</h3>
             <div className="space-y-3">
               {[
-                { label: 'Ready Now', pct: live.readiness_now, vals: [10,12,14,15,live.readiness_now], col: '#3b82f6' },
+                { label: 'Ready Now', pct: live.readiness_now, vals: [10,12,14,15,live.readiness_now], col: '#2E7DFA' },
                 { label: '1-2 Years', pct: live.readiness_near, vals: [35,38,40,41,live.readiness_near], col: '#6366f1' },
                 { label: '3+ Years', pct: live.readiness_later, vals: [44,42,40,43,live.readiness_later], col: '#475569' },
               ].map(r => (
@@ -2427,7 +2427,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           </div>
 
           {/* Recommendations */}
-          <div className={`bg-[#131720] border rounded-xl p-4 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#1e2433]'}`}>
+          <div className={`bg-[#1B2431] border rounded-xl p-4 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#2A3648]'}`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Recommendations</h3>
               {editMode && <span className="text-[8px] text-amber-400 font-semibold flex items-center gap-1"><Pencil className="w-2.5 h-2.5" />Editing</span>}
@@ -2438,7 +2438,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                   <div key={i} className="flex items-start gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 bg-blue-400" />
                     <input value={text} onChange={e => setEditRecs(prev => prev.map((r, j) => j === i ? e.target.value : r))}
-                      className="flex-1 bg-[#0c0e14] border border-amber-500/30 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-amber-400/60 transition-colors" />
+                      className="flex-1 bg-[#0B1220] border border-amber-500/30 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-amber-400/60 transition-colors" />
                   </div>
                 ) : (
                   <button key={i} type="button"
@@ -2459,7 +2459,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           </div>
 
           {/* Advisory Notes (editable) */}
-          <div className={`bg-[#131720] border rounded-xl p-4 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#1e2433]'}`}>
+          <div className={`bg-[#1B2431] border rounded-xl p-4 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#2A3648]'}`}>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Advisory Notes</h3>
               {editMode && <span className="text-[8px] text-amber-400 font-semibold flex items-center gap-1"><Pencil className="w-2.5 h-2.5" />Editing</span>}
@@ -2467,7 +2467,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             {editMode ? (
               <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)}
                 rows={3} placeholder="Add context, caveats, or custom notes for this report…"
-                className="w-full bg-[#0c0e14] border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400/60 resize-none transition-colors" />
+                className="w-full bg-[#0B1220] border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400/60 resize-none transition-colors" />
             ) : (
               editNotes
                 ? <p className="text-[10px] text-slate-400 leading-relaxed">{editNotes}</p>
@@ -2481,7 +2481,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
           {/* Strategic priorities */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {live.priorities.map((p, i) => (
-              <div key={i} className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+              <div key={i} className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">{p.label}</p>
                 <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${lvlColor(p.level)}`}>{p.level}</span>
               </div>
@@ -2490,7 +2490,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Maturity heatmap */}
-            <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-5">
+            <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-5">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Maturity Heatmap</h3>
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {[
@@ -2510,7 +2510,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             </div>
 
             {/* Workforce risk */}
-            <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-5">
+            <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-5">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Workforce Risk</h3>
               <div className="flex items-center gap-4">
                 <DonutChart high={live.risk_high} med={live.risk_med} low={live.risk_low} />
@@ -2532,11 +2532,11 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             </div>
 
             {/* Leadership pipeline */}
-            <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-5">
+            <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-5">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Leadership Pipeline</h3>
               <div className="space-y-4">
                 {[
-                  { label: 'Ready Now', pct: live.readiness_now, vals: [10,12,14,15,live.readiness_now], col: '#3b82f6' },
+                  { label: 'Ready Now', pct: live.readiness_now, vals: [10,12,14,15,live.readiness_now], col: '#2E7DFA' },
                   { label: '1-2 Years', pct: live.readiness_near, vals: [35,38,40,41,live.readiness_near], col: '#6366f1' },
                   { label: '3-5 Years', pct: live.readiness_later, vals: [52,50,48,45,live.readiness_later], col: '#8b5cf6' },
                 ].map(r => (
@@ -2546,7 +2546,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                       <span className="text-[10px] font-bold text-white">{r.pct}%</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-[#1e2433] rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-[#2A3648] rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all" style={{ width: `${r.pct}%`, background: r.col }} />
                       </div>
                       <Sparkline vals={r.vals} color={r.col} />
@@ -2559,7 +2559,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
 
           {/* Recommendations + Notes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className={`bg-[#131720] border rounded-xl p-5 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#1e2433]'}`}>
+            <div className={`bg-[#1B2431] border rounded-xl p-5 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#2A3648]'}`}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Recommendations</h3>
                 {editMode && <span className="text-[8px] text-amber-400 font-semibold flex items-center gap-1"><Pencil className="w-2.5 h-2.5" />Editing</span>}
@@ -2570,7 +2570,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                     <div key={i} className="flex items-start gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 bg-blue-400" />
                       <input value={text} onChange={e => setEditRecs(prev => prev.map((r, j) => j === i ? e.target.value : r))}
-                        className="flex-1 bg-[#0c0e14] border border-amber-500/30 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-amber-400/60 transition-colors" />
+                        className="flex-1 bg-[#0B1220] border border-amber-500/30 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-amber-400/60 transition-colors" />
                     </div>
                   ) : (
                     <button key={i} type="button" onClick={() => { send(`Tell me more about: ${text}`); setChatOpen(true) }}
@@ -2589,7 +2589,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               </div>
             </div>
 
-            <div className={`bg-[#131720] border rounded-xl p-5 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#1e2433]'}`}>
+            <div className={`bg-[#1B2431] border rounded-xl p-5 transition-all ${editMode ? 'border-amber-500/30' : 'border-[#2A3648]'}`}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Advisory Notes</h3>
                 {editMode && <span className="text-[8px] text-amber-400 font-semibold flex items-center gap-1"><Pencil className="w-2.5 h-2.5" />Editing</span>}
@@ -2597,7 +2597,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
               {editMode ? (
                 <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)}
                   rows={4} placeholder="Add context, caveats, or custom notes for this report…"
-                  className="w-full bg-[#0c0e14] border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400/60 resize-none transition-colors" />
+                  className="w-full bg-[#0B1220] border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400/60 resize-none transition-colors" />
               ) : (
                 editNotes
                   ? <p className="text-xs text-slate-400 leading-relaxed">{editNotes}</p>
@@ -2623,12 +2623,12 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
             { n: 2, title: 'HC Framework', sub: 'v2.1', icon: Zap, preview: <div className="text-center"><div className="text-[8px] text-slate-400 mb-1">Alignment</div><div className="flex gap-1 justify-center">{['Org','People','Cap'].map(l=><div key={l} className="text-[7px] px-1 py-0.5 bg-white/8 text-slate-400 rounded">{l}</div>)}</div></div>, prompt: 'Outline the HC framework structure we should use' },
             { n: 3, title: 'Workforce Roadmap', sub: 'v2.0', icon: TrendingUp, preview: <div className="flex gap-0.5 items-end h-10">{[40,55,45,70,60,75].map((h,i)=><div key={i} className="flex-1 rounded-sm" style={{height:`${h}%`,background:`hsl(${220+i*15},70%,${50+i*3}%)`}}/>)}</div>, prompt: 'What should our workforce planning roadmap look like?' },
             { n: 4, title: 'Benchmarking', sub: INDUSTRIES.find(i=>i.value===data.industry)?.label?.split(' ')[0]??'Industry', icon: Target, preview: <div className="flex items-end gap-1.5 h-10 justify-center"><div className="flex flex-col items-center gap-0.5"><div className="w-5 rounded-sm bg-blue-500/60" style={{height:`${live.bench_strength*0.5}%`}}/><span className="text-[7px] text-slate-500">You</span></div><div className="flex flex-col items-center gap-0.5"><div className="w-5 rounded-sm bg-white/15" style={{height:'40%'}}/><span className="text-[7px] text-slate-500">Avg</span></div><div className="flex flex-col items-center gap-0.5"><div className="w-5 rounded-sm bg-green-500/60" style={{height:'80%'}}/><span className="text-[7px] text-slate-500">Top</span></div></div>, prompt: 'How do we benchmark against industry peers?' },
-            { n: 5, title: 'Maturity Dashboard', sub: matLabel, icon: Gauge, preview: <div className="flex justify-center"><svg width="44" height="44" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="#1e293b" strokeWidth="8"/><circle cx="25" cy="25" r="20" fill="none" stroke="#3b82f6" strokeWidth="8" strokeDasharray={`${(live.maturity_score/100)*125.6} 125.6`} transform="rotate(-90 25 25)"/><text x="25" y="29" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">{live.maturity_score}</text></svg></div>, prompt: 'What maturity improvements should we focus on?' },
+            { n: 5, title: 'Maturity Dashboard', sub: matLabel, icon: Gauge, preview: <div className="flex justify-center"><svg width="44" height="44" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="#1e293b" strokeWidth="8"/><circle cx="25" cy="25" r="20" fill="none" stroke="#2E7DFA" strokeWidth="8" strokeDasharray={`${(live.maturity_score/100)*125.6} 125.6`} transform="rotate(-90 25 25)"/><text x="25" y="29" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">{live.maturity_score}</text></svg></div>, prompt: 'What maturity improvements should we focus on?' },
             { n: 6, title: 'AI Recommendations', sub: `${live.recommendations.length} recs`, icon: Sparkles, preview: <div className="space-y-1">{live.recommendations.slice(0,3).map((r,i)=><div key={i} className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.priority==='High'?'bg-red-400':'bg-amber-400'}`}/><span className="text-[8px] text-slate-400 truncate">{r.text.slice(0,22)}…</span></div>)}</div>, prompt: 'Walk me through all your recommendations in priority order' },
           ].map(d => (
-            <motion.button key={d.n} type="button" whileHover={{ scale: 1.02, borderColor: 'rgba(59,130,246,0.4)' }} whileTap={{ scale: 0.97 }}
+            <motion.button key={d.n} type="button" whileHover={{ scale: 1.02, borderColor: 'rgba(46,125,250,0.4)' }} whileTap={{ scale: 0.97 }}
               onClick={() => { setExpandedDeliverable(expandedDeliverable === d.n ? null : d.n); send(d.prompt) }}
-              className={`bg-[#131720] border rounded-xl p-3 text-left transition-all group ${expandedDeliverable === d.n ? 'border-blue-500/50' : 'border-[#1e2433]'}`}>
+              className={`bg-[#1B2431] border rounded-xl p-3 text-left transition-all group ${expandedDeliverable === d.n ? 'border-blue-500/50' : 'border-[#2A3648]'}`}>
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-[9px] font-bold text-slate-600">{d.n}</span>
                 <d.icon className="w-3 h-3 text-blue-400" />
@@ -2657,11 +2657,11 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                 initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
                 whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}
                 onClick={() => setChatOpen(true)}
-                className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-[0_8px_32px_rgba(37,99,235,0.5)] flex items-center justify-center transition-colors"
+                className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-[0_8px_32px_rgba(23,95,204,0.5)] flex items-center justify-center transition-colors"
               >
                 <Bot className="w-6 h-6 text-white" />
                 {msgs.length > 1 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center border-2 border-[#0c0e14]">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center border-2 border-[#0B1220]">
                     {msgs.filter(m => m.role === 'ai').length}
                   </span>
                 )}
@@ -2677,10 +2677,10 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 40, scale: 0.96 }}
                 transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                className="fixed bottom-6 right-6 z-40 w-[400px] h-[560px] bg-[#131720] border border-[#1e2433] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden"
+                className="fixed bottom-6 right-6 z-40 w-[400px] h-[560px] bg-[#1B2431] border border-[#2A3648] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden"
               >
                 {/* Drawer header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2433] flex-shrink-0 bg-[#0c0e14]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A3648] flex-shrink-0 bg-[#0B1220]">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-full bg-blue-900/60 border border-blue-500/40 flex items-center justify-center">
                       <Bot className="w-3.5 h-3.5 text-blue-400" />
@@ -2700,7 +2700,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                 <div className="flex gap-1.5 px-3 pt-2 pb-1 overflow-x-auto flex-shrink-0">
                   {QUICK_PROMPTS.map(qp => (
                     <button key={qp.label} type="button" onClick={() => send(qp.q)}
-                      className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#0c0e14] text-slate-400 hover:text-blue-300 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all whitespace-nowrap flex-shrink-0">
+                      className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg border border-[#2A3648] bg-[#0B1220] text-slate-400 hover:text-blue-300 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all whitespace-nowrap flex-shrink-0">
                       <qp.icon className="w-3 h-3" /> {qp.label}
                     </button>
                   ))}
@@ -2741,7 +2741,7 @@ function LiveDashboard({ data, live, floatingChat }: { data: WizardData; live: L
                 </div>
 
                 {/* Input */}
-                <div className="p-3 border-t border-[#1e2433] flex-shrink-0 bg-[#0c0e14]">
+                <div className="p-3 border-t border-[#2A3648] flex-shrink-0 bg-[#0B1220]">
                   <div className="flex gap-2">
                     <input value={input} onChange={e => setInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
@@ -2895,7 +2895,7 @@ export default function HipoStudio() {
   if (phase === 'dashboard' && live) {
     return (
       <div className={`min-h-screen ${PAGE_BG} text-slate-200 flex flex-col`}>
-        <header className="h-14 border-b border-[#1a1e2e] flex items-center justify-between px-6 flex-shrink-0">
+        <header className="h-14 border-b border-[#222E3E] flex items-center justify-between px-6 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-500 hover:text-white">
               <ArrowLeft className="w-4 h-4" />
@@ -2959,7 +2959,7 @@ export default function HipoStudio() {
             {stepContent[step]}
           </motion.div>
         </AnimatePresence>
-        <div className="border-l border-[#1a1e2e] flex-shrink-0">
+        <div className="border-l border-[#222E3E] flex-shrink-0">
           <AIPanel step={step} />
         </div>
       </div>
@@ -3099,7 +3099,7 @@ export function HipoStudioV2() {
   if (phase === 'dashboard' && live) {
     return (
       <div className={`min-h-screen ${PAGE_BG} text-slate-200 flex flex-col`}>
-        <header className="h-14 border-b border-[#1a1e2e] flex items-center justify-between px-6 flex-shrink-0">
+        <header className="h-14 border-b border-[#222E3E] flex items-center justify-between px-6 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-500 hover:text-white">
               <ArrowLeft className="w-4 h-4" />
@@ -3162,7 +3162,7 @@ export function HipoStudioV2() {
             {stepContent[step]}
           </motion.div>
         </AnimatePresence>
-        <div className="border-l border-[#1a1e2e] flex-shrink-0">
+        <div className="border-l border-[#222E3E] flex-shrink-0">
           <AIPanel step={step} />
         </div>
       </div>

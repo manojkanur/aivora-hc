@@ -206,7 +206,7 @@ function InfographicSection({ title, data, footnote }: { title: string; data: an
 
   if (groups.length === 0) {
     return (
-      <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6">
+      <div className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6">
         <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
         <p className="text-sm text-slate-400">This visual summary is included in the exported document.</p>
       </div>
@@ -214,14 +214,14 @@ function InfographicSection({ title, data, footnote }: { title: string; data: an
   }
 
   return (
-    <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6 space-y-5">
+    <div className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6 space-y-5">
       {title && <h3 className="text-sm font-semibold text-white">{title}</h3>}
       {groups.map((g, gi) => (
         <div key={gi}>
           {g.title && <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">{g.title}</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {g.elements.map((el, i) => (
-              <div key={i} className="flex items-start gap-2.5 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-3">
+              <div key={i} className="flex items-start gap-2.5 rounded-xl border border-[#2A3648] bg-[#0B1220] px-3.5 py-3">
                 <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0 mt-1.5" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white capitalize">{el.label}</p>
@@ -287,7 +287,7 @@ function SectionShell({
       className="space-y-4 scroll-mt-6"
     >
       {section.title && (
-        <div className="flex items-start justify-between gap-3 border-b border-[#1e2433] pb-2.5">
+        <div className="flex items-start justify-between gap-3 border-b border-[#2A3648] pb-2.5">
           <div className="flex items-baseline gap-3 min-w-0">
             <span
               className="text-sm font-bold tabular-nums text-blue-400 flex-shrink-0"
@@ -306,7 +306,7 @@ function SectionShell({
             <button
               onClick={handleRegenerate}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-[#1e2433] text-slate-400 hover:text-white hover:border-blue-500/40 disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+              className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-[#2A3648] text-slate-400 hover:text-white hover:border-blue-500/40 disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
               title="Regenerate this section with an optional hint"
             >
               {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Pencil className="w-3 h-3" />}

@@ -27,13 +27,13 @@ export function XpBar({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+        <div className="w-7 h-7 rounded-full bg-[#2E7DFA] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
           {level}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="h-1.5 bg-[#1a1e2e] rounded-full overflow-hidden">
+          <div className="h-1.5 bg-[#222E3E] rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-[#3b82f6] rounded-full"
+              className="h-full bg-[#2E7DFA] rounded-full"
               style={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -45,10 +45,10 @@ export function XpBar({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="p-3 bg-[#0E0E0E] rounded-xl border border-[#1e2433]">
+    <div className="p-3 bg-[#0E0E0E] rounded-xl border border-[#2A3648]">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-[#2E7DFA] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
             {level}
           </div>
           <div>
@@ -63,7 +63,7 @@ export function XpBar({ compact = false }: { compact?: boolean }) {
       </div>
       <div className="h-1.5 bg-border rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-[#3b82f6] rounded-full"
+          className="h-full bg-[#2E7DFA] rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}

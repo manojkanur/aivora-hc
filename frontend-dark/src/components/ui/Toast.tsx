@@ -44,23 +44,23 @@ export const toast = {
 const toastConfig: Record<ToastType, { icon: typeof CheckCircle; className: string; iconClass: string }> = {
   success: {
     icon: CheckCircle,
-    className: 'bg-[#131720] text-white border-[rgba(34,197,94,0.25)] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
+    className: 'bg-[#1B2431] text-white border-[rgba(34,197,94,0.25)] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
     iconClass: 'text-emerald-400',
   },
   error: {
     icon: XCircle,
-    className: 'bg-[#131720] text-white border-[rgba(239,68,68,0.25)] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
+    className: 'bg-[#1B2431] text-white border-[rgba(239,68,68,0.25)] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
     iconClass: 'text-red-400',
   },
   info: {
     icon: Info,
-    className: 'bg-[#131720] text-white border-[#1e2433] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
-    iconClass: 'text-[#3b82f6]',
+    className: 'bg-[#1B2431] text-white border-[#2A3648] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
+    iconClass: 'text-[#2E7DFA]',
   },
   'xp-award': {
     icon: Zap,
-    className: 'bg-[#131720] text-white border-[rgba(59,130,246,0.3)] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
-    iconClass: 'text-[#3b82f6]',
+    className: 'bg-[#1B2431] text-white border-[rgba(46,125,250,0.3)] shadow-[0_8px_32px_rgba(0,0,0,0.6)]',
+    iconClass: 'text-[#2E7DFA]',
   },
 }
 

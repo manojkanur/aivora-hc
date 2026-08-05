@@ -38,8 +38,8 @@ export function LinkedInQueueItem({ item, onEdit, onSchedule, onPublishNow, onCa
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 20 }}
       className={cn(
-        'bg-[#131720] rounded-xl border p-5',
-        item.status === 'failed' ? 'border-red-200' : 'border-[#1e2433]',
+        'bg-[#1B2431] rounded-xl border p-5',
+        item.status === 'failed' ? 'border-red-200' : 'border-[#2A3648]',
         'shadow-[0_1px_3px_rgba(0,0,0,0.4)]'
       )}
     >
@@ -60,7 +60,7 @@ export function LinkedInQueueItem({ item, onEdit, onSchedule, onPublishNow, onCa
       </p>
 
       {item.export_url && (
-        <div className="mb-4 p-3 bg-[#0E0E0E] rounded-lg border border-[#1e2433] flex items-center gap-2">
+        <div className="mb-4 p-3 bg-[#0E0E0E] rounded-lg border border-[#2A3648] flex items-center gap-2">
           <div className="w-8 h-8 bg-border rounded flex-shrink-0" />
           <span className="text-xs text-slate-600">Attached export</span>
         </div>

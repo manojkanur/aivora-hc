@@ -137,13 +137,13 @@ export function AdvisorySearch() {
       {/* Trigger bar — always visible on dashboard */}
       <button
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 30) }}
-        className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] transition-all group"
+        className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl border border-[#2A3648] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] transition-all group"
       >
         <Search className="w-5 h-5 text-slate-500 group-hover:text-blue-400" />
         <span className="flex-1 text-left text-sm text-slate-400">
           Find advisory: search studios, frameworks, playbooks, or ask the advisor…
         </span>
-        <kbd className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md border border-[#1e2433] bg-[#0c0e14] text-[10px] text-slate-500">
+        <kbd className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md border border-[#2A3648] bg-[#0B1220] text-[10px] text-slate-500">
           <span>⌘</span><span>K</span>
         </kbd>
       </button>
@@ -162,9 +162,9 @@ export function AdvisorySearch() {
               initial={{ y: -10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -10, opacity: 0 }}
-              className="relative w-full max-w-2xl rounded-2xl border border-[#1e2433] bg-[#0c0e14] shadow-2xl overflow-hidden"
+              className="relative w-full max-w-2xl rounded-2xl border border-[#2A3648] bg-[#0B1220] shadow-2xl overflow-hidden"
             >
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-[#1e2433]">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-[#2A3648]">
                 <Search className="w-5 h-5 text-blue-400 flex-shrink-0" />
                 <input
                   ref={inputRef}
@@ -175,7 +175,7 @@ export function AdvisorySearch() {
                   className="flex-1 bg-transparent text-base text-white placeholder:text-slate-500 focus:outline-none"
                   autoFocus
                 />
-                <kbd className="hidden sm:flex text-[10px] text-slate-500 px-1.5 py-0.5 rounded border border-[#1e2433]">esc</kbd>
+                <kbd className="hidden sm:flex text-[10px] text-slate-500 px-1.5 py-0.5 rounded border border-[#2A3648]">esc</kbd>
               </div>
 
               <div className="max-h-[60vh] overflow-y-auto">
@@ -190,7 +190,7 @@ export function AdvisorySearch() {
                       onMouseEnter={() => setActiveIdx(i)}
                       onClick={() => { setOpen(false); setQuery(''); navigate(h.href) }}
                       className={cn(
-                        'w-full flex items-center gap-3 px-5 py-3 text-left border-b border-[#1e2433] last:border-b-0',
+                        'w-full flex items-center gap-3 px-5 py-3 text-left border-b border-[#2A3648] last:border-b-0',
                         i === activeIdx ? 'bg-blue-500/10' : 'hover:bg-white/5',
                       )}
                     >
@@ -226,7 +226,7 @@ export function AdvisorySearch() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between px-5 py-2.5 bg-[#0a0c12] border-t border-[#1e2433] text-[11px] text-slate-500">
+              <div className="flex items-center justify-between px-5 py-2.5 bg-[#0a0c12] border-t border-[#2A3648] text-[11px] text-slate-500">
                 <div className="flex items-center gap-3">
                   <span>↑↓ navigate</span>
                   <span>↵ open</span>

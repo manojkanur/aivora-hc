@@ -125,7 +125,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
       </div>
 
       {phases.length === 0 || lanes.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#1e2433] bg-[#0f1117] px-5 py-8 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-[#2A3648] bg-[#0f1117] px-5 py-8 text-center text-sm text-slate-500">
           No workstream data available.
         </div>
       ) : (
@@ -151,7 +151,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
           <div className="min-w-[640px]">
             {/* Header row */}
             <div
-              className="grid items-stretch border-b border-[#1e2433]"
+              className="grid items-stretch border-b border-[#2A3648]"
               style={{ gridTemplateColumns: gridCols }}
             >
               <div className="px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
@@ -161,7 +161,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
                 <div
                   key={phase.id}
                   className={`px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold ${
-                    idx > 0 ? 'border-l border-[#1e2433]' : ''
+                    idx > 0 ? 'border-l border-[#2A3648]' : ''
                   }`}
                 >
                   {phase.label}
@@ -173,7 +173,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
             {lanes.map((lane, laneIdx) => (
               <div
                 key={lane.id}
-                className="grid items-stretch border-b border-[#1a1e2e] last:border-b-0"
+                className="grid items-stretch border-b border-[#222E3E] last:border-b-0"
                 style={{ gridTemplateColumns: gridCols }}
               >
                 <div className="px-3 py-3 flex items-center">
@@ -188,7 +188,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
                     <div
                       key={phase.id}
                       className={`px-2 py-2.5 space-y-2 min-h-[68px] ${
-                        phaseIdx > 0 ? 'border-l border-[#1e2433]' : ''
+                        phaseIdx > 0 ? 'border-l border-[#2A3648]' : ''
                       } ${laneIdx % 2 === 1 ? 'bg-[#0f1117]/40' : ''}`}
                     >
                       {cellItems.length === 0 ? (
@@ -206,7 +206,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
                                 delay: 0.05 + (laneIdx * phases.length + phaseIdx) * 0.02,
                                 duration: 0.25,
                               }}
-                              className={`group rounded-md border border-[#1e2433] border-l-2 ${style.border} ${style.tint} px-2.5 py-2 transition-colors hover:border-[#2a3145]`}
+                              className={`group rounded-md border border-[#2A3648] border-l-2 ${style.border} ${style.tint} px-2.5 py-2 transition-colors hover:border-[#2a3145]`}
                             >
                               <div className="flex items-start gap-2">
                                 <div className="flex-1 min-w-0">
@@ -222,7 +222,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
                                 {item.owner && (
                                   <div
                                     title={item.owner}
-                                    className="shrink-0 w-6 h-6 rounded-full bg-[#1e2433] border border-[#2a3145] flex items-center justify-center text-[10px] font-semibold text-slate-200 tabular-nums"
+                                    className="shrink-0 w-6 h-6 rounded-full bg-[#2A3648] border border-[#2a3145] flex items-center justify-center text-[10px] font-semibold text-slate-200 tabular-nums"
                                   >
                                     {ownerInitial(item.owner)}
                                   </div>
@@ -242,7 +242,7 @@ export function swimlane({ title, data, footnote }: SwimlaneProps) {
       )}
 
       {/* Stats + footnote */}
-      <div className="mt-4 pt-4 border-t border-[#1e2433] flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-4 pt-4 border-t border-[#2A3648] flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
           {(Object.keys(totals) as Status[]).map(s => (
             <span key={s} className="flex items-center gap-1.5">

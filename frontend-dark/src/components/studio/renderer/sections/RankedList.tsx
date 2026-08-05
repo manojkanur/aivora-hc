@@ -30,7 +30,7 @@ const topRankStyles: Record<number, { size: string; gradient: string; glow: stri
   1: {
     size: 'text-6xl sm:text-7xl',
     gradient: 'bg-gradient-to-br from-blue-300 via-blue-400 to-blue-600',
-    glow: 'drop-shadow-[0_0_24px_rgba(59,130,246,0.45)]',
+    glow: 'drop-shadow-[0_0_24px_rgba(46,125,250,0.45)]',
   },
   2: {
     size: 'text-5xl sm:text-6xl',
@@ -98,7 +98,7 @@ export function rankedlist({ title, data, footnote }: RankedListProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-center gap-2 mb-5">
         <ListOrdered className="w-5 h-5 text-blue-400" />
@@ -128,9 +128,9 @@ export function rankedlist({ title, data, footnote }: RankedListProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04, duration: 0.3, ease: 'easeOut' }}
               className={[
-                'relative overflow-hidden rounded-xl border border-[#1e2433]',
+                'relative overflow-hidden rounded-xl border border-[#2A3648]',
                 isTopThree
-                  ? 'bg-gradient-to-r from-[#0f1117] via-[#131720] to-[#131720] p-4 sm:p-5'
+                  ? 'bg-gradient-to-r from-[#0f1117] via-[#1B2431] to-[#1B2431] p-4 sm:p-5'
                   : 'bg-[#0f1117] p-4',
               ].join(' ')}
             >
@@ -187,7 +187,7 @@ export function rankedlist({ title, data, footnote }: RankedListProps) {
                   </div>
 
                   {hasScore && (
-                    <div className="mt-3 h-1.5 bg-[#1e2433] rounded-full overflow-hidden">
+                    <div className="mt-3 h-1.5 bg-[#2A3648] rounded-full overflow-hidden">
                       <motion.div
                         className={[
                           'h-full rounded-full',
@@ -220,7 +220,7 @@ export function rankedlist({ title, data, footnote }: RankedListProps) {
       </ol>
 
       {footnote && (
-        <p className="mt-4 pt-4 border-t border-[#1e2433] text-xs text-slate-500 leading-relaxed">
+        <p className="mt-4 pt-4 border-t border-[#2A3648] text-xs text-slate-500 leading-relaxed">
           {footnote}
         </p>
       )}

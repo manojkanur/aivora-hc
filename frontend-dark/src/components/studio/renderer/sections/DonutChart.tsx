@@ -31,8 +31,8 @@ export interface DonutChartData {
   source?: string
 }
 
-// Rich, modern palette (deep -> vivid) that reads well on the dark card.
-const PALETTE = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ef4444', '#ec4899', '#14b8a6', '#6366f1', '#84cc16']
+// Restrained brand ramp that reads well on the dark card.
+const PALETTE = ['#2E7DFA', '#17BFA0', '#5B96F5', '#0D3C82', '#8C96A6']
 
 function polar(cx: number, cy: number, r: number, angle: number): [number, number] {
   const a = (angle - 90) * (Math.PI / 180)
@@ -91,7 +91,7 @@ export default function DonutChart({ data }: { title?: string; data: DonutChartD
   const gid = `donutgrad-${Math.round(total)}-${items.length}`
 
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-gradient-to-br from-[#141824] to-[#0f1219] p-5 sm:p-6">
+    <div className="rounded-2xl border border-[#2A3648] bg-gradient-to-br from-[#141824] to-[#0f1219] p-5 sm:p-6">
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -153,7 +153,7 @@ export default function DonutChart({ data }: { title?: string; data: DonutChartD
                   <span className="text-sm text-slate-200 truncate">{s.it.label}</span>
                   <span className="text-sm font-bold text-white tabular-nums flex-shrink-0">{showVal(s.it.value)}</span>
                 </span>
-                <span className="mt-1 block h-1 rounded-full bg-[#1e2433] overflow-hidden">
+                <span className="mt-1 block h-1 rounded-full bg-[#2A3648] overflow-hidden">
                   <motion.span className="block h-full rounded-full" style={{ backgroundColor: s.base }}
                     initial={{ width: 0 }} animate={{ width: `${pct(s.it.value)}%` }}
                     transition={{ duration: 0.6, delay: s.i * 0.06, ease: 'easeOut' }} />

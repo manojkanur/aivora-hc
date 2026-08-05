@@ -17,7 +17,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-blue-600 text-white font-semibold hover:bg-blue-500 border border-blue-600 hover:border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.25)]',
+    'bg-blue-600 text-white font-semibold hover:bg-blue-500 border border-blue-600 hover:border-blue-500 shadow-[0_0_12px_rgba(46,125,250,0.25)]',
   secondary:
     'bg-transparent text-blue-400 border border-blue-500/50 hover:bg-blue-500/10 hover:border-blue-400',
   ghost:
@@ -49,7 +49,7 @@ export function Button({
     <motion.button
       whileTap={isDisabled ? undefined : { scale: 0.97 }}
       className={cn(
-        'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0e14] disabled:opacity-40 disabled:cursor-not-allowed select-none',
+        'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220] disabled:opacity-40 disabled:cursor-not-allowed select-none',
         variantStyles[variant],
         sizeStyles[size],
         className

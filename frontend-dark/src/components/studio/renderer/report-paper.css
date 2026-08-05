@@ -8,7 +8,7 @@
  * McKinsey-style look that also exports well to PDF.
  *
  * Selectors use attribute-substring matching on Tailwind's arbitrary-value
- * classes (e.g. `bg-[#131720]`) so we do not have to edit each section.
+ * classes (e.g. `bg-[#1B2431]`) so we do not have to edit each section.
  */
 
 .report-paper {
@@ -18,22 +18,22 @@
   --rp-line: #e2e8f0;       /* hairlines / borders */
   --rp-card: #ffffff;       /* card surface */
   --rp-panel: #f8fafc;      /* subtle inset panel */
-  --rp-accent: #1d4ed8;     /* primary accent (blue) */
+  --rp-accent: #0D3C82;     /* primary accent (blue) */
   background: #ffffff;
   color: var(--rp-ink);
 }
 
 /* Surfaces ------------------------------------------------------------------ */
-.report-paper [class*="bg-[#131720]"],
+.report-paper [class*="bg-[#1B2431]"],
 .report-paper [class*="bg-[#0f1117]"],
-.report-paper [class*="bg-[#1a1e2e]"] { background-color: var(--rp-card) !important; }
+.report-paper [class*="bg-[#222E3E]"] { background-color: var(--rp-card) !important; }
 
-.report-paper [class*="bg-[#0c0e14]"],
-.report-paper [class*="bg-[#1e2433]"] { background-color: var(--rp-panel) !important; }
+.report-paper [class*="bg-[#0B1220]"],
+.report-paper [class*="bg-[#2A3648]"] { background-color: var(--rp-panel) !important; }
 
 /* Borders ------------------------------------------------------------------- */
-.report-paper [class*="border-[#1e2433]"],
-.report-paper [class*="border-[#1a1e2e]"],
+.report-paper [class*="border-[#2A3648]"],
+.report-paper [class*="border-[#222E3E]"],
 .report-paper [class*="border-[#2a3145]"],
 .report-paper [class*="border-[#2a3048]"] { border-color: var(--rp-line) !important; }
 

@@ -13,16 +13,16 @@ interface TimelineData {
 
 function dotCls(status?: string): string {
   if (status === 'done') return 'bg-emerald-500 border-emerald-400'
-  if (status === 'active') return 'bg-blue-500 border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.6)]'
-  return 'bg-[#1e2433] border-slate-600'
+  if (status === 'active') return 'bg-blue-500 border-blue-400 shadow-[0_0_12px_rgba(46,125,250,0.6)]'
+  return 'bg-[#2A3648] border-slate-600'
 }
 
 export default function TimelineSection({ data }: { data: TimelineData }) {
   const items = data.items || []
   if (items.length === 0) return null
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5 sm:p-6">
-      <ol className="relative border-l border-[#1e2433] ml-2">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5 sm:p-6">
+      <ol className="relative border-l border-[#2A3648] ml-2">
         {items.map((item, i) => (
           <motion.li
             key={i}

@@ -64,9 +64,9 @@ function StepProgress({ current, completed }: { current: number; completed: numb
               <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
                 <div className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300',
-                  done   ? 'bg-[#0c0e14] border-[#111111] text-white' :
-                  active ? 'bg-[#131720] border-[#111111] text-white' :
-                           'bg-[#131720] border-[#1e2433] text-slate-500'
+                  done   ? 'bg-[#0B1220] border-[#111111] text-white' :
+                  active ? 'bg-[#1B2431] border-[#111111] text-white' :
+                           'bg-[#1B2431] border-[#2A3648] text-slate-500'
                 )}>
                   {done ? <CheckCircle2 className="w-4 h-4" /> : step.id}
                 </div>
@@ -80,7 +80,7 @@ function StepProgress({ current, completed }: { current: number; completed: numb
               {i < STEPS.length - 1 && (
                 <div className={cn(
                   'flex-1 h-px mx-3 mb-5 transition-colors duration-300',
-                  completed.includes(step.id) ? 'bg-[#0c0e14]' : 'bg-[#1a1e2e]'
+                  completed.includes(step.id) ? 'bg-[#0B1220]' : 'bg-[#222E3E]'
                 )} />
               )}
             </div>
@@ -103,7 +103,7 @@ function HowItWorks({ onStart }: { onStart: () => void }) {
         </p>
       </div>
 
-      <div className="bg-[#131720] border border-[#1e2433] rounded-2xl overflow-hidden shadow-sm mb-6">
+      <div className="bg-[#1B2431] border border-[#2A3648] rounded-2xl overflow-hidden shadow-sm mb-6">
         <div className="px-6 py-5 border-b border-[#1A1A1A]">
           <h2 className="text-sm font-semibold text-white">How it works</h2>
         </div>
@@ -112,7 +112,7 @@ function HowItWorks({ onStart }: { onStart: () => void }) {
             const Icon = item.icon
             return (
               <div key={i} className="flex items-start gap-4 px-6 py-4">
-                <div className="w-8 h-8 rounded-lg bg-[#1a1e2e] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-lg bg-[#222E3E] flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Icon className="w-4 h-4 text-slate-500" />
                 </div>
                 <div>
@@ -128,7 +128,7 @@ function HowItWorks({ onStart }: { onStart: () => void }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between p-5 bg-[#0c0e14] rounded-2xl">
+      <div className="flex items-center justify-between p-5 bg-[#0B1220] rounded-2xl">
         <div>
           <p className="font-semibold text-white text-sm">Ready to start?</p>
           <p className="text-xs text-slate-500 mt-0.5">Typical run takes 10-15 minutes end to end</p>
@@ -136,7 +136,7 @@ function HowItWorks({ onStart }: { onStart: () => void }) {
         <Button
           onClick={onStart}
           rightIcon={<PlayCircle className="w-4 h-4" />}
-          className="bg-[#131720] text-white hover:bg-[#1a1e2e]"
+          className="bg-[#1B2431] text-white hover:bg-[#222E3E]"
         >
           Begin
         </Button>
@@ -212,8 +212,8 @@ function StepBrief({ onNext }: { onNext: (f: BriefForm) => void }) {
               className={cn(
                 'px-3 py-1.5 rounded-md text-sm font-medium border transition-all',
                 form.challenges.includes(c)
-                  ? 'bg-[#0c0e14] text-white border-[#111111]'
-                  : 'bg-[#131720] text-slate-500 border-[#1e2433] hover:border-[#3b82f6] hover:text-white'
+                  ? 'bg-[#0B1220] text-white border-[#111111]'
+                  : 'bg-[#1B2431] text-slate-500 border-[#2A3648] hover:border-[#2E7DFA] hover:text-white'
               )}
             >
               {c}
@@ -272,7 +272,7 @@ function StepSkill({
         Select one HC skill. Each skill runs a dedicated AI agent and produces a structured, client-ready deliverable.
       </p>
 
-      <div className="divide-y divide-[#1A1A1A] border border-[#1e2433] rounded-xl overflow-hidden">
+      <div className="divide-y divide-[#1A1A1A] border border-[#2A3648] rounded-xl overflow-hidden">
         {HC_SKILLS.map(skill => {
           const Icon = skill.icon
           const on   = selected === skill.id
@@ -283,10 +283,10 @@ function StepSkill({
               onClick={() => { setSelected(skill.id); setError('') }}
               className={cn(
                 'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors',
-                on ? 'bg-[#0c0e14]' : 'bg-[#131720] hover:bg-[#131720]'
+                on ? 'bg-[#0B1220]' : 'bg-[#1B2431] hover:bg-[#1B2431]'
               )}
             >
-              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', on ? 'bg-[#131720]/10' : 'bg-[#1a1e2e]')}>
+              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', on ? 'bg-[#1B2431]/10' : 'bg-[#222E3E]')}>
                 <Icon className={cn('w-4 h-4', on ? 'text-white' : 'text-[#666666]')} />
               </div>
               <div className="flex-1 min-w-0">
@@ -298,9 +298,9 @@ function StepSkill({
               </div>
               <div className={cn(
                 'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                on ? 'bg-[#131720] border-white' : 'border-[#333333]'
+                on ? 'bg-[#1B2431] border-white' : 'border-[#333333]'
               )}>
-                {on && <div className="w-2.5 h-2.5 rounded-full bg-[#0c0e14]" />}
+                {on && <div className="w-2.5 h-2.5 rounded-full bg-[#0B1220]" />}
               </div>
             </button>
           )
@@ -314,7 +314,7 @@ function StepSkill({
       )}
 
       {chosen && (
-        <div className="flex items-center gap-3 py-3 px-4 bg-[#131720] border border-[#1e2433] rounded-lg text-sm">
+        <div className="flex items-center gap-3 py-3 px-4 bg-[#1B2431] border border-[#2A3648] rounded-lg text-sm">
           <CheckCircle2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
           <span className="text-slate-300">
             <strong className="text-white">{chosen.name}</strong> selected. {chosen.credits} credits will be used.
@@ -412,8 +412,8 @@ function StepGenerate({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 p-4 bg-[#131720] border border-[#1e2433] rounded-xl">
-        <div className="w-8 h-8 rounded-lg bg-[#1a1e2e] flex items-center justify-center flex-shrink-0">
+      <div className="flex items-center gap-3 p-4 bg-[#1B2431] border border-[#2A3648] rounded-xl">
+        <div className="w-8 h-8 rounded-lg bg-[#222E3E] flex items-center justify-center flex-shrink-0">
           <skill.icon className="w-4 h-4 text-slate-500" />
         </div>
         <div>
@@ -431,9 +431,9 @@ function StepGenerate({
             <span>{phase === 'done' ? 'Generation complete' : 'Generating output...'}</span>
             <span className="font-medium text-slate-300">{progress}%</span>
           </div>
-          <div className="h-1.5 bg-[#1a1e2e] rounded-full overflow-hidden">
+          <div className="h-1.5 bg-[#222E3E] rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-[#131720] rounded-full"
+              className="h-full bg-[#1B2431] rounded-full"
               style={{ width: '0%' }}
               animate={{ width: `${Math.max(0, progress)}%` }}
               transition={{ duration: 0.3 }}
@@ -443,7 +443,7 @@ function StepGenerate({
       )}
 
       {log.length > 0 && (
-        <div ref={scrollRef} className="bg-[#0c0e14] rounded-xl p-4 h-52 overflow-y-auto">
+        <div ref={scrollRef} className="bg-[#0B1220] rounded-xl p-4 h-52 overflow-y-auto">
           {log.map((line, i) => (
             <p key={i} className="text-xs text-slate-500 leading-5">
               <span className="text-slate-500 mr-2 select-none tabular-nums">{String(i + 1).padStart(2, '0')}</span>
@@ -497,8 +497,8 @@ function StepReview({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 p-4 bg-[#131720] border border-[#1e2433] rounded-xl">
-        <div className="w-8 h-8 rounded-lg bg-[#1a1e2e] flex items-center justify-center flex-shrink-0">
+      <div className="flex items-center gap-3 p-4 bg-[#1B2431] border border-[#2A3648] rounded-xl">
+        <div className="w-8 h-8 rounded-lg bg-[#222E3E] flex items-center justify-center flex-shrink-0">
           <skill.icon className="w-4 h-4 text-slate-500" />
         </div>
         <div>
@@ -507,8 +507,8 @@ function StepReview({
         </div>
       </div>
 
-      <div className="border border-[#1e2433] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#1A1A1A] flex items-center justify-between bg-[#131720]">
+      <div className="border border-[#2A3648] rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-[#1A1A1A] flex items-center justify-between bg-[#1B2431]">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Generated Output</span>
           {approved && (
             <span className="flex items-center gap-1 text-xs font-medium text-slate-300">
@@ -521,7 +521,7 @@ function StepReview({
         </div>
       </div>
 
-      <div className="flex items-center justify-between p-4 bg-[#131720] border border-[#1e2433] rounded-xl">
+      <div className="flex items-center justify-between p-4 bg-[#1B2431] border border-[#2A3648] rounded-xl">
         <p className="text-sm text-slate-500">
           {approved
             ? 'Output approved. You can now proceed to export.'
@@ -532,8 +532,8 @@ function StepReview({
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-all',
             approved
-              ? 'bg-[#0c0e14] text-white border-[#111111]'
-              : 'bg-[#131720] text-white border-[#333333] hover:border-[#3b82f6]'
+              ? 'bg-[#0B1220] text-white border-[#111111]'
+              : 'bg-[#1B2431] text-white border-[#333333] hover:border-[#2E7DFA]'
           )}
         >
           <CheckCircle2 className="w-4 h-4" />
@@ -579,7 +579,7 @@ function StepDeliver({
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="border border-[#1e2433] rounded-xl p-5">
+      <div className="border border-[#2A3648] rounded-xl p-5">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Brief Summary</p>
         <p className="text-base font-bold text-white mb-4">{brief.title}</p>
         <div className="grid grid-cols-3 gap-4 text-center pt-4 border-t border-[#1A1A1A]">
@@ -599,8 +599,8 @@ function StepDeliver({
       </div>
 
       {/* Skill badge */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-[#131720] border border-[#1e2433] rounded-xl">
-        <div className="w-8 h-8 rounded-lg bg-[#1a1e2e] flex items-center justify-center flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 bg-[#1B2431] border border-[#2A3648] rounded-xl">
+        <div className="w-8 h-8 rounded-lg bg-[#222E3E] flex items-center justify-center flex-shrink-0">
           <skill.icon className="w-4 h-4 text-slate-500" />
         </div>
         <div>
@@ -613,7 +613,7 @@ function StepDeliver({
       {/* Export formats */}
       <div>
         <p className="text-sm font-semibold text-white mb-3">Download Deliverable</p>
-        <div className="divide-y divide-[#1A1A1A] border border-[#1e2433] rounded-xl overflow-hidden">
+        <div className="divide-y divide-[#1A1A1A] border border-[#2A3648] rounded-xl overflow-hidden">
           {EXPORT_FORMATS.map(fmt => {
             const done    = downloaded.includes(fmt.id)
             const loading = downloading === fmt.id
@@ -629,9 +629,9 @@ function StepDeliver({
                   disabled={!!downloading || done}
                   className={cn(
                     'flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold border transition-all min-w-[110px] justify-center',
-                    done    ? 'bg-[#1a1e2e] text-[#666666] border-[#1e2433] cursor-default' :
-                    loading ? 'bg-[#131720] text-white border-[#1A1A1A] cursor-wait' :
-                              'bg-[#131720] text-white border-[#333333] hover:border-[#3b82f6] hover:bg-[#131720]'
+                    done    ? 'bg-[#222E3E] text-[#666666] border-[#2A3648] cursor-default' :
+                    loading ? 'bg-[#1B2431] text-white border-[#1A1A1A] cursor-wait' :
+                              'bg-[#1B2431] text-white border-[#333333] hover:border-[#2E7DFA] hover:bg-[#1B2431]'
                   )}
                 >
                   {loading ? (
@@ -651,7 +651,7 @@ function StepDeliver({
       {/* LinkedIn */}
       <div>
         <p className="text-sm font-semibold text-white mb-3">Publish Insight</p>
-        <div className="border border-[#1e2433] rounded-xl px-5 py-4 flex items-center gap-4">
+        <div className="border border-[#2A3648] rounded-xl px-5 py-4 flex items-center gap-4">
           <div className="w-9 h-9 rounded-lg bg-[#0077B5] flex items-center justify-center flex-shrink-0">
             <Share2 className="w-4 h-4 text-white" />
           </div>
@@ -699,7 +699,7 @@ export default function Engage() {
 
   if (view === 'intro') {
     return (
-      <div className="min-h-full bg-[#131720]">
+      <div className="min-h-full bg-[#1B2431]">
         <div className="max-w-2xl mx-auto px-6 py-8">
           <HowItWorks onStart={() => setView('flow')} />
         </div>
@@ -710,7 +710,7 @@ export default function Engage() {
   const stepMeta = STEPS.find(s => s.id === step)
 
   return (
-    <div className="min-h-full bg-[#131720]">
+    <div className="min-h-full bg-[#1B2431]">
       <div className="max-w-3xl mx-auto px-6 py-8">
         {/* Page header */}
         <div className="mb-8">
@@ -726,7 +726,7 @@ export default function Engage() {
 
         <StepProgress current={step} completed={completed} />
 
-        <div className="bg-[#131720] border border-[#1e2433] rounded-2xl p-6 shadow-sm">
+        <div className="bg-[#1B2431] border border-[#2A3648] rounded-2xl p-6 shadow-sm">
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div key="brief" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>

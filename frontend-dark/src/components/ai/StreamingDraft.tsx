@@ -100,9 +100,9 @@ export function StreamingDraft({ jobId, onComplete, onCancel }: StreamingDraftPr
     : 100
 
   return (
-    <div className="flex flex-col h-full border border-[#1e2433] rounded-xl bg-[#131720] overflow-hidden">
+    <div className="flex flex-col h-full border border-[#2A3648] rounded-xl bg-[#1B2431] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[#1e2433] bg-[#0E0E0E]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[#2A3648] bg-[#0E0E0E]">
         <div className="flex items-center gap-3">
           {isStreaming ? (
             <div className="flex items-center gap-2">
@@ -110,7 +110,7 @@ export function StreamingDraft({ jobId, onComplete, onCancel }: StreamingDraftPr
                 {[...Array(3)].map((_, i) => (
                   <div
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] animate-bounce"
+                    className="w-1.5 h-1.5 rounded-full bg-[#2E7DFA] animate-bounce"
                     style={{ animationDelay: `${i * 0.15}s` }}
                   />
                 ))}
@@ -134,7 +134,7 @@ export function StreamingDraft({ jobId, onComplete, onCancel }: StreamingDraftPr
           <div className="flex items-center gap-2">
             <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-[#3b82f6] rounded-full"
+                className="h-full bg-[#2E7DFA] rounded-full"
                 style={{ width: '0%' }}
                 animate={{ width: `${Math.max(0, progress)}%` }}
                 transition={{ duration: 0.3 }}
@@ -171,7 +171,7 @@ export function StreamingDraft({ jobId, onComplete, onCancel }: StreamingDraftPr
               <div className="flex items-center gap-2 mb-2">
                 <div className={cn(
                   'w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                  section.complete ? 'bg-[#3b82f6] text-white' : 'bg-border text-slate-600'
+                  section.complete ? 'bg-[#2E7DFA] text-white' : 'bg-border text-slate-600'
                 )}>
                   {section.complete ? '✓' : i + 1}
                 </div>
@@ -189,7 +189,7 @@ export function StreamingDraft({ jobId, onComplete, onCancel }: StreamingDraftPr
 
         {sections.length === 0 && isStreaming && (
           <div className="flex items-center gap-3 py-8 justify-center text-slate-600">
-            <div className="w-5 h-5 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-[#2E7DFA] border-t-transparent rounded-full animate-spin" />
             <span className="text-sm">Initializing AI generation...</span>
           </div>
         )}

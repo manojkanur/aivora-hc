@@ -11,9 +11,9 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles: Record<CardVariant, string> = {
-  default:     'bg-[#131720] border border-[#1e2433] shadow-[0_1px_3px_rgba(0,0,0,0.5)]',
-  elevated:    'bg-[#131720] border border-[#1e2433] shadow-[0_8px_32px_rgba(0,0,0,0.7)]',
-  interactive: 'bg-[#131720] border border-[#1e2433] shadow-[0_1px_3px_rgba(0,0,0,0.5)] cursor-pointer hover:border-blue-500/30 hover:shadow-[0_4px_16px_rgba(0,0,0,0.6),0_0_0_1px_rgba(59,130,246,0.15)]',
+  default:     'bg-[#1B2431] border border-[#2A3648] shadow-[0_1px_3px_rgba(0,0,0,0.5)]',
+  elevated:    'bg-[#1B2431] border border-[#2A3648] shadow-[0_8px_32px_rgba(0,0,0,0.7)]',
+  interactive: 'bg-[#1B2431] border border-[#2A3648] shadow-[0_1px_3px_rgba(0,0,0,0.5)] cursor-pointer hover:border-blue-500/30 hover:shadow-[0_4px_16px_rgba(0,0,0,0.6),0_0_0_1px_rgba(46,125,250,0.15)]',
 }
 
 export function Card({ variant = 'default', children, className, ...props }: CardProps) {
@@ -43,7 +43,7 @@ interface CardSectionProps {
 
 export function CardHeader({ children, className }: CardSectionProps) {
   return (
-    <div className={cn('px-5 py-4 border-b border-[#1e2433]', className)}>
+    <div className={cn('px-5 py-4 border-b border-[#2A3648]', className)}>
       {children}
     </div>
   )
@@ -59,7 +59,7 @@ export function CardBody({ children, className }: CardSectionProps) {
 
 export function CardFooter({ children, className }: CardSectionProps) {
   return (
-    <div className={cn('px-5 py-4 border-t border-[#1e2433] bg-[#0c0e14] rounded-b-xl', className)}>
+    <div className={cn('px-5 py-4 border-t border-[#2A3648] bg-[#0B1220] rounded-b-xl', className)}>
       {children}
     </div>
   )

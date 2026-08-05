@@ -48,7 +48,7 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl border border-[#1a2035] bg-gradient-to-br from-[#101525] via-[#0e1420] to-[#0c0e14] p-7 sm:p-9"
+        className="relative overflow-hidden rounded-3xl border border-[#1a2035] bg-gradient-to-br from-[#0B1220] via-[#0B1220] to-[#0B1220] p-7 sm:p-9"
       >
         {/* decorative glows */}
         <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-600/12 blur-3xl pointer-events-none" />
@@ -94,7 +94,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07 }}
-            className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 sm:p-5 hover:border-[#2a3048] transition-all hover:bg-[#111420] group cursor-default"
+            className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 sm:p-5 hover:border-[#2a3048] transition-all hover:bg-[#111420] group cursor-default"
           >
             <div className="flex items-start justify-between mb-4">
               <div className={cn('w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0', stat.iconBg)}>
@@ -122,7 +122,7 @@ export default function Dashboard() {
             >
               <Link
                 to={action.href}
-                className="group flex flex-col gap-4 p-4 sm:p-5 rounded-2xl border border-[#1e2433] bg-[#0f1117] hover:border-[#2a3048] hover:bg-[#111420] transition-all"
+                className="group flex flex-col gap-4 p-4 sm:p-5 rounded-2xl border border-[#2A3648] bg-[#0f1117] hover:border-[#2a3048] hover:bg-[#111420] transition-all"
               >
                 <div className={cn('w-11 h-11 rounded-xl border flex items-center justify-center transition-all', action.bg, action.hover)}>
                   <action.icon className={cn('w-5 h-5 transition-colors', action.color)} />
@@ -154,8 +154,8 @@ export default function Dashboard() {
               {[...Array(3)].map((_, i) => <Skeleton key={i} variant="card" />)}
             </div>
           ) : recentWorkspaces.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#1e2433] bg-[#0f1117] p-10 sm:p-12 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#1a1e2e] flex items-center justify-center mx-auto mb-4">
+            <div className="rounded-2xl border border-dashed border-[#2A3648] bg-[#0f1117] p-10 sm:p-12 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#222E3E] flex items-center justify-center mx-auto mb-4">
                 <Briefcase className="w-7 h-7 text-slate-600" />
               </div>
               <p className="text-base font-semibold text-slate-300">No workspaces yet</p>
@@ -175,7 +175,7 @@ export default function Dashboard() {
                 >
                   <Link
                     to={`/workspaces/${ws.id}`}
-                    className="group flex items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/30 hover:bg-[#111420] transition-all"
+                    className="group flex items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-[#2A3648] bg-[#0f1117] hover:border-blue-500/30 hover:bg-[#111420] transition-all"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-blue-600/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
@@ -213,7 +213,7 @@ export default function Dashboard() {
 
           {/* Draft inbox shortcut */}
           <Link to="/inbox"
-            className="group flex items-center gap-4 p-5 rounded-2xl border border-[#1e2433] bg-[#0f1117] hover:border-amber-500/20 hover:bg-[#131220] transition-all"
+            className="group flex items-center gap-4 p-5 rounded-2xl border border-[#2A3648] bg-[#0f1117] hover:border-amber-500/20 hover:bg-[#131220] transition-all"
           >
             <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/15 transition-colors">
               <Inbox className="w-5 h-5 text-amber-400" />

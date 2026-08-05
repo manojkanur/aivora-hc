@@ -61,7 +61,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0e14] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0B1220] flex items-center justify-center p-4">
       <motion.div
         initial="hidden"
         animate="visible"
@@ -72,7 +72,7 @@ export default function Login() {
           <AivoraLogo size="md" />
         </div>
 
-        <div className="bg-[#131720] rounded-2xl border border-[#1a1e2e] shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-8">
+        <div className="bg-[#1B2431] rounded-2xl border border-[#222E3E] shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-8">
           <div className="text-center mb-6">
             <h1 className="text-xl font-bold text-white">Welcome back</h1>
             <p className="text-sm text-slate-600 mt-1">Sign in to your account</p>
@@ -106,9 +106,9 @@ export default function Login() {
           </Button>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-[#1a1e2e]" />
+            <div className="flex-1 h-px bg-[#222E3E]" />
             <span className="text-xs text-slate-600">or sign in with email</span>
-            <div className="flex-1 h-px bg-[#1a1e2e]" />
+            <div className="flex-1 h-px bg-[#222E3E]" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,7 +128,7 @@ export default function Login() {
               onChange={e => setPassword(e.target.value)}
               autoComplete="current-password"
               rightElement={
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-600 hover:text-[#3b82f6] transition-colors">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-600 hover:text-[#2E7DFA] transition-colors">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               }
@@ -140,7 +140,7 @@ export default function Login() {
 
           <p className="text-center text-sm text-slate-600 mt-5">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-[#3b82f6] font-medium hover:text-[#60a5fa] transition-colors">
+            <Link to="/signup" className="text-[#2E7DFA] font-medium hover:text-[#5B96F5] transition-colors">
               Sign up
             </Link>
           </p>

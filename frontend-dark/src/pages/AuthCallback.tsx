@@ -47,7 +47,7 @@ export default function AuthCallback() {
       <div className="flex flex-col items-center gap-4">
         <AivoraLogo size="md" />
         <div className="flex items-center gap-2 text-sm text-slate-600">
-          <div className="w-4 h-4 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-[#2E7DFA] border-t-transparent rounded-full animate-spin" />
           Signing you in...
         </div>
       </div>

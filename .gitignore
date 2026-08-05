@@ -19,3 +19,7 @@ backups/
 *.log
 frontend-dark/e2e-results/
 frontend-dark/playwright-report/
+
+# AIVORA brand kit source (large binaries; bundled copies live in src/assets/fonts + backend/app/services/fonts)
+AIVORA Brand-*.zip
+AIVORA_Brand_extracted/

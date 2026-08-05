@@ -32,19 +32,19 @@ export interface ProgressBarListData {
   source?: string
 }
 
-// A calm, professional palette matching the reference dashboard.
+// Brand-aligned palette matching the AIVORA report system.
 const SENTIMENT_COLOR: Record<Sentiment, string> = {
-  good: '#10b981',      // green - completed / positive
-  warning: '#f59e0b',   // amber - attention
-  bad: '#ef4444',       // red - risk
-  neutral: '#64748b',   // slate - on hold / other
-  info: '#8b5cf6',      // violet
-  accent: '#2563eb',    // blue - default
+  good: '#2E9E5B',      // success - completed / positive
+  warning: '#C97A1E',   // warning - attention
+  bad: '#D14343',       // risk - negative
+  neutral: '#8C96A6',   // neutral - on hold / other
+  info: '#5B96F5',      // brand mid blue
+  accent: '#175FCC',    // brand strong - default
 }
 
 // Rotating accent palette when neither color nor sentiment is provided, so a
-// list still reads as a colourful dashboard rather than a monochrome block.
-const PALETTE = ['#2563eb', '#1e3a8a', '#8b5cf6', '#10b981', '#64748b', '#14b8a6', '#f59e0b', '#0ea5e9']
+// list still reads as a coherent, on-brand dashboard.
+const PALETTE = ['#2E7DFA', '#17BFA0', '#5B96F5', '#0D3C82', '#8C96A6']
 
 function colorFor(item: Item, i: number): string {
   if (item.color) return item.color
@@ -60,7 +60,7 @@ function Row({ item, i, max, valueFormat }: { item: Item; i: number; max: number
   return (
     <div className="group flex items-center gap-3 py-1.5">
       <span className="w-28 flex-shrink-0 text-sm text-slate-300 group-hover:text-white transition-colors truncate" title={item.label}>{item.label}</span>
-      <div className="flex-1 h-2.5 rounded-full bg-[#1e2433] overflow-hidden">
+      <div className="flex-1 h-2.5 rounded-full bg-[#2A3648] overflow-hidden">
         <motion.div
           className="h-full rounded-full"
           style={{ background: `linear-gradient(90deg, ${color}cc, ${color})`, boxShadow: `0 0 8px ${color}44` }}
@@ -85,7 +85,7 @@ export default function ProgressBarList({ data }: { title?: string; data: Progre
   const right = twoCol ? items.slice(mid) : []
 
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5 sm:p-6">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5 sm:p-6">
       <div className={twoCol ? 'grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0' : ''}>
         <div>
           {left.map((it, i) => (

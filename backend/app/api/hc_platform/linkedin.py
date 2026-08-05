@@ -502,11 +502,11 @@ def _pdf_to_images(pdf_bytes: bytes, max_pages: int = 20) -> list[bytes]:
 # ---------------------------------------------------------------------------
 _BRAND_BG = (12, 14, 20)          # #0c0e14
 _BRAND_CARD = (19, 23, 32)        # #131720
-_BRAND_ACCENT = (59, 130, 246)    # #3b82f6
-_BRAND_ACCENT_2 = (37, 99, 235)   # #2563eb
-_BRAND_TEXT = (241, 245, 249)     # slate-100
-_BRAND_MUTED = (148, 163, 184)    # slate-400
-_ACCENT_LIGHT = (147, 197, 253)   # blue-300
+_BRAND_ACCENT = (0, 96, 255)      # #0060FF - brand primary
+_BRAND_ACCENT_2 = (46, 125, 250)  # #2E7DFA - action accent
+_BRAND_TEXT = (245, 247, 250)     # #F5F7FA - text-primary
+_BRAND_MUTED = (140, 150, 166)    # #8C96A6 - text-secondary
+_ACCENT_LIGHT = (91, 150, 245)    # #5B96F5 - brand mid
 _BAR_BG = (30, 41, 59)            # slate-800
 _HAIRLINE = (30, 36, 51)          # subtle dividers
 

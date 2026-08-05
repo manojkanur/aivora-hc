@@ -31,13 +31,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full rounded-xl border bg-[#131720] text-white placeholder:text-slate-600',
+              'w-full rounded-xl border bg-[#1B2431] text-white placeholder:text-slate-600',
               'px-4 py-3 text-sm transition-all duration-200',
               'focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60',
               'disabled:opacity-40 disabled:cursor-not-allowed',
               error
                 ? 'border-red-700/60 focus:ring-red-500/60 focus:border-red-500/60'
-                : 'border-[#1e2433] hover:border-[#252d3f]',
+                : 'border-[#2A3648] hover:border-[#252d3f]',
               leftElement && 'pl-9',
               rightElement && 'pr-9',
               className
@@ -80,13 +80,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           className={cn(
-            'w-full rounded-xl border bg-[#131720] text-white placeholder:text-slate-600',
+            'w-full rounded-xl border bg-[#1B2431] text-white placeholder:text-slate-600',
             'px-4 py-3 text-sm transition-all duration-200 resize-none',
             'focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60',
             'disabled:opacity-40 disabled:cursor-not-allowed',
             error
               ? 'border-red-700/60 focus:ring-red-500/60'
-              : 'border-[#1e2433] hover:border-[#252d3f]',
+              : 'border-[#2A3648] hover:border-[#252d3f]',
             className
           )}
           {...props}

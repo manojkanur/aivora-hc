@@ -62,7 +62,7 @@ export default function Gamification() {
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#1e2433]">
+      <div className="flex gap-1 border-b border-[#2A3648]">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -70,7 +70,7 @@ export default function Gamification() {
             className={cn(
               'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
               activeTab === tab.id
-                ? 'border-[#3b82f6] text-white'
+                ? 'border-[#2E7DFA] text-white'
                 : 'border-transparent text-slate-600 hover:text-slate-300'
             )}
           >
@@ -85,9 +85,9 @@ export default function Gamification() {
         <div className="space-y-6">
           {/* Level Card */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2 bg-[#131720] rounded-2xl border border-[#1e2433] p-6">
+            <div className="md:col-span-2 bg-[#1B2431] rounded-2xl border border-[#2A3648] p-6">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-[#3b82f6] text-white flex items-center justify-center text-2xl font-bold">
+                <div className="w-16 h-16 rounded-2xl bg-[#2E7DFA] text-white flex items-center justify-center text-2xl font-bold">
                   {level}
                 </div>
                 <div>
@@ -106,9 +106,9 @@ export default function Gamification() {
                   <span>Progress to Level {level + 1}</span>
                   <span>{Math.round((xp / xpForLevel) * 100)}%</span>
                 </div>
-                <div className="h-3 bg-[#1a1e2e] rounded-full overflow-hidden">
+                <div className="h-3 bg-[#222E3E] rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-[#3b82f6] rounded-full"
+                    className="h-full bg-[#2E7DFA] rounded-full"
                     style={{ width: '0%' }}
                     animate={{ width: `${Math.min((xp / xpForLevel) * 100, 100)}%` }}
                     transition={{ duration: 1, ease: 'easeOut' }}
@@ -117,7 +117,7 @@ export default function Gamification() {
               </div>
             </div>
 
-            <div className="bg-[#131720] rounded-2xl border border-[#1e2433] p-5">
+            <div className="bg-[#1B2431] rounded-2xl border border-[#2A3648] p-5">
               <h3 className="text-sm font-semibold text-slate-300 mb-3">Skill Streaks</h3>
               {streaks.length === 0 ? (
                 <p className="text-sm text-slate-600 text-center py-4">No active streaks</p>
@@ -138,13 +138,13 @@ export default function Gamification() {
           </div>
 
           {/* XP History Chart */}
-          <div className="bg-[#131720] rounded-2xl border border-[#1e2433] p-6">
+          <div className="bg-[#1B2431] rounded-2xl border border-[#2A3648] p-6">
             <h3 className="text-sm font-semibold text-slate-300 mb-4">XP This Week</h3>
             <div className="flex items-end gap-2 h-24">
               {xpHistory.map((val, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div
-                    className="w-full rounded-t-sm bg-[#3b82f6] transition-all"
+                    className="w-full rounded-t-sm bg-[#2E7DFA] transition-all"
                     style={{ height: `${Math.round((val / maxXp) * 80)}px`, minHeight: val > 0 ? '4px' : '0' }}
                   />
                   <span className="text-xs text-slate-600">{days[i]}</span>
@@ -159,20 +159,20 @@ export default function Gamification() {
       {activeTab === 'quests' && (
         <div className="space-y-3">
           {activeQuests.length === 0 ? (
-            <div className="text-center py-16 bg-[#131720] rounded-xl border border-[#1e2433]">
+            <div className="text-center py-16 bg-[#1B2431] rounded-xl border border-[#2A3648]">
               <Star className="w-10 h-10 text-slate-600 mx-auto mb-3" />
               <p className="text-white font-medium">No quests available</p>
               <p className="text-slate-600 text-sm mt-1">Check back soon for new challenges</p>
             </div>
           ) : (
             activeQuests.map(quest => (
-              <div key={quest.id} className="bg-[#131720] rounded-xl border border-[#1e2433] p-5">
+              <div key={quest.id} className="bg-[#1B2431] rounded-xl border border-[#2A3648] p-5">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h3 className="font-semibold text-white">{quest.title}</h3>
                     <p className="text-sm text-slate-600 mt-0.5">{quest.description}</p>
                   </div>
-                  <div className="flex items-center gap-1 bg-[#3b82f6]-light rounded-full px-2.5 py-1 flex-shrink-0">
+                  <div className="flex items-center gap-1 bg-[#2E7DFA]-light rounded-full px-2.5 py-1 flex-shrink-0">
                     <Zap className="w-3.5 h-3.5 text-white" />
                     <span className="text-sm font-bold text-white">+{quest.xp_reward}</span>
                   </div>
@@ -184,7 +184,7 @@ export default function Gamification() {
                   </div>
                   <div className="h-2 bg-border rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#3b82f6] rounded-full transition-all"
+                      className="h-full bg-[#2E7DFA] rounded-full transition-all"
                       style={{ width: `${Math.min((quest.progress / quest.target) * 100, 100)}%` }}
                     />
                   </div>
@@ -204,13 +204,13 @@ export default function Gamification() {
       {activeTab === 'badges' && (
         <div className="space-y-4">
           {/* Rarity Legend */}
-          <div className="flex items-center gap-4 p-4 bg-[#131720] rounded-xl border border-[#1e2433]">
+          <div className="flex items-center gap-4 p-4 bg-[#1B2431] rounded-xl border border-[#2A3648]">
             <span className="text-xs font-semibold text-slate-600">Rarity:</span>
             {[
-              { label: 'Common', color: 'border-[#1e2433]' },
-              { label: 'Rare', color: 'border-[#3b82f6]' },
-              { label: 'Epic', color: 'border-[#3b82f6]' },
-              { label: 'Legendary', color: 'border-[#1e2433]' },
+              { label: 'Common', color: 'border-[#2A3648]' },
+              { label: 'Rare', color: 'border-[#2E7DFA]' },
+              { label: 'Epic', color: 'border-[#2E7DFA]' },
+              { label: 'Legendary', color: 'border-[#2A3648]' },
             ].map(r => (
               <div key={r.label} className="flex items-center gap-1.5">
                 <div className={`w-4 h-4 rounded border-2 ${r.color}`} />
@@ -233,8 +233,8 @@ export default function Gamification() {
                 className={cn(
                   'px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors border',
                   leaderboardPeriod === period
-                    ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
-                    : 'bg-[#131720] text-slate-300 border-[#1e2433] hover:border-[#252d3f]'
+                    ? 'bg-[#2E7DFA] text-white border-[#2E7DFA]'
+                    : 'bg-[#1B2431] text-slate-300 border-[#2A3648] hover:border-[#252d3f]'
                 )}
               >
                 {period === 'all' ? 'All Time' : period.charAt(0).toUpperCase() + period.slice(1)}
@@ -243,16 +243,16 @@ export default function Gamification() {
           </div>
 
           {leaderboard.length === 0 ? (
-            <div className="text-center py-16 bg-[#131720] rounded-xl border border-[#1e2433]">
+            <div className="text-center py-16 bg-[#1B2431] rounded-xl border border-[#2A3648]">
               <Trophy className="w-10 h-10 text-slate-600 mx-auto mb-3" />
               <p className="text-white font-medium">No leaderboard data</p>
               <p className="text-slate-600 text-sm mt-1">Earn XP to appear on the leaderboard</p>
             </div>
           ) : (
-            <div className="bg-[#131720] rounded-xl border border-[#1e2433] overflow-hidden">
+            <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#1e2433] bg-[#0E0E0E]">
+                  <tr className="border-b border-[#2A3648] bg-[#0E0E0E]">
                     <th className="w-16 text-center text-xs font-semibold text-slate-600 px-4 py-3">Rank</th>
                     <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3">User</th>
                     <th className="text-center text-xs font-semibold text-slate-600 px-4 py-3">Level</th>
@@ -265,8 +265,8 @@ export default function Gamification() {
                     <tr
                       key={entry.user_id}
                       className={cn(
-                        'border-b border-[#1e2433] last:border-0 transition-colors',
-                        entry.is_current_user ? 'bg-[#3b82f6]-light' : 'hover:bg-[#0E0E0E]'
+                        'border-b border-[#2A3648] last:border-0 transition-colors',
+                        entry.is_current_user ? 'bg-[#2E7DFA]-light' : 'hover:bg-[#0E0E0E]'
                       )}
                     >
                       <td className="px-4 py-3 text-center">
@@ -281,7 +281,7 @@ export default function Gamification() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xs font-bold">
+                          <div className="w-7 h-7 rounded-full bg-[#2E7DFA] text-white flex items-center justify-center text-xs font-bold">
                             {getInitials(entry.name)}
                           </div>
                           <span className={cn('text-sm font-medium', entry.is_current_user ? 'text-white' : 'text-slate-300')}>

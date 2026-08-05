@@ -85,14 +85,14 @@ export default function ExportsPage() {
             leftElement={<Search className="w-4 h-4" />}
           />
         </div>
-        <div className="flex gap-1 border border-[#1e2433] rounded-lg p-1 bg-[#131720]">
+        <div className="flex gap-1 border border-[#2A3648] rounded-lg p-1 bg-[#1B2431]">
           {['all', 'pptx', 'pdf', 'docx'].map(f => (
             <button
               key={f}
               onClick={() => setFormatFilter(f)}
               className={cn(
                 'px-3 py-1.5 rounded text-xs font-medium uppercase transition-colors',
-                formatFilter === f ? 'bg-[#3b82f6] text-white' : 'text-slate-300 hover:bg-[#1a1e2e]'
+                formatFilter === f ? 'bg-[#2E7DFA] text-white' : 'text-slate-300 hover:bg-[#222E3E]'
               )}
             >
               {f}
@@ -107,7 +107,7 @@ export default function ExportsPage() {
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-[#131720] rounded-xl border border-[#1e2433]">
+        <div className="text-center py-20 bg-[#1B2431] rounded-xl border border-[#2A3648]">
           <Download className="w-12 h-12 text-slate-600 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-white">
             {search || formatFilter !== 'all' ? 'No matching exports' : 'No exports yet'}
@@ -117,10 +117,10 @@ export default function ExportsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-[#131720] rounded-xl border border-[#1e2433] overflow-hidden">
+        <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#1e2433] bg-[#0E0E0E]">
+              <tr className="border-b border-[#2A3648] bg-[#0E0E0E]">
                 <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3">Skill</th>
                 <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3 hidden md:table-cell">Workspace</th>
                 <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3">Format</th>
@@ -134,7 +134,7 @@ export default function ExportsPage() {
                 const fConfig = formatIcons[exp.format]
                 const FIcon = fConfig?.icon || FileText
                 return (
-                  <tr key={exp.id} className="border-b border-[#1e2433] last:border-0 hover:bg-[#0E0E0E] transition-colors">
+                  <tr key={exp.id} className="border-b border-[#2A3648] last:border-0 hover:bg-[#0E0E0E] transition-colors">
                     <td className="px-4 py-3">
                       <span className="text-sm font-medium text-white">{exp.skill_name}</span>
                     </td>
@@ -142,7 +142,7 @@ export default function ExportsPage() {
                       <span className="text-sm text-slate-300">{exp.workspace_name}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border', fConfig?.color || 'bg-[#1a1e2e] text-slate-300 border-[#1e2433]')}>
+                      <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border', fConfig?.color || 'bg-[#222E3E] text-slate-300 border-[#2A3648]')}>
                         <FIcon className="w-3 h-3" />
                         {fConfig?.label || exp.format.toUpperCase()}
                       </span>

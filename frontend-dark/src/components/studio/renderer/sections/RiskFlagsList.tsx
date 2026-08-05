@@ -106,7 +106,7 @@ function RiskRow({ item, index }: { item: RiskFlagItem; index: number }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.25, ease: 'easeOut' }}
-      className={`relative overflow-hidden rounded-xl border border-[#1e2433] ${visual.wash} bg-[#0f1117]/40`}
+      className={`relative overflow-hidden rounded-xl border border-[#2A3648] ${visual.wash} bg-[#0f1117]/40`}
     >
       {/* Severity bar */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${visual.barColor}`} />
@@ -166,7 +166,7 @@ function RiskRow({ item, index }: { item: RiskFlagItem; index: number }) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="mt-3 pt-3 border-t border-[#1e2433] space-y-2">
+                <div className="mt-3 pt-3 border-t border-[#2A3648] space-y-2">
                   {item.mitigation && (
                     <div className="flex items-start gap-2">
                       <ShieldCheck className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
@@ -234,7 +234,7 @@ export function riskflagslist({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ export function riskflagslist({
       )}
 
       {footnote && (
-        <p className="text-[11px] text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[#1e2433]">
+        <p className="text-[11px] text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[#2A3648]">
           {footnote}
         </p>
       )}

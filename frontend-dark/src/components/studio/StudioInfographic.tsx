@@ -137,7 +137,7 @@ function ExecutiveSummary({ text }: { text: string }) {
     <motion.section
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-[#0c0e14] p-5 sm:p-6"
+      className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-[#0B1220] p-5 sm:p-6"
     >
       <SectionBanner Icon={Compass}>Executive summary</SectionBanner>
       <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{text}</p>
@@ -148,12 +148,12 @@ function ExecutiveSummary({ text }: { text: string }) {
 function MaturityScore({ data }: { data: { score: number; level: string } }) {
   const pct = Math.min(100, Math.max(0, (data.score / 5) * 100))
   return (
-    <section className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-5">
+    <section className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-5">
       <SectionBanner Icon={Award} accent="amber">Overall maturity</SectionBanner>
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="relative w-32 h-32 flex-shrink-0">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="#1e2433" strokeWidth="8" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#2A3648" strokeWidth="8" />
             <circle cx="50" cy="50" r="42" fill="none" stroke="#f59e0b" strokeWidth="8" strokeLinecap="round"
               strokeDasharray={`${(pct / 100) * 264} 264`} />
           </svg>
@@ -182,7 +182,7 @@ function FindingsBlock({ title, items }: { title: string; items: string[] }) {
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
-            className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 flex gap-3"
+            className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 flex gap-3"
           >
             <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-300 flex-shrink-0">
               {i + 1}
@@ -214,7 +214,7 @@ function RecommendationsBlock({ title, items }: { title: string; items: Json[] }
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
-              className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4"
+              className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4"
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex-1">
@@ -228,9 +228,9 @@ function RecommendationsBlock({ title, items }: { title: string; items: Json[] }
                 )}
               </div>
               {(actions.length > 0 || timeline) && (
-                <div className="mt-3 pt-3 border-t border-[#1e2433] flex flex-wrap gap-2">
+                <div className="mt-3 pt-3 border-t border-[#2A3648] flex flex-wrap gap-2">
                   {timeline && (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 bg-[#0c0e14] border border-[#1e2433] px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 bg-[#0B1220] border border-[#2A3648] px-2.5 py-1 rounded-full">
                       <Calendar className="w-3 h-3" /> {timeline}
                     </span>
                   )}
@@ -278,7 +278,7 @@ function PillarsBlock({ title, items }: { title: string; items: Json[] | Json })
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4"
+            className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4"
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] uppercase tracking-widest font-bold text-violet-300 bg-violet-500/10 border border-violet-500/30 px-2 py-0.5 rounded-full">{String(i + 1).padStart(2, '0')}</span>
@@ -326,7 +326,7 @@ function RoadmapBlock({ title, items }: { title: string; items: Json[] }) {
                 <div className="absolute left-0 top-2 w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold text-emerald-300">
                   {i + 1}
                 </div>
-                <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4">
+                <div className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h4 className="text-sm font-semibold text-white">{phase}</h4>
                     {timeline && timeline !== phase && (
@@ -344,7 +344,7 @@ function RoadmapBlock({ title, items }: { title: string; items: Json[] }) {
                     </ul>
                   )}
                   {outcome && (
-                    <div className="mt-2 pt-2 border-t border-[#1e2433] text-[11px] text-slate-400">
+                    <div className="mt-2 pt-2 border-t border-[#2A3648] text-[11px] text-slate-400">
                       <span className="text-emerald-300">Outcome:</span> {outcome}
                     </div>
                   )}
@@ -366,7 +366,7 @@ function MetricsBlock({ title, items }: { title: string; items: string[] | Json[
         {items.map((m, i) => {
           if (typeof m === 'string') {
             return (
-              <div key={i} className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4">
+              <div key={i} className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4">
                 <div className="text-[10px] uppercase tracking-widest text-blue-300 font-bold mb-1">Metric {i + 1}</div>
                 <div className="text-xs text-white leading-snug">{m}</div>
               </div>
@@ -377,7 +377,7 @@ function MetricsBlock({ title, items }: { title: string; items: string[] | Json[
           const target = asString(m.target ?? m.top_quartile ?? '')
           const median = asString(m.industry_median ?? '')
           return (
-            <div key={i} className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4">
+            <div key={i} className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4">
               <div className="text-[10px] uppercase tracking-widest text-blue-300 font-bold mb-1">{metric}</div>
               {baseline && <div className="text-xs text-slate-500">Now: <span className="text-white tabular-nums">{baseline}</span></div>}
               {median && <div className="text-xs text-slate-500">Median: <span className="text-slate-300 tabular-nums">{median}</span></div>}
@@ -394,7 +394,7 @@ function DimensionScores({ items }: { items: Json[] }) {
   return (
     <section>
       <SectionBanner Icon={Layers} accent="violet">Dimension scores</SectionBanner>
-      <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4 space-y-3">
+      <div className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4 space-y-3">
         {items.map((d, i) => {
           const dim = asString(d.dimension ?? '')
           const score = typeof d.score === 'number' ? d.score : Number(d.score) || 0
@@ -411,7 +411,7 @@ function DimensionScores({ items }: { items: Json[] }) {
                 </div>
                 <div className="text-sm font-bold text-white tabular-nums">{score.toFixed(1)}<span className="text-[10px] text-slate-500"> / 5</span></div>
               </div>
-              <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+              <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
                 <div className={cn('h-full rounded-full', cls)} style={{ width: `${pct}%` }} />
               </div>
             </div>
@@ -424,7 +424,7 @@ function DimensionScores({ items }: { items: Json[] }) {
 
 function GenericCard({ title, value }: { title: string; value: unknown }) {
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-4">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-4">
       <div className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">{title}</div>
       {typeof value === 'string' ? (
         <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{value}</p>
@@ -433,7 +433,7 @@ function GenericCard({ title, value }: { title: string; value: unknown }) {
           {value.map((s, i) => <li key={i} className="text-xs text-slate-300 flex gap-2"><span className="text-slate-600">{i + 1}.</span><span className="leading-relaxed">{s}</span></li>)}
         </ul>
       ) : (
-        <pre className="text-[11px] text-slate-400 bg-[#0c0e14] border border-[#1e2433] rounded-lg p-2 overflow-auto max-h-48 whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
+        <pre className="text-[11px] text-slate-400 bg-[#0B1220] border border-[#2A3648] rounded-lg p-2 overflow-auto max-h-48 whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
       )}
     </div>
   )

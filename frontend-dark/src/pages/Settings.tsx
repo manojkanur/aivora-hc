@@ -88,8 +88,8 @@ export default function Settings() {
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
                   activeTab === tab.id
-                    ? 'bg-[#3b82f6] text-white'
-                    : 'text-slate-300 hover:bg-[#1a1e2e]'
+                    ? 'bg-[#2E7DFA] text-white'
+                    : 'text-slate-300 hover:bg-[#222E3E]'
                 )}
               >
                 <tab.icon className="w-4 h-4 flex-shrink-0" />
@@ -102,11 +102,11 @@ export default function Settings() {
         {/* Content */}
         <div className="flex-1 min-w-0">
           {activeTab === 'profile' && (
-            <div className="bg-[#131720] rounded-xl border border-[#1e2433] p-6 space-y-5">
+            <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] p-6 space-y-5">
               <h2 className="font-semibold text-white">Profile Settings</h2>
 
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xl font-bold flex-shrink-0">
+                <div className="w-16 h-16 rounded-full bg-[#2E7DFA] text-white flex items-center justify-center text-xl font-bold flex-shrink-0">
                   {getInitials(user?.name || 'U')}
                 </div>
                 <div>
@@ -139,7 +139,7 @@ export default function Settings() {
                 <h2 className="font-semibold text-white">Brand Kits</h2>
                 <Button size="sm" leftIcon={<Plus className="w-4 h-4" />}>New Brand Kit</Button>
               </div>
-              <div className="text-center py-16 bg-[#131720] rounded-xl border border-[#1e2433]">
+              <div className="text-center py-16 bg-[#1B2431] rounded-xl border border-[#2A3648]">
                 <Palette className="w-10 h-10 text-slate-600 mx-auto mb-3" />
                 <p className="text-white font-medium">No brand kits yet</p>
                 <p className="text-slate-600 text-sm mt-1">Create brand kits to customize your export styles</p>
@@ -156,9 +156,9 @@ export default function Settings() {
                 </Button>
               </div>
 
-              <div className="bg-[#131720] rounded-xl border border-[#1e2433] overflow-hidden">
+              <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] overflow-hidden">
                 <div className="flex items-center gap-3 px-5 py-4">
-                  <div className="w-9 h-9 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#2E7DFA] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                     {getInitials(user?.name || 'U')}
                   </div>
                   <div className="flex-1">
@@ -189,8 +189,8 @@ export default function Settings() {
                           className={cn(
                             'px-3 py-1.5 rounded-lg text-sm border capitalize transition-colors',
                             inviteRole === role
-                              ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
-                              : 'bg-[#131720] text-slate-300 border-[#1e2433] hover:border-[#252d3f]'
+                              ? 'bg-[#2E7DFA] text-white border-[#2E7DFA]'
+                              : 'bg-[#1B2431] text-slate-300 border-[#2A3648] hover:border-[#252d3f]'
                           )}
                         >
                           {role}
@@ -209,7 +209,7 @@ export default function Settings() {
 
 
           {activeTab === 'notifications' && (
-            <div className="bg-[#131720] rounded-xl border border-[#1e2433] p-6 space-y-5">
+            <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] p-6 space-y-5">
               <h2 className="font-semibold text-white">Notification Preferences</h2>
               <div className="space-y-4">
                 {[
@@ -219,7 +219,7 @@ export default function Settings() {
                   { key: 'billing' as const, label: 'Billing Alerts', desc: 'Credit usage and billing updates' },
                   { key: 'weekly_summary' as const, label: 'Weekly Summary', desc: 'Weekly progress email' },
                 ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-3 border-b border-[#1e2433] last:border-0">
+                  <div key={item.key} className="flex items-center justify-between py-3 border-b border-[#2A3648] last:border-0">
                     <div>
                       <p className="text-sm font-medium text-white">{item.label}</p>
                       <p className="text-xs text-slate-600">{item.desc}</p>
@@ -228,11 +228,11 @@ export default function Settings() {
                       onClick={() => setNotifications(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
                       className={cn(
                         'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-                        notifications[item.key] ? 'bg-[#3b82f6]' : 'bg-border'
+                        notifications[item.key] ? 'bg-[#2E7DFA]' : 'bg-border'
                       )}
                     >
                       <div className={cn(
-                        'absolute top-1 w-4 h-4 rounded-full bg-[#131720] shadow transition-transform',
+                        'absolute top-1 w-4 h-4 rounded-full bg-[#1B2431] shadow transition-transform',
                         notifications[item.key] ? 'translate-x-6' : 'translate-x-1'
                       )} />
                     </button>
@@ -245,7 +245,7 @@ export default function Settings() {
 
           {activeTab === 'security' && (
             <div className="space-y-4">
-              <div className="bg-[#131720] rounded-xl border border-[#1e2433] p-6 space-y-4">
+              <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] p-6 space-y-4">
                 <h2 className="font-semibold text-white">Change Password</h2>
                 <Input
                   label="Current Password"
@@ -268,9 +268,9 @@ export default function Settings() {
                 <Button onClick={handleChangePassword}>Update Password</Button>
               </div>
 
-              <div className="bg-[#131720] rounded-xl border border-red-200 p-6 space-y-3">
+              <div className="bg-[#1B2431] rounded-xl border border-red-200 p-6 space-y-3">
                 <h2 className="font-semibold text-red-700">Danger Zone</h2>
-                <div className="flex items-center justify-between py-3 border-b border-[#1e2433]">
+                <div className="flex items-center justify-between py-3 border-b border-[#2A3648]">
                   <div>
                     <p className="text-sm font-medium text-white">Export All Data</p>
                     <p className="text-xs text-slate-600">Download a copy of all your data</p>

@@ -67,7 +67,7 @@ const categoryLabels: Record<StudioCategory, string> = {
 
 const tierColors: Record<string, { badge: string; glow: string }> = {
   starter:      { badge: 'bg-slate-500/10 text-slate-400 border-slate-500/20',  glow: '' },
-  professional: { badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',     glow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]' },
+  professional: { badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',     glow: 'hover:shadow-[0_0_20px_rgba(46,125,250,0.08)]' },
   enterprise:   { badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20', glow: 'hover:shadow-[0_0_20px_rgba(139,92,246,0.08)]' },
   advisory:     { badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',   glow: 'hover:shadow-[0_0_20px_rgba(245,158,11,0.08)]' },
 }
@@ -116,7 +116,7 @@ export default function SkillsMarketplace() {
           { label: 'Output formats', value: 3, color: 'text-cyan-400' },
           { label: 'Coming soon', value: counts.coming, color: 'text-amber-400' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border border-[#1e2433] bg-[#0f1117] p-3 text-center">
+          <div key={s.label} className="rounded-xl border border-[#2A3648] bg-[#0f1117] p-3 text-center">
             <div className={cn('text-xl font-bold tabular-nums', s.color)}>{s.value}</div>
             <div className="text-[11px] text-slate-600 mt-0.5">{s.label}</div>
           </div>
@@ -133,7 +133,7 @@ export default function SkillsMarketplace() {
             leftElement={<Search className="w-4 h-4" />}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-xl border border-[#1e2433] bg-[#0f1117] overflow-x-auto">
+        <div className="flex gap-1 p-1 rounded-xl border border-[#2A3648] bg-[#0f1117] overflow-x-auto">
           {(Object.entries(categoryLabels) as [StudioCategory, string][]).map(([k, v]) => (
             <button key={k} onClick={() => setCategory(k)}
               className={cn('px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
@@ -142,7 +142,7 @@ export default function SkillsMarketplace() {
             </button>
           ))}
         </div>
-        <div className="flex gap-1 p-1 rounded-xl border border-[#1e2433] bg-[#0f1117] overflow-x-auto">
+        <div className="flex gap-1 p-1 rounded-xl border border-[#2A3648] bg-[#0f1117] overflow-x-auto">
           {(['all', 'starter', 'professional', 'enterprise', 'advisory'] as TierFilter[]).map(t => (
             <button key={t} onClick={() => setTier(t)}
               className={cn('px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-colors',
@@ -159,7 +159,7 @@ export default function SkillsMarketplace() {
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#1e2433] py-20 text-center">
+        <div className="rounded-2xl border border-dashed border-[#2A3648] py-20 text-center">
           <Sparkles className="w-10 h-10 text-slate-700 mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-400">No studios match your filters</p>
           <button onClick={() => { setSearch(''); setCategory('all'); setTier('all') }} className="text-xs text-blue-400 hover:text-blue-300 mt-1.5 transition-colors">Clear filters</button>
@@ -183,8 +183,8 @@ export default function SkillsMarketplace() {
                 className={cn(
                   'group relative text-left p-4 rounded-xl border bg-[#0f1117] transition-all duration-200',
                   isLocked
-                    ? 'border-[#1e2433] opacity-60 cursor-not-allowed'
-                    : 'border-[#1e2433] hover:border-[#252d3f] hover:bg-[#111520] cursor-pointer',
+                    ? 'border-[#2A3648] opacity-60 cursor-not-allowed'
+                    : 'border-[#2A3648] hover:border-[#252d3f] hover:bg-[#111520] cursor-pointer',
                   tc.glow
                 )}
               >
@@ -199,7 +199,7 @@ export default function SkillsMarketplace() {
                 <div className="flex items-start justify-between mb-3">
                   <div className={cn(
                     'w-9 h-9 rounded-lg border flex items-center justify-center transition-colors',
-                    isLocked ? 'bg-[#1a1e2e] border-[#1e2433]' : `${tc.badge.includes('blue') ? 'bg-blue-500/10 border-blue-500/20' : tc.badge.includes('violet') ? 'bg-violet-500/10 border-violet-500/20' : tc.badge.includes('amber') ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-500/10 border-slate-500/20'} group-hover:scale-105`
+                    isLocked ? 'bg-[#222E3E] border-[#2A3648]' : `${tc.badge.includes('blue') ? 'bg-blue-500/10 border-blue-500/20' : tc.badge.includes('violet') ? 'bg-violet-500/10 border-violet-500/20' : tc.badge.includes('amber') ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-500/10 border-slate-500/20'} group-hover:scale-105`
                   )}>
                     {isLocked
                       ? <Lock className="w-4 h-4 text-slate-600" />

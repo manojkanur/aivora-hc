@@ -201,7 +201,7 @@ function ChipGroup<T extends string>({ label, description, options, labels, valu
         {options.map(opt => (
           <button key={opt} type="button" onClick={() => toggle(opt)}
             className={cn('px-3.5 py-2 rounded-xl text-sm font-medium border transition-all',
-              value.includes(opt) ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]' : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]')}>
+              value.includes(opt) ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(46,125,250,0.15)]' : 'bg-[#1B2431] border-[#2A3648] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]')}>
             {labels[opt]}
           </button>
         ))}
@@ -209,7 +209,7 @@ function ChipGroup<T extends string>({ label, description, options, labels, valu
       {showOther && (
         <textarea value={otherValue ?? ''} onChange={e => onOtherText!(e.target.value)} rows={2}
           placeholder={`Describe your other ${label.toLowerCase()}...`}
-          className="w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none" />
+          className="w-full rounded-xl bg-[#0B1220] border border-[#2A3648] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none" />
       )}
     </div>
   )
@@ -220,8 +220,8 @@ function SelectField<T extends string>({ label, options, labels, value, onChange
     <div className="space-y-2">
       <label className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value as T)}
-        className="w-full rounded-xl border border-[#1e2433] bg-[#131720] text-white px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 hover:border-[#2a3048] transition-all">
-        {options.map(opt => <option key={opt} value={opt} className="bg-[#131720]">{labels[opt]}</option>)}
+        className="w-full rounded-xl border border-[#2A3648] bg-[#1B2431] text-white px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 hover:border-[#2a3048] transition-all">
+        {options.map(opt => <option key={opt} value={opt} className="bg-[#1B2431]">{labels[opt]}</option>)}
       </select>
     </div>
   )
@@ -278,7 +278,7 @@ function StepSituation({ value, onChange }: { value: BusinessSituation; onChange
         <div className="space-y-1.5 flex flex-col justify-end">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Board visibility</label>
           <button type="button" onClick={() => p('boardVisibility', !value.boardVisibility)}
-            className={cn('flex items-center gap-2 px-4 py-3 rounded-xl border text-sm transition-all', value.boardVisibility ? 'border-blue-500/60 bg-blue-600/20 text-blue-300' : 'border-[#1e2433] bg-[#131720] text-slate-400 hover:border-[#252d3f]')}>
+            className={cn('flex items-center gap-2 px-4 py-3 rounded-xl border text-sm transition-all', value.boardVisibility ? 'border-blue-500/60 bg-blue-600/20 text-blue-300' : 'border-[#2A3648] bg-[#1B2431] text-slate-400 hover:border-[#252d3f]')}>
             <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center', value.boardVisibility ? 'border-blue-500 bg-blue-600' : 'border-slate-600')}>
               {value.boardVisibility && <Check className="w-2.5 h-2.5 text-white" />}
             </div>
@@ -325,7 +325,7 @@ function StepHcChallenges({ value, onChange }: { value: HcChallenges; onChange: 
         {areas.map(area => (
           <button key={area} type="button" onClick={() => toggleArea(area)}
             className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
-              selectedAreaIds.includes(area) ? 'bg-blue-600/20 border-blue-500/60 text-blue-300' : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#252d3f] hover:text-slate-300')}>
+              selectedAreaIds.includes(area) ? 'bg-blue-600/20 border-blue-500/60 text-blue-300' : 'bg-[#1B2431] border-[#2A3648] text-slate-400 hover:border-[#252d3f] hover:text-slate-300')}>
             {HC_AREA_LABELS[area]}
           </button>
         ))}
@@ -335,13 +335,13 @@ function StepHcChallenges({ value, onChange }: { value: HcChallenges; onChange: 
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Selected areas: set severity</p>
           {value.selectedAreas.map(sel => (
-            <div key={sel.area} className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-3 space-y-2">
+            <div key={sel.area} className="rounded-xl border border-[#2A3648] bg-[#0a0c12] p-3 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-white">{HC_AREA_LABELS[sel.area]}</span>
                 <div className="flex gap-1">
                   {(['watch', 'moderate', 'high', 'critical'] as ChallengeSeverity[]).map(sev => (
                     <button key={sev} type="button" onClick={() => updateSeverity(sel.area, sev)}
-                      className={cn('px-2 py-0.5 rounded text-[10px] font-semibold border transition-all', sel.severity === sev ? `bg-current/10 ${severityColors[sev]}` : 'border-[#1e2433] text-slate-600 hover:border-[#252d3f]')}>
+                      className={cn('px-2 py-0.5 rounded text-[10px] font-semibold border transition-all', sel.severity === sev ? `bg-current/10 ${severityColors[sev]}` : 'border-[#2A3648] text-slate-600 hover:border-[#252d3f]')}>
                       {SEVERITY_LABELS[sev]}
                     </button>
                   ))}
@@ -349,7 +349,7 @@ function StepHcChallenges({ value, onChange }: { value: HcChallenges; onChange: 
               </div>
               <input type="text" placeholder="Notes (optional)" value={sel.notes}
                 onChange={e => updateAreaNotes(sel.area, e.target.value)}
-                className="w-full rounded-lg border border-[#1e2433] bg-[#131720] text-white placeholder:text-slate-600 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60" />
+                className="w-full rounded-lg border border-[#2A3648] bg-[#1B2431] text-white placeholder:text-slate-600 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60" />
             </div>
           ))}
         </div>
@@ -423,7 +423,7 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
           </button>
         </div>
         {questions.length === 0 && (
-          <div className="rounded-xl border border-dashed border-[#1e2433] p-4 space-y-3">
+          <div className="rounded-xl border border-dashed border-[#2A3648] p-4 space-y-3">
             <p className="text-xs text-slate-500">Tap a suggestion to add it - based on the challenges you selected:</p>
             <div className="flex flex-wrap gap-2">
               {suggestedQuestions.map(sq => (
@@ -436,14 +436,14 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
           </div>
         )}
         {questions.map((q, i) => (
-          <div key={q.id} className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-3 space-y-2">
+          <div key={q.id} className="rounded-xl border border-[#2A3648] bg-[#0a0c12] p-3 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Q{i + 1}</span>
               <button type="button" onClick={() => removeQ(q.id)} className="text-slate-600 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
             </div>
             <textarea placeholder="What specific question must this engagement answer?" value={q.questionText}
               onChange={e => updateQ(q.id, 'questionText', e.target.value)} rows={2}
-              className="w-full rounded-lg border border-[#1e2433] bg-[#131720] text-white placeholder:text-slate-600 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 resize-none" />
+              className="w-full rounded-lg border border-[#2A3648] bg-[#1B2431] text-white placeholder:text-slate-600 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 resize-none" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <SelectField label="Audience" options={Object.keys(ADV_AUDIENCE_LABELS) as AdvisoryAudience[]} labels={ADV_AUDIENCE_LABELS} value={q.audience as AdvisoryAudience} onChange={v => updateQ(q.id, 'audience', v)} />
               <SelectField label="Urgency" options={Object.keys(ADV_URGENCY_LABELS) as AdvisoryUrgency[]} labels={ADV_URGENCY_LABELS} value={q.urgency as AdvisoryUrgency} onChange={v => updateQ(q.id, 'urgency', v)} />
@@ -464,11 +464,11 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
         {cnst.constraints.map(c => (
           <div key={c.id} className="flex gap-2">
             <select value={c.type} onChange={e => updateC(c.id, 'type', e.target.value)}
-              className="rounded-xl border border-[#1e2433] bg-[#131720] text-white px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60 w-32 flex-shrink-0">
-              {(Object.keys(CONSTRAINT_TYPE_LABELS) as ConstraintType[]).map(t => <option key={t} value={t} className="bg-[#131720]">{CONSTRAINT_TYPE_LABELS[t]}</option>)}
+              className="rounded-xl border border-[#2A3648] bg-[#1B2431] text-white px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60 w-32 flex-shrink-0">
+              {(Object.keys(CONSTRAINT_TYPE_LABELS) as ConstraintType[]).map(t => <option key={t} value={t} className="bg-[#1B2431]">{CONSTRAINT_TYPE_LABELS[t]}</option>)}
             </select>
             <input placeholder="Describe the constraint..." value={c.description} onChange={e => updateC(c.id, 'description', e.target.value)}
-              className="flex-1 rounded-xl border border-[#1e2433] bg-[#131720] text-white placeholder:text-slate-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60" />
+              className="flex-1 rounded-xl border border-[#2A3648] bg-[#1B2431] text-white placeholder:text-slate-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60" />
             <button type="button" onClick={() => removeC(c.id)} className="text-slate-600 hover:text-red-400 transition-colors px-2"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
@@ -484,7 +484,7 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
         {cnst.assumptions.map(a => (
           <div key={a.id} className="flex gap-2">
             <input placeholder="Describe the assumption..." value={a.description} onChange={e => updateA(a.id, e.target.value)}
-              className="flex-1 rounded-xl border border-[#1e2433] bg-[#131720] text-white placeholder:text-slate-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60" />
+              className="flex-1 rounded-xl border border-[#2A3648] bg-[#1B2431] text-white placeholder:text-slate-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60" />
             <button type="button" onClick={() => removeA(a.id)} className="text-slate-600 hover:text-red-400 transition-colors px-2"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
@@ -500,7 +500,7 @@ function StepAdvisoryQuestions({ questions, constraints: cnst, selectedAreas, on
 
 function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2.5 border-b border-[#1a1e2e] last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2.5 border-b border-[#222E3E] last:border-0">
       <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 sm:w-40 flex-shrink-0 pt-0.5">{label}</p>
       <div className="text-sm text-slate-200 flex-1 min-w-0">{children}</div>
     </div>
@@ -513,7 +513,7 @@ function Chips({ items, tone = 'slate' }: { items: string[]; tone?: 'slate' | 'b
     ? 'bg-blue-500/10 border-blue-500/20 text-blue-300'
     : tone === 'amber'
       ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-      : 'bg-[#1e2433] border-[#2a3048] text-slate-300'
+      : 'bg-[#2A3648] border-[#2a3048] text-slate-300'
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((t, i) => <span key={i} className={cn('text-xs px-2.5 py-1 rounded-full border capitalize', cls)}>{t}</span>)}
@@ -560,7 +560,7 @@ function StepBriefSummary({ brief, onboarding, workspaceName }: {
         </div>
         {aiNote === null ? (
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <span className="w-4 h-4 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+            <span className="w-4 h-4 rounded-full border-2 border-[#2A3648] border-t-blue-500 animate-spin" />
             Reviewing what you shared...
           </div>
         ) : (
@@ -573,7 +573,7 @@ function StepBriefSummary({ brief, onboarding, workspaceName }: {
       </div>
 
       {/* Structured data recap */}
-      <div className="rounded-xl border border-[#1a1e2e] bg-[#0a0c12] p-5">
+      <div className="rounded-xl border border-[#222E3E] bg-[#0a0c12] p-5">
         <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Engagement profile</p>
         <SummaryRow label="Organization">{[workspaceName || org.organizationName, ORG_INDUSTRY_LABELS[org.industry], ORG_REGION_LABELS[org.region], ORG_SIZE_LABELS[org.organizationSize]].filter(Boolean).join(' · ')}</SummaryRow>
         <SummaryRow label="Situation">{brief.businessSituation.situationSummary || <span className="text-slate-500">Not provided</span>}</SummaryRow>
@@ -815,7 +815,7 @@ export default function ChallengeBrief() {
   }
 
   return (
-    <div className="min-h-full bg-[#0c0e14]">
+    <div className="min-h-full bg-[#0B1220]">
       <div className="flex flex-col items-center px-4 sm:px-6 py-8 sm:py-12">
         <div className="w-full max-w-5xl space-y-6">
           {/* Back to workspace */}
@@ -869,9 +869,9 @@ export default function ChallengeBrief() {
                 <div key={s.id} className="flex items-center gap-1.5">
                   <button type="button" onClick={() => isDone && setStepIndex(i)}
                     className={cn('inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all',
-                      isActive ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_14px_rgba(59,130,246,0.35)]' :
+                      isActive ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_14px_rgba(46,125,250,0.35)]' :
                       isDone ? 'bg-blue-600/12 border-blue-500/30 text-blue-400 cursor-pointer hover:bg-blue-600/20' :
-                      'bg-[#131720] border-[#1e2433] text-slate-500 cursor-default')}>
+                      'bg-[#1B2431] border-[#2A3648] text-slate-500 cursor-default')}>
                     {isDone ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                     <span className="hidden sm:inline">{s.shortLabel}</span>
                     <span className="sm:hidden">{i + 1}</span>
@@ -883,7 +883,7 @@ export default function ChallengeBrief() {
           </div>
 
           {/* Progress */}
-          <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
               animate={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
@@ -892,7 +892,7 @@ export default function ChallengeBrief() {
           </div>
 
           {/* Step body */}
-          <div className="rounded-2xl border border-[#1a1e2e] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
+          <div className="rounded-2xl border border-[#222E3E] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18 }}>
                 {stepIndex === 0 && <StepSituation value={brief.businessSituation} onChange={v => updateBrief({ ...brief, businessSituation: v })} />}

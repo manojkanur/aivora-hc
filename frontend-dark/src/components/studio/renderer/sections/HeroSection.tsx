@@ -14,7 +14,7 @@ export default function HeroSection({ title, data }: { title?: string; data: Her
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1e2433] bg-gradient-to-br from-[#0f1117] to-[#131720] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]"
+      className="rounded-2xl border border-[#2A3648] bg-gradient-to-br from-[#0f1117] to-[#1B2431] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]"
     >
       {data.eyebrow && (
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 mb-4">
@@ -35,7 +35,7 @@ export default function HeroSection({ title, data }: { title?: string; data: Her
           {data.highlights.map((h, i) => (
             <span
               key={i}
-              className="px-3 py-1 rounded-md border border-[#1e2433] bg-[#0c0e14] text-xs text-slate-300"
+              className="px-3 py-1 rounded-md border border-[#2A3648] bg-[#0B1220] text-xs text-slate-300"
             >
               {h}
             </span>

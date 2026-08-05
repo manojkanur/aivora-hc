@@ -25,16 +25,16 @@ interface HorizontalBarChartProps {
   footnote?: string
 }
 
-const ACCENT = '#3b82f6'
+const ACCENT = '#2E7DFA'
 
 const SENTIMENT_COLOR: Record<
   NonNullable<HorizontalBarChartData['items'][number]['sentiment']>,
   string
 > = {
-  good: '#10b981',
-  warning: '#f59e0b',
-  bad: '#f43f5e',
-  neutral: '#64748b',
+  good: '#2E9E5B',
+  warning: '#C97A1E',
+  bad: '#D14343',
+  neutral: '#8C96A6',
 }
 
 function formatValue(
@@ -147,7 +147,7 @@ export function horizontalbarchart({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -275,7 +275,7 @@ function BarsSvg({
                 className="absolute top-0 bottom-0 border-l border-dashed"
                 style={{
                   left: `calc(${p * 100}% )`,
-                  borderColor: '#1e2433',
+                  borderColor: '#2A3648',
                 }}
               />
             ))}
@@ -295,7 +295,7 @@ function BarsSvg({
                 style={{ borderColor: 'rgba(226,232,240,0.55)', transform: 'translateX(-1px)' }}
               />
               <div
-                className="absolute -top-1 -translate-x-1/2 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#0f1117] border border-[#1e2433] text-slate-300 whitespace-nowrap"
+                className="absolute -top-1 -translate-x-1/2 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#0f1117] border border-[#2A3648] text-slate-300 whitespace-nowrap"
               >
                 Benchmark {formatValue(benchmark, valueFormat)}
               </div>

@@ -62,15 +62,15 @@ export function ExportToolbar({ draftId, brandKits = [], onExported }: ExportToo
         <div className="relative">
           <button
             onClick={() => setShowBrandKitMenu(!showBrandKitMenu)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#1e2433] bg-[#131720] text-sm text-slate-300 hover:bg-[#1a1e2e] hover:border-[#252d3f] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#2A3648] bg-[#1B2431] text-sm text-slate-300 hover:bg-[#222E3E] hover:border-[#252d3f] transition-colors"
           >
             <span>{selectedBrandKit ? brandKits.find(b => b.id === selectedBrandKit)?.name : 'Brand Kit'}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
           {showBrandKitMenu && (
-            <div className="absolute top-full left-0 mt-1 bg-[#131720] border border-[#1e2433] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] z-20 min-w-[160px] py-1">
+            <div className="absolute top-full left-0 mt-1 bg-[#1B2431] border border-[#2A3648] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] z-20 min-w-[160px] py-1">
               <button
-                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-[#1a1e2e]"
+                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-[#222E3E]"
                 onClick={() => { setSelectedBrandKit(''); setShowBrandKitMenu(false) }}
               >
                 Default
@@ -79,7 +79,7 @@ export function ExportToolbar({ draftId, brandKits = [], onExported }: ExportToo
                 <button
                   key={kit.id}
                   className={cn(
-                    'w-full text-left px-3 py-2 text-sm hover:bg-[#1a1e2e]',
+                    'w-full text-left px-3 py-2 text-sm hover:bg-[#222E3E]',
                     selectedBrandKit === kit.id ? 'text-white font-medium' : 'text-slate-300'
                   )}
                   onClick={() => { setSelectedBrandKit(kit.id); setShowBrandKitMenu(false) }}
@@ -106,7 +106,7 @@ export function ExportToolbar({ draftId, brandKits = [], onExported }: ExportToo
             >
               {config.label}
             </Button>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#131720] text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1B2431] text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
               {config.credits} credits
             </div>
           </div>

@@ -14,7 +14,7 @@ const LIKERT_LABELS = ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Str
 
 export function QuestionCard({ question, value, onChange, index, total }: QuestionCardProps) {
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-6">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6">
       {typeof index === 'number' && typeof total === 'number' && (
         <div className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
           Question {index + 1} of {total}
@@ -34,8 +34,8 @@ export function QuestionCard({ question, value, onChange, index, total }: Questi
                 className={cn(
                   'rounded-xl border px-3 py-3 text-xs font-medium transition-all',
                   selected
-                    ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,0.35)]'
-                    : 'border-[#1e2433] bg-[#0c0e14] text-slate-400 hover:border-blue-500/40 hover:text-slate-200',
+                    ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(46,125,250,0.35)]'
+                    : 'border-[#2A3648] bg-[#0B1220] text-slate-400 hover:border-blue-500/40 hover:text-slate-200',
                 )}
               >
                 <div className="text-lg font-semibold text-white mb-1">{v}</div>
@@ -58,7 +58,7 @@ export function QuestionCard({ question, value, onChange, index, total }: Questi
                   'w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all',
                   selected
                     ? 'border-blue-500 bg-blue-500/10 text-white'
-                    : 'border-[#1e2433] bg-[#0c0e14] text-slate-300 hover:border-blue-500/40 hover:text-white',
+                    : 'border-[#2A3648] bg-[#0B1220] text-slate-300 hover:border-blue-500/40 hover:text-white',
                 )}
               >
                 <span className="text-sm">{opt.label}</span>
@@ -86,7 +86,7 @@ export function QuestionCard({ question, value, onChange, index, total }: Questi
                   'w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all',
                   selected
                     ? 'border-blue-500 bg-blue-500/10 text-white'
-                    : 'border-[#1e2433] bg-[#0c0e14] text-slate-300 hover:border-blue-500/40 hover:text-white',
+                    : 'border-[#2A3648] bg-[#0B1220] text-slate-300 hover:border-blue-500/40 hover:text-white',
                 )}
               >
                 <span className="text-sm">{opt.label}</span>

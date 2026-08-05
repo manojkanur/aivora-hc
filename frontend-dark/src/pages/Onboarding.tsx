@@ -173,8 +173,8 @@ function ChipGroup<T extends string>({
             className={cn(
               'px-3.5 py-2 rounded-xl text-sm font-medium border transition-all',
               value.includes(opt)
-                ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
-                : 'bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]'
+                ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_0_1px_rgba(46,125,250,0.15)]'
+                : 'bg-[#1B2431] border-[#2A3648] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 hover:bg-[#161b28]'
             )}>
             {labels[opt]}
           </button>
@@ -186,7 +186,7 @@ function ChipGroup<T extends string>({
           onChange={e => onOtherText!(e.target.value)}
           rows={2}
           placeholder={`Describe your other ${label.toLowerCase()}...`}
-          className="w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+          className="w-full rounded-xl bg-[#0B1220] border border-[#2A3648] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
         />
       )}
     </div>
@@ -210,13 +210,13 @@ function SelectField<T extends string>({
         value={value}
         onChange={e => { if (e.target.value) onChange(e.target.value as T) }}
         className={cn(
-          'w-full rounded-xl border border-[#1e2433] bg-[#131720] px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 hover:border-[#252d3f] transition-all',
+          'w-full rounded-xl border border-[#2A3648] bg-[#1B2431] px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 hover:border-[#252d3f] transition-all',
           value ? 'text-white' : 'text-slate-500'
         )}
       >
-        <option value="" className="bg-[#131720] text-slate-500">{placeholder ?? `Select ${label.toLowerCase()}...`}</option>
+        <option value="" className="bg-[#1B2431] text-slate-500">{placeholder ?? `Select ${label.toLowerCase()}...`}</option>
         {options.map(opt => (
-          <option key={opt} value={opt} className="bg-[#131720] text-white">{labels[opt]}</option>
+          <option key={opt} value={opt} className="bg-[#1B2431] text-white">{labels[opt]}</option>
         ))}
       </select>
     </div>
@@ -255,7 +255,7 @@ function StepPriorities({ value, onChange }: {
         {value.keyPainPoints.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {value.keyPainPoints.map((p, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131720] border border-[#1e2433] text-xs text-slate-300">
+              <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1B2431] border border-[#2A3648] text-xs text-slate-300">
                 {p}
                 <button type="button" onClick={() => onChange({ ...value, keyPainPoints: value.keyPainPoints.filter((_, j) => j !== i) })} className="text-slate-500 hover:text-white ml-1">
                   <X className="w-3 h-3" />
@@ -293,19 +293,19 @@ function StepWorkforce({ value, onChange }: {
       <ChipGroup label="Leadership challenges" options={Object.keys(LEADERSHIP_CHALLENGE_LABELS) as LeadershipChallenge[]} labels={LEADERSHIP_CHALLENGE_LABELS} value={value.leadershipChallenges} onChange={next => patch('leadershipChallenges', next)} otherKey={'none' as LeadershipChallenge} otherValue={value.leadershipChallengesOther} onOtherText={t => patch('leadershipChallengesOther', t)} />
       <ChipGroup label="Employee experience & rewards challenges" options={Object.keys(EX_REWARD_LABELS) as ExRewardChallenge[]} labels={EX_REWARD_LABELS} value={value.exRewardChallenges} onChange={next => patch('exRewardChallenges', next)} otherKey={'none' as ExRewardChallenge} otherValue={value.exRewardChallengesOther} onOtherText={t => patch('exRewardChallengesOther', t)} />
 
-      <div className="rounded-xl border border-[#1e2433] bg-[#0a0c12] p-4 space-y-4">
+      <div className="rounded-xl border border-[#2A3648] bg-[#0a0c12] p-4 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-white">Nationalization program in scope?</p>
             <p className="text-xs text-slate-500 mt-0.5">Emiratisation, Saudization, Qatarization, Omanisation, Bahrainisation or Kuwaitisation.</p>
           </div>
           <button type="button" onClick={() => patchNat('applicable', !isNatApplicable)}
-            className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0', isNatApplicable ? 'bg-blue-600' : 'bg-[#1e2433]')}>
+            className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0', isNatApplicable ? 'bg-blue-600' : 'bg-[#2A3648]')}>
             <span className={cn('inline-block h-4 w-4 rounded-full bg-white shadow transition-transform', isNatApplicable ? 'translate-x-6' : 'translate-x-1')} />
           </button>
         </div>
         {isNatApplicable && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-[#1e2433]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-[#2A3648]">
             <SelectField label="Program" options={Object.keys(NATIONALIZATION_LABELS) as NationalizationProgram[]} labels={NATIONALIZATION_LABELS} value={(value.nationalizationContext.programName ?? 'emiratisation') as NationalizationProgram} onChange={v => patchNat('programName', v)} />
             <SelectField label="Current rate band" options={Object.keys(RATE_BAND_LABELS) as RateBand[]} labels={RATE_BAND_LABELS} value={(value.nationalizationContext.currentRateBand ?? 'unknown') as RateBand} onChange={v => patchNat('currentRateBand', v)} />
             <SelectField label="Target rate band" options={Object.keys(RATE_BAND_LABELS) as RateBand[]} labels={RATE_BAND_LABELS} value={(value.nationalizationContext.targetRateBand ?? 'unknown') as RateBand} onChange={v => patchNat('targetRateBand', v)} />
@@ -375,7 +375,7 @@ function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
         </div>
         <label className="flex items-center gap-2.5 cursor-pointer select-none">
           <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-            className="w-4 h-4 rounded border-[#2a3048] bg-[#0c0e14] text-blue-600 focus:ring-blue-500/40 focus:ring-2 cursor-pointer" />
+            className="w-4 h-4 rounded border-[#2a3048] bg-[#0B1220] text-blue-600 focus:ring-blue-500/40 focus:ring-2 cursor-pointer" />
           <span className="text-xs font-medium text-slate-200">I understand and consent to uploading these documents for advisory use only.</span>
         </label>
       </div>
@@ -396,12 +396,12 @@ function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
         title={!consent ? 'Please tick the consent box above to upload' : undefined}
         className={cn(
           'w-full rounded-2xl border-2 border-dashed p-8 flex flex-col items-center justify-center gap-2 transition-colors',
-          !consent ? 'border-[#1e2433] bg-[#0c0e14] opacity-50 cursor-not-allowed'
-            : uploading ? 'border-blue-500/40 bg-blue-500/5 cursor-wait' : 'border-[#2a3048] bg-[#0c0e14] hover:border-blue-500/50 hover:bg-blue-500/5'
+          !consent ? 'border-[#2A3648] bg-[#0B1220] opacity-50 cursor-not-allowed'
+            : uploading ? 'border-blue-500/40 bg-blue-500/5 cursor-wait' : 'border-[#2a3048] bg-[#0B1220] hover:border-blue-500/50 hover:bg-blue-500/5'
         )}
       >
         {uploading ? (
-          <span className="w-6 h-6 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+          <span className="w-6 h-6 rounded-full border-2 border-[#2A3648] border-t-blue-500 animate-spin" />
         ) : (
           <Upload className="w-6 h-6 text-blue-400" />
         )}
@@ -415,7 +415,7 @@ function StepEvidence({ workspaceId, evidence, onChangeEvidence }: {
         <div className="space-y-2">
           <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Uploaded ({files.length})</p>
           {files.map(f => (
-            <div key={f.evidence_id} className="flex items-center gap-3 rounded-xl border border-[#1e2433] bg-[#0f1117] px-3.5 py-2.5">
+            <div key={f.evidence_id} className="flex items-center gap-3 rounded-xl border border-[#2A3648] bg-[#0f1117] px-3.5 py-2.5">
               <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <span className="text-sm text-slate-200 truncate flex-1">{f.filename}</span>
               <button type="button" onClick={() => removeFile(f.evidence_id)} className="text-slate-500 hover:text-rose-400 transition-colors">
@@ -536,7 +536,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-full bg-[#0c0e14]">
+    <div className="min-h-full bg-[#0B1220]">
       <div className="flex flex-col items-center px-4 sm:px-6 py-8 sm:py-12">
         <div className="w-full max-w-5xl space-y-6">
 
@@ -580,9 +580,9 @@ export default function Onboarding() {
                   <button type="button" onClick={() => isDone && setStepIndex(i)}
                     className={cn(
                       'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-all',
-                      isActive ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_16px_rgba(59,130,246,0.35)]' :
+                      isActive ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_16px_rgba(46,125,250,0.35)]' :
                       isDone ? 'bg-blue-600/12 border-blue-500/30 text-blue-400 cursor-pointer hover:bg-blue-600/20' :
-                      'bg-[#131720] border-[#1e2433] text-slate-500 cursor-default'
+                      'bg-[#1B2431] border-[#2A3648] text-slate-500 cursor-default'
                     )}>
                     {isDone ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                     <span className="hidden sm:inline">{s.shortLabel}</span>
@@ -595,7 +595,7 @@ export default function Onboarding() {
           </div>
 
           {/* Progress bar */}
-          <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
               animate={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
@@ -604,7 +604,7 @@ export default function Onboarding() {
           </div>
 
           {/* Step body */}
-          <div className="rounded-2xl border border-[#1a1e2e] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
+          <div className="rounded-2xl border border-[#222E3E] bg-[#0f1117] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
             <AnimatePresence mode="wait">
               <motion.div key={stepIndex} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 {stepIndex === 0 && <StepPriorities value={draft.agenda} onChange={v => setDraft({ ...draft, agenda: v })} />}
