@@ -139,7 +139,7 @@ THE MANDATORY CORE SECTIONS (always present, in this order, exact ids; ADD scope
    data: {
      "axes": ["<dimension 1>", "<dimension 2>", ...],   // the spec's own maturity dimensions, in order
      "series": [
-       {"name": "This organization", "values": [<n1>, <n2>, ...], "color": "#3b82f6"},
+       {"name": "This organization", "values": [<n1>, <n2>, ...], "color": "#0060FF"},
        {"name": "Sector benchmark", "values": [<b1>, <b2>, ...]}
      ],
      "max": 5,

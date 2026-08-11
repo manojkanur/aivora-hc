@@ -15,7 +15,7 @@ _INK = "#0f172a"
 _MUTED = "#64748b"
 _LINE = "#e2e8f0"
 _BLUE = "#1d4ed8"
-_BLUE_FILL = "#3b82f6"
+_BLUE_FILL = "#0060FF"
 _AMBER = "#f59e0b"
 
 

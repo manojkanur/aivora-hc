@@ -122,7 +122,7 @@ async def _build_payload(
 
 
 def _render(format: str, payload: dict[str, Any]) -> bytes:
-    brand: dict[str, Any] = {"primary_color": "#3b82f6"}
+    brand: dict[str, Any] = {"primary_color": "#0060FF"}
     if format == "pdf":
         return export_service_v2.generate_pdf(payload, brand)
     if format == "docx":
