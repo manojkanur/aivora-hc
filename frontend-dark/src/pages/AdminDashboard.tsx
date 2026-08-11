@@ -123,7 +123,7 @@ const PROVIDER_COLORS: Record<string, string> = {
   Mistral:   'text-violet-400 bg-violet-500/10 border-violet-500/20',
 }
 
-const CATEGORY_COLORS = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316','#84cc16']
+const CATEGORY_COLORS = ['#2E7DFA','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316','#84cc16']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -148,8 +148,8 @@ function StatCard({ label, value, icon: Icon, index, loading }: {
 }) {
   return (
     <motion.div variants={fadeUp} custom={index}>
-      <div className="rounded-xl p-5 flex flex-col gap-3 bg-[#131720] border border-[#1e2433]">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#1e2433]">
+      <div className="rounded-xl p-5 flex flex-col gap-3 bg-[#1B2431] border border-[#2A3648]">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#2A3648]">
           <Icon className="w-[18px] h-[18px] text-blue-400" />
         </div>
         {loading ? (
@@ -169,7 +169,7 @@ function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void 
   return (
     <button type="button" role="switch" aria-checked={enabled} onClick={onToggle}
       className="relative w-11 h-6 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-      style={{ backgroundColor: enabled ? '#3b82f6' : '#1e2433' }}>
+      style={{ backgroundColor: enabled ? '#2E7DFA' : '#2A3648' }}>
       <span className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform"
         style={{ transform: enabled ? 'translateX(22px)' : 'translateX(4px)' }} />
     </button>
@@ -210,7 +210,7 @@ function InlineCreditEditor({ value, onSave }: {
         <input ref={inputRef} type="number" min={0} value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
-          className="w-20 bg-[#0c0e14] border border-blue-500/50 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-400 text-center" />
+          className="w-20 bg-[#0B1220] border border-blue-500/50 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-400 text-center" />
         <button onClick={commit} disabled={saving}
           className="w-6 h-6 rounded flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white transition-colors flex-shrink-0">
           {saving ? <div className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
@@ -311,14 +311,14 @@ function InstructionEditPanel({ skill, onClose, onSave }: {
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           onClick={e => e.stopPropagation()}
-          className="w-full max-w-2xl rounded-2xl border border-[#1e2433] bg-[#131720] shadow-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
+          className="w-full max-w-2xl rounded-2xl border border-[#2A3648] bg-[#1B2431] shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A3648]">
             <div>
               <p className="text-xs text-blue-400 font-semibold uppercase tracking-widest mb-0.5">Report Spec (Skill File)</p>
               <h3 className="text-base font-bold text-white">{skill.name}</h3>
             </div>
             <button type="button" onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#1e2433] transition-colors">
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#2A3648] transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -409,9 +409,9 @@ function CreateStudioModal({ categories, onClose, onCreate }: {
           exit={{ opacity: 0, scale: 0.95, y: 24 }}
           transition={{ type: 'spring', stiffness: 300, damping: 28 }}
           onClick={e => e.stopPropagation()}
-          className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[#1e2433] bg-[#131720] shadow-2xl">
+          className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[#2A3648] bg-[#1B2431] shadow-2xl">
 
-          <div className="flex items-center justify-between px-6 py-5 border-b border-[#1e2433] sticky top-0 bg-[#131720] z-10">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[#2A3648] sticky top-0 bg-[#1B2431] z-10">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
                 <Plus className="w-5 h-5 text-blue-400" />
@@ -451,7 +451,7 @@ function CreateStudioModal({ categories, onClose, onCreate }: {
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</label>
                 <select value={category} onChange={e => setCategory(e.target.value)}
-                  className="w-full rounded-xl border border-[#1e2433] bg-[#0c0e14] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60">
+                  className="w-full rounded-xl border border-[#2A3648] bg-[#0B1220] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60">
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   <option value="custom">Custom</option>
                 </select>
@@ -459,7 +459,7 @@ function CreateStudioModal({ categories, onClose, onCreate }: {
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Tier</label>
                 <select value={tier} onChange={e => setTier(e.target.value as Skill['tier'])}
-                  className="w-full rounded-xl border border-[#1e2433] bg-[#0c0e14] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60">
+                  className="w-full rounded-xl border border-[#2A3648] bg-[#0B1220] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60">
                   {TIER_OPTIONS.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
                 </select>
               </div>
@@ -471,14 +471,14 @@ function CreateStudioModal({ categories, onClose, onCreate }: {
                 <input
                   type="number" min={0} value={creditCost}
                   onChange={e => setCreditCost(parseInt(e.target.value) || 0)}
-                  className="w-full rounded-xl border border-[#1e2433] bg-[#0c0e14] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60"
+                  className="w-full rounded-xl border border-[#2A3648] bg-[#0B1220] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60"
                 />
                 {errors.credits && <p className="text-xs text-red-400">{errors.credits}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">LLM Model (optional)</label>
                 <select value={llmModel} onChange={e => setLlmModel(e.target.value)}
-                  className="w-full rounded-xl border border-[#1e2433] bg-[#0c0e14] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60">
+                  className="w-full rounded-xl border border-[#2A3648] bg-[#0B1220] text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/60">
                   <option value="">Use global default</option>
                   {LLM_OPTIONS.map(m => (
                     <option key={m.id} value={m.id}>{m.label} ({m.provider})</option>
@@ -591,9 +591,9 @@ function SkillInsightsPanel({ skill, onClose }: { skill: Skill; onClose: () => v
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
           transition={{ type: 'spring', stiffness: 300, damping: 28 }}
           onClick={e => e.stopPropagation()}
-          className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] shadow-2xl overflow-hidden">
+          className="w-full max-w-xl rounded-2xl border border-[#2A3648] bg-[#1B2431] shadow-2xl overflow-hidden">
 
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433] bg-[#0f1117]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A3648] bg-[#0f1117]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
                 <Brain className="w-5 h-5 text-violet-400" />
@@ -632,7 +632,7 @@ function SkillInsightsPanel({ skill, onClose }: { skill: Skill; onClose: () => v
               </div>
 
               {/* Usage trend */}
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#0c0e14] border border-[#1e2433]">
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#0B1220] border border-[#2A3648]">
                 <div className="flex items-center gap-2">
                   {trendIcon}
                   <span className={cn('text-sm font-semibold capitalize', trendColor)}>
@@ -783,7 +783,7 @@ function SkillKnowledgeBase({ skillId, skillName }: { skillId: string; skillName
         ) : (
           <div className="space-y-1.5">
             {kb.documents.map(d => (
-              <div key={d.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433]">
+              <div key={d.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#0B1220] border border-[#2A3648]">
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                   <span className="text-xs text-slate-300 truncate">{d.name}</span>
@@ -808,11 +808,11 @@ function SkillKnowledgeBase({ skillId, skillName }: { skillId: string; skillName
           <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleAddUrl() }}
             placeholder="https://example.com/resource"
-            className="flex-1 px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433] text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50" />
+            className="flex-1 px-3 py-1.5 rounded-lg bg-[#0B1220] border border-[#2A3648] text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50" />
           <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleAddUrl() }}
             placeholder="Label (optional)"
-            className="w-32 px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433] text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50" />
+            className="w-32 px-3 py-1.5 rounded-lg bg-[#0B1220] border border-[#2A3648] text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50" />
           <button type="button" onClick={handleAddUrl}
             className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors flex items-center gap-1">
             <Plus className="w-3 h-3" /> Add
@@ -823,7 +823,7 @@ function SkillKnowledgeBase({ skillId, skillName }: { skillId: string; skillName
         ) : (
           <div className="space-y-1.5">
             {kb.urls.map(u => (
-              <div key={u.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#0c0e14] border border-[#1e2433]">
+              <div key={u.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#0B1220] border border-[#2A3648]">
                 <div className="flex items-center gap-2 min-w-0">
                   <Link2 className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                   {u.label && <span className="text-xs text-slate-300 font-semibold">{u.label}:</span>}
@@ -902,9 +902,9 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
   })
 
   if (loading) return (
-    <div className="rounded-xl overflow-hidden border border-[#1e2433] bg-[#131720]">
+    <div className="rounded-xl overflow-hidden border border-[#2A3648] bg-[#1B2431]">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ borderBottom: i < 5 ? '1px solid #1e2433' : undefined }}>
+        <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ borderBottom: i < 5 ? '1px solid #2A3648' : undefined }}>
           <Skeleton className="h-4 flex-1" /><Skeleton className="h-4 w-24" />
           <Skeleton className="h-5 w-20 rounded-full" /><Skeleton className="h-4 w-12" />
           <Skeleton className="h-4 w-16" /><Skeleton className="h-6 w-11 rounded-full" />
@@ -914,7 +914,7 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
   )
 
   if (error) return (
-    <div className="rounded-xl p-12 text-center border border-[#1e2433] bg-[#131720]">
+    <div className="rounded-xl p-12 text-center border border-[#2A3648] bg-[#1B2431]">
       <p className="text-red-400">{error}</p>
     </div>
   )
@@ -934,7 +934,7 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
               'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all',
               filterCustom
                 ? 'bg-blue-600/15 border-blue-500/30 text-blue-400'
-                : 'bg-transparent border-[#1e2433] text-slate-500 hover:text-slate-300'
+                : 'bg-transparent border-[#2A3648] text-slate-500 hover:text-slate-300'
             )}>
             <Filter className="w-3.5 h-3.5" />
             Custom only
@@ -954,15 +954,15 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-xl p-12 text-center border border-[#1e2433] bg-[#131720]">
+          <div className="rounded-xl p-12 text-center border border-[#2A3648] bg-[#1B2431]">
             <Zap className="w-10 h-10 mx-auto mb-3 text-slate-600" />
             <p className="font-medium text-slate-300">{search ? `No studios match "${search}"` : 'No studios found'}</p>
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden border border-[#1e2433] bg-[#131720]">
+          <div className="rounded-xl overflow-hidden border border-[#2A3648] bg-[#1B2431]">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#1e2433] bg-[#0c0e14]">
+                <tr className="border-b border-[#2A3648] bg-[#0B1220]">
                   <th className="text-left text-xs font-semibold px-4 py-3 text-slate-500 w-6"></th>
                   <th className="text-left text-xs font-semibold px-4 py-3 text-slate-500">Studio Name</th>
                   <th className="text-left text-xs font-semibold px-4 py-3 text-slate-500 hidden md:table-cell">Category</th>
@@ -984,7 +984,7 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
                   <>
                     <tr key={skill.id}
                       className="transition-colors hover:bg-[#1a1f2e] cursor-pointer"
-                      style={{ borderBottom: expandedId === skill.id ? 'none' : i < filtered.length - 1 ? '1px solid #1e2433' : undefined }}
+                      style={{ borderBottom: expandedId === skill.id ? 'none' : i < filtered.length - 1 ? '1px solid #2A3648' : undefined }}
                       onClick={() => setExpandedId(expandedId === skill.id ? null : skill.id)}>
                       <td className="px-4 py-3 w-6">
                         {expandedId === skill.id
@@ -1020,7 +1020,7 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
                             'inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all',
                             skill.instructions
                               ? 'border-violet-500/30 text-violet-400 bg-violet-500/5 hover:bg-violet-500/15'
-                              : 'border-[#1e2433] text-slate-400 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-500/5'
+                              : 'border-[#2A3648] text-slate-400 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-500/5'
                           )}>
                           <Pencil className="w-3 h-3" />
                           {skill.instructions ? 'Edit' : 'Add'}
@@ -1050,7 +1050,7 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
                     <AnimatePresence>
                       {expandedId === skill.id && (
                         <tr key={`${skill.id}-expanded`}
-                          style={{ borderBottom: i < filtered.length - 1 ? '1px solid #1e2433' : undefined }}>
+                          style={{ borderBottom: i < filtered.length - 1 ? '1px solid #2A3648' : undefined }}>
                           <td colSpan={8} className="px-6 pb-4 pt-0">
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
@@ -1058,7 +1058,7 @@ function SkillsTab({ categories }: { categories: SkillCategory[] }) {
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.2 }}>
                               <div className="space-y-3">
-                                <div className="bg-[#0c0e14] border border-[#1e2433] rounded-xl p-4 space-y-3">
+                                <div className="bg-[#0B1220] border border-[#2A3648] rounded-xl p-4 space-y-3">
                                   {skill.description && (
                                     <p className="text-sm text-slate-400">{skill.description}</p>
                                   )}
@@ -1132,7 +1132,7 @@ function loadMarketplaceLabels(): Record<MarketplaceKey, string> {
 
 const PILL_COLORS: Record<MarketplaceKey, string> = {
   strategy:   '#6366f1',
-  talent:     '#3b82f6',
+  talent:     '#2E7DFA',
   learning:   '#22c55e',
   advisory:   '#f59e0b',
   commercial: '#ec4899',
@@ -1150,9 +1150,9 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
   const assignedToActive = active !== 'all' ? (assignments[active] ?? []) : []
 
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] overflow-hidden">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A3648]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
             <Tag className="w-4 h-4 text-blue-400" />
@@ -1166,7 +1166,7 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
           className={cn('flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all',
             pillSaved
               ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-              : 'bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-[0_0_16px_rgba(59,130,246,0.3)]')}>
+              : 'bg-[#2E7DFA] hover:bg-[#175FCC] text-white shadow-[0_0_16px_rgba(46,125,250,0.3)]')}>
           {pillSaved ? <><Check className="w-3.5 h-3.5" /> Saved!</> : <><Save className="w-3.5 h-3.5" /> Save Labels</>}
         </button>
       </div>
@@ -1175,12 +1175,12 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
         {/* Interactive pill preview */}
         <div>
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Live Preview: click a pill to edit</p>
-          <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[#1e2433] bg-[#0c0e14]">
+          <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[#2A3648] bg-[#0B1220]">
             <button onClick={() => setActive('all')}
               className={cn('px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200',
                 active === 'all'
-                  ? 'bg-[#3b82f6] text-white shadow-[0_0_12px_rgba(59,130,246,0.4)] scale-105'
-                  : 'bg-[#1a1e2e] text-slate-400 hover:text-white hover:bg-[#252b3b]')}>
+                  ? 'bg-[#2E7DFA] text-white shadow-[0_0_12px_rgba(46,125,250,0.4)] scale-105'
+                  : 'bg-[#222E3E] text-slate-400 hover:text-white hover:bg-[#252b3b]')}>
               All
             </button>
             {MARKETPLACE_CATEGORY_KEYS.map(k => (
@@ -1188,7 +1188,7 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
                 className={cn('px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200',
                   active === k
                     ? 'text-white scale-105 shadow-lg'
-                    : 'bg-[#1a1e2e] text-slate-400 hover:text-white hover:bg-[#252b3b]')}
+                    : 'bg-[#222E3E] text-slate-400 hover:text-white hover:bg-[#252b3b]')}
                 style={active === k ? { background: PILL_COLORS[k], boxShadow: `0 0 16px ${PILL_COLORS[k]}60` } : {}}>
                 {pillLabels[k]}
               </button>
@@ -1202,7 +1202,7 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
             key={active}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-[#2a3048] bg-[#0c0e14] p-4 space-y-3">
+            className="rounded-xl border border-[#2a3048] bg-[#0B1220] p-4 space-y-3">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ background: PILL_COLORS[active] }} />
               <p className="text-xs font-bold text-white uppercase tracking-wider">{active}</p>
@@ -1213,7 +1213,7 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
                 onChange={e => setPillLabels(prev => ({ ...prev, [active]: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter') onSave() }}
                 placeholder={`Label for "${active}"…`}
-                className="flex-1 px-4 py-2.5 text-sm border border-[#2a3048] rounded-xl bg-[#131720] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                className="flex-1 px-4 py-2.5 text-sm border border-[#2a3048] rounded-xl bg-[#1B2431] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                 style={{ '--tw-ring-color': PILL_COLORS[active] } as React.CSSProperties}
                 autoFocus
               />
@@ -1233,7 +1233,7 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
             key={`${active}-skills`}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-[#2a3048] bg-[#0c0e14] p-4 space-y-3">
+            className="rounded-xl border border-[#2a3048] bg-[#0B1220] p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5" style={{ color: PILL_COLORS[active] }} />
@@ -1251,8 +1251,8 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
                     <label key={s.id}
                       className={cn('flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all',
                         checked
-                          ? 'bg-[#131720] border-[#2a3048]'
-                          : 'bg-[#0a0d15] border-[#1e2433] hover:border-[#2a3048]')}
+                          ? 'bg-[#1B2431] border-[#2a3048]'
+                          : 'bg-[#0a0d15] border-[#2A3648] hover:border-[#2a3048]')}
                       style={checked ? { borderColor: PILL_COLORS[active] + '60', boxShadow: `0 0 0 1px ${PILL_COLORS[active]}30` } : {}}>
                       <input type="checkbox" className="hidden"
                         checked={checked}
@@ -1278,7 +1278,7 @@ function MarketplaceCategoryEditor({ pillLabels, setPillLabels, pillSaved, onSav
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {MARKETPLACE_CATEGORY_KEYS.map(k => (
               <button key={k} onClick={() => setActive(k)}
-                className="flex flex-col items-start gap-2 p-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-[#2a3048] hover:bg-[#131720] transition-colors text-left group">
+                className="flex flex-col items-start gap-2 p-3 rounded-xl border border-[#2A3648] bg-[#0B1220] hover:border-[#2a3048] hover:bg-[#1B2431] transition-colors text-left group">
                 <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: PILL_COLORS[k] + '20', border: `1px solid ${PILL_COLORS[k]}40` }}>
                   <div className="w-2 h-2 rounded-full" style={{ background: PILL_COLORS[k] }} />
                 </div>
@@ -1367,7 +1367,7 @@ function CategoriesTab({ skills }: { skills: Skill[] }) {
       </div>
 
       {categories.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#1e2433] p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-[#2A3648] p-12 text-center">
           <Layers className="w-10 h-10 mx-auto mb-3 text-slate-600" />
           <p className="font-semibold text-slate-300">No categories yet</p>
           <p className="text-sm text-slate-500 mt-1">Create a category to group related studios together.</p>
@@ -1377,7 +1377,7 @@ function CategoriesTab({ skills }: { skills: Skill[] }) {
           {categories.map(cat => {
             const catSkills = skills.filter(s => cat.skill_ids?.includes(s.id) || s.category === cat.name)
             return (
-              <div key={cat.id} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5 space-y-4 hover:border-[#2a3048] transition-colors group">
+              <div key={cat.id} className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5 space-y-4 hover:border-[#2a3048] transition-colors group">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1405,7 +1405,7 @@ function CategoriesTab({ skills }: { skills: Skill[] }) {
                   <p className="text-xs text-slate-600 mb-2">{catSkills.length} studio{catSkills.length !== 1 ? 's' : ''}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {catSkills.slice(0, 5).map(s => (
-                      <span key={s.id} className="text-xs px-2 py-0.5 rounded-md bg-[#0c0e14] border border-[#1e2433] text-slate-400">
+                      <span key={s.id} className="text-xs px-2 py-0.5 rounded-md bg-[#0B1220] border border-[#2A3648] text-slate-400">
                         {s.name}
                       </span>
                     ))}
@@ -1468,9 +1468,9 @@ function CategoryFormModal({ initial, skills, onSave, onClose }: {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-[#1e2433] bg-[#131720] shadow-2xl">
+        className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-[#2A3648] bg-[#1B2431] shadow-2xl">
 
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A3648]">
           <h2 className="text-base font-bold text-white">{initial ? 'Edit Category' : 'New Category'}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
             <X className="w-4 h-4" />
@@ -1501,7 +1501,7 @@ function CategoryFormModal({ initial, skills, onSave, onClose }: {
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Studios in this category ({selectedIds.length} selected)
             </label>
-            <div className="max-h-52 overflow-y-auto rounded-xl border border-[#1e2433] divide-y divide-[#1e2433]">
+            <div className="max-h-52 overflow-y-auto rounded-xl border border-[#2A3648] divide-y divide-[#2A3648]">
               {skills.map(skill => (
                 <label key={skill.id}
                   className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/3 cursor-pointer transition-colors">
@@ -1582,7 +1582,7 @@ function LlmTab({ skills }: { skills: Skill[] }) {
   return (
     <AnimatedSection variants={fadeUp} className="space-y-6">
       {/* Global selector */}
-      <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-4">
+      <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
             <Globe className="w-5 h-5 text-blue-400" />
@@ -1601,8 +1601,8 @@ function LlmTab({ skills }: { skills: Skill[] }) {
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all',
                   isSelected
-                    ? 'border-blue-500/50 bg-blue-600/10 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
-                    : 'border-[#1e2433] bg-[#0c0e14] hover:border-[#2a3048]'
+                    ? 'border-blue-500/50 bg-blue-600/10 shadow-[0_0_0_1px_rgba(46,125,250,0.15)]'
+                    : 'border-[#2A3648] bg-[#0B1220] hover:border-[#2a3048]'
                 )}>
                 <div className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
                   isSelected ? 'border-blue-500 bg-blue-600' : 'border-slate-600')}>
@@ -1637,8 +1637,8 @@ function LlmTab({ skills }: { skills: Skill[] }) {
       </div>
 
       {/* Per-studio overrides */}
-      <div className="rounded-2xl border border-[#1e2433] bg-[#131720] overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2433]">
+      <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A3648]">
           <div className="flex items-center gap-3">
             <Settings2 className="w-4 h-4 text-slate-400" />
             <h3 className="text-sm font-bold text-white">Per-Studio Overrides</h3>
@@ -1662,7 +1662,7 @@ function LlmTab({ skills }: { skills: Skill[] }) {
           </div>
         </div>
 
-        <div className="divide-y divide-[#1e2433] max-h-[480px] overflow-y-auto">
+        <div className="divide-y divide-[#2A3648] max-h-[480px] overflow-y-auto">
           {filtered.map(skill => {
             const override = config.skill_overrides[skill.id]
             const overrideLlm = getLlmLabel(override)
@@ -1689,7 +1689,7 @@ function LlmTab({ skills }: { skills: Skill[] }) {
                   <select
                     value={override ?? ''}
                     onChange={e => setOverride(skill.id, e.target.value)}
-                    className="rounded-lg border border-[#1e2433] bg-[#0c0e14] text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 min-w-[180px]">
+                    className="rounded-lg border border-[#2A3648] bg-[#0B1220] text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/60 focus:border-blue-500/60 min-w-[180px]">
                     <option value="">Use global ({globalLlm?.label ?? config.global_model})</option>
                     {LLM_OPTIONS.map(m => (
                       <option key={m.id} value={m.id}>{m.label} ({m.provider})</option>
@@ -1708,7 +1708,7 @@ function LlmTab({ skills }: { skills: Skill[] }) {
       </div>
 
       {/* Save */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-[#0f1117] border border-[#1e2433]">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-[#0f1117] border border-[#2A3648]">
         <div className="text-sm text-slate-400">
           {saveError
             ? <span className="text-rose-400">{saveError}</span>
@@ -1756,7 +1756,7 @@ function UsersTab() {
   }
 
   if (error) return (
-    <div className="rounded-xl p-12 text-center border border-[#1e2433] bg-[#131720]">
+    <div className="rounded-xl p-12 text-center border border-[#2A3648] bg-[#1B2431]">
       <p className="text-red-400">{error}</p>
     </div>
   )
@@ -1775,10 +1775,10 @@ function UsersTab() {
       </div>
 
       {loading ? (
-        <div className="rounded-xl overflow-hidden border border-[#1e2433] bg-[#131720]">
+        <div className="rounded-xl overflow-hidden border border-[#2A3648] bg-[#1B2431]">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-4 py-3"
-              style={{ borderBottom: i < 7 ? '1px solid #1e2433' : undefined }}>
+              style={{ borderBottom: i < 7 ? '1px solid #2A3648' : undefined }}>
               <Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-40" />
               <Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-20" />
               <Skeleton className="h-4 w-16" /><Skeleton className="h-4 w-12" />
@@ -1786,18 +1786,18 @@ function UsersTab() {
           ))}
         </div>
       ) : users.length === 0 ? (
-        <div className="rounded-xl p-12 text-center border border-[#1e2433] bg-[#131720]">
+        <div className="rounded-xl p-12 text-center border border-[#2A3648] bg-[#1B2431]">
           <Users className="w-10 h-10 mx-auto mb-3 text-slate-600" />
           <p className="font-medium text-slate-300">No users found</p>
           {search && <p className="text-sm mt-1 text-slate-500">No results for "{search}"</p>}
         </div>
       ) : (
         <>
-          <div className="rounded-xl overflow-hidden border border-[#1e2433] bg-[#131720]">
+          <div className="rounded-xl overflow-hidden border border-[#2A3648] bg-[#1B2431]">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px]">
                 <thead>
-                  <tr className="border-b border-[#1e2433] bg-[#0c0e14]">
+                  <tr className="border-b border-[#2A3648] bg-[#0B1220]">
                     {['Name', 'Email', 'Tenant', 'Plan', 'Level', 'XP', 'Role'].map(h => (
                       <th key={h} className="text-left text-xs font-semibold px-4 py-3 text-slate-500">{h}</th>
                     ))}
@@ -1810,12 +1810,12 @@ function UsersTab() {
                 <tbody>
                   {users.map((user, i) => (
                     <tr key={user.id} className="transition-colors hover:bg-[#1a1f2e]"
-                      style={{ borderBottom: i < users.length - 1 ? '1px solid #1e2433' : undefined }}>
+                      style={{ borderBottom: i < users.length - 1 ? '1px solid #2A3648' : undefined }}>
                       <td className="px-4 py-3"><span className="text-sm font-medium text-slate-200">{user.name}</span></td>
                       <td className="px-4 py-3"><span className="text-sm text-slate-400">{user.email}</span></td>
                       <td className="px-4 py-3"><span className="text-sm text-slate-400">{user.tenant}</span></td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full capitalize bg-[#1e2433] text-slate-300 border border-[#2a3045]">{user.plan}</span>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full capitalize bg-[#2A3648] text-slate-300 border border-[#2a3045]">{user.plan}</span>
                       </td>
                       <td className="px-4 py-3"><span className="text-sm font-semibold text-white">{user.level}</span></td>
                       <td className="px-4 py-3"><span className="text-sm text-slate-400">{user.xp?.toLocaleString()}</span></td>
@@ -1875,7 +1875,7 @@ function AuditRow({ entry, isLast }: { entry: AuditEntry; isLast: boolean }) {
       <tr
         className={cn('transition-colors hover:bg-[#1a1f2e]', hasTrace && 'cursor-pointer')}
         onClick={hasTrace ? () => setOpen(o => !o) : undefined}
-        style={{ borderBottom: isLast && !open ? undefined : '1px solid #1e2433' }}
+        style={{ borderBottom: isLast && !open ? undefined : '1px solid #2A3648' }}
       >
         <td className="px-4 py-3 whitespace-nowrap">
           <span className="text-xs font-mono text-slate-500">{formatDate(entry.timestamp)}</span>
@@ -1884,7 +1884,7 @@ function AuditRow({ entry, isLast }: { entry: AuditEntry; isLast: boolean }) {
         <td className="px-4 py-3">
           <span className={cn(
             'text-xs font-medium px-2 py-0.5 rounded-full border',
-            hasTrace ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-[#1e2433] text-slate-300 border-[#2a3045]',
+            hasTrace ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-[#2A3648] text-slate-300 border-[#2a3045]',
           )}>
             {entry.action}
           </span>
@@ -1893,8 +1893,8 @@ function AuditRow({ entry, isLast }: { entry: AuditEntry; isLast: boolean }) {
         <td className="px-4 py-3"><span className="text-xs font-mono text-slate-500">{entry.ip}</span></td>
       </tr>
       {open && hasTrace && (
-        <tr style={{ borderBottom: isLast ? undefined : '1px solid #1e2433' }}>
-          <td colSpan={5} className="px-4 py-4 bg-[#0c0e14]">
+        <tr style={{ borderBottom: isLast ? undefined : '1px solid #2A3648' }}>
+          <td colSpan={5} className="px-4 py-4 bg-[#0B1220]">
             <div className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-3">
               Agent run trace
             </div>
@@ -1951,13 +1951,13 @@ function TracePhase({ no, title, subtitle, tone, content }: {
   const t = toneCls[tone]
   const json = content ? JSON.stringify(content, null, 2) : ' - '
   return (
-    <div className={cn('rounded-xl border p-3 bg-[#131720]', t.ring)}>
+    <div className={cn('rounded-xl border p-3 bg-[#1B2431]', t.ring)}>
       <div className="flex items-center gap-2 mb-1.5">
         <span className={cn('text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', t.chip)}>{no}</span>
         <span className="text-xs font-semibold text-white">{title}</span>
       </div>
       <div className="text-[11px] text-slate-400 mb-2 truncate">{subtitle}</div>
-      <pre className="text-[10px] leading-relaxed text-slate-400 bg-[#0c0e14] border border-[#1e2433] rounded-lg p-2 max-h-32 overflow-auto whitespace-pre-wrap">
+      <pre className="text-[10px] leading-relaxed text-slate-400 bg-[#0B1220] border border-[#2A3648] rounded-lg p-2 max-h-32 overflow-auto whitespace-pre-wrap">
         {json.length > 800 ? json.slice(0, 800) + '\n...' : json}
       </pre>
     </div>
@@ -1995,11 +1995,11 @@ function AuditLogTab() {
   const applyFilters = () => fetchAudit({ date_from: dateFrom, date_to: dateTo, action: actionFilter })
   const clearFilters = () => { setDateFrom(''); setDateTo(''); setActionFilter(''); fetchAudit({}) }
 
-  const inputStyle = "rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#0c0e14] border-[#1e2433] text-slate-200"
+  const inputStyle = "rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#0B1220] border-[#2A3648] text-slate-200"
 
   return (
     <AnimatedSection variants={fadeUp} className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 p-4 rounded-xl border border-[#1e2433] bg-[#131720]">
+      <div className="flex flex-wrap items-end gap-3 p-4 rounded-xl border border-[#2A3648] bg-[#1B2431]">
         <div>
           <label className="block text-xs font-medium mb-1.5 text-slate-500">From</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputStyle} />
@@ -2025,30 +2025,30 @@ function AuditLogTab() {
       </div>
 
       {loading ? (
-        <div className="rounded-xl overflow-hidden border border-[#1e2433] bg-[#131720]">
+        <div className="rounded-xl overflow-hidden border border-[#2A3648] bg-[#1B2431]">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ borderBottom: i < 7 ? '1px solid #1e2433' : undefined }}>
+            <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ borderBottom: i < 7 ? '1px solid #2A3648' : undefined }}>
               <Skeleton className="h-4 w-36" /><Skeleton className="h-4 w-28" />
               <Skeleton className="h-5 w-24 rounded-full" /><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-24" />
             </div>
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-xl p-12 text-center border border-[#1e2433] bg-[#131720]">
+        <div className="rounded-xl p-12 text-center border border-[#2A3648] bg-[#1B2431]">
           <p className="text-red-400">{error}</p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="rounded-xl p-12 text-center border border-[#1e2433] bg-[#131720]">
+        <div className="rounded-xl p-12 text-center border border-[#2A3648] bg-[#1B2431]">
           <ShieldCheck className="w-10 h-10 mx-auto mb-3 text-slate-600" />
           <p className="font-medium text-slate-300">No audit entries found</p>
           <p className="text-sm mt-1 text-slate-500">Try adjusting the date range or action filter.</p>
         </div>
       ) : (
-        <div className="rounded-xl overflow-hidden border border-[#1e2433] bg-[#131720]">
+        <div className="rounded-xl overflow-hidden border border-[#2A3648] bg-[#1B2431]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead>
-                <tr className="border-b border-[#1e2433] bg-[#0c0e14]">
+                <tr className="border-b border-[#2A3648] bg-[#0B1220]">
                   {['Timestamp', 'User', 'Action', 'Resource', 'IP'].map(h => (
                     <th key={h} className="text-left text-xs font-semibold px-4 py-3 text-slate-500">{h}</th>
                   ))}
@@ -2128,7 +2128,7 @@ export default function AdminDashboard() {
       </motion.div>
 
       <div>
-        <div className="flex gap-1 border-b border-[#1e2433] overflow-x-auto">
+        <div className="flex gap-1 border-b border-[#2A3648] overflow-x-auto">
           {TABS.map(tab => (
             <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
               className={cn(

@@ -139,7 +139,7 @@ function renderValue(value: unknown, depth = 0): React.ReactNode {
         <ul className="space-y-1.5 mt-1">
           {(value as string[]).map((v, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-              <span className="w-5 h-5 rounded-full bg-[#3b82f6]/10 text-[#3b82f6] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
+              <span className="w-5 h-5 rounded-full bg-[#2E7DFA]/10 text-[#2E7DFA] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
               <span>{v}</span>
             </li>
           ))}
@@ -149,7 +149,7 @@ function renderValue(value: unknown, depth = 0): React.ReactNode {
     return (
       <div className="space-y-3 mt-1">
         {(value as Record<string, unknown>[]).map((item, i) => (
-          <div key={i} className={depth === 0 ? 'rounded-lg p-3 bg-[#0E0E0E] border border-[#1e2433]' : 'rounded-lg p-3 bg-[#131720] border border-[#1e2433]/50'}>
+          <div key={i} className={depth === 0 ? 'rounded-lg p-3 bg-[#0E0E0E] border border-[#2A3648]' : 'rounded-lg p-3 bg-[#1B2431] border border-[#2A3648]/50'}>
             {Object.entries(item).map(([k, v]) => (
               <div key={k} className="mb-2 last:mb-0">
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</p>
@@ -483,10 +483,10 @@ export default function SkillStudio() {
           const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
           const isExpanded = outputExpanded[key] !== false
           return (
-            <div key={key} className="border border-[#1e2433] rounded-xl overflow-hidden">
+            <div key={key} className="border border-[#2A3648] rounded-xl overflow-hidden">
               <button
                 onClick={() => setOutputExpanded(s => ({ ...s, [key]: !isExpanded }))}
-                className="w-full flex items-center justify-between px-4 py-3 bg-[#0E0E0E] hover:bg-[#1a1e2e] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-[#0E0E0E] hover:bg-[#222E3E] transition-colors"
               >
                 <span className="text-xs font-semibold text-white uppercase tracking-wider">{label}</span>
                 {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-600" /> : <ChevronDown className="w-4 h-4 text-slate-600" />}
@@ -510,11 +510,11 @@ export default function SkillStudio() {
   return (
     <div className="flex h-full flex-col bg-[#0E0E0E]">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-[#1e2433] bg-[#131720] flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-[#2A3648] bg-[#1B2431] flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/workspaces/${workspaceId}`)}
-            className="p-1.5 rounded-lg hover:bg-[#1a1e2e] text-slate-600 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[#222E3E] text-slate-600 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -532,7 +532,7 @@ export default function SkillStudio() {
             <>
               <button
                 onClick={() => navigate(`/canvas/${selectedDraft.id}?title=${encodeURIComponent(skill?.name ?? 'Deliverable')}`)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#3b82f6] text-[#3b82f6] bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2E7DFA] text-[#2E7DFA] bg-[#2E7DFA]/10 hover:bg-[#2E7DFA]/20 text-xs font-semibold transition-colors"
               >
                 <Layout className="w-3.5 h-3.5" />
                 Open in Canvas
@@ -578,11 +578,11 @@ export default function SkillStudio() {
         {/* Knowledge Base sidebar — removed per product call. Kept the state above
             so AI context assembly that consumed kbFiles/kbUrls still compiles. */}
         <div className="hidden">
-          <div className="px-4 py-3 border-b border-[#1e2433] flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-[#3b82f6]" />
+          <div className="px-4 py-3 border-b border-[#2A3648] flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-[#2E7DFA]" />
             <span className="text-sm font-semibold text-white">Knowledge Base</span>
             {(kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length) > 0 && (
-              <span className="ml-auto text-xs bg-[#3b82f6]/20 text-[#60a5fa] px-1.5 py-0.5 rounded-full font-medium">
+              <span className="ml-auto text-xs bg-[#2E7DFA]/20 text-[#5B96F5] px-1.5 py-0.5 rounded-full font-medium">
                 {kbFiles.filter(f => f.status === 'done').length + kbUrls.filter(u => u.status === 'done').length} loaded
               </span>
             )}
@@ -596,8 +596,8 @@ export default function SkillStudio() {
               {kbFiles.length > 0 && (
                 <div className="space-y-1 mb-2">
                   {kbFiles.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#131720] rounded-lg border border-[#1e2433]">
-                      {f.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#1B2431] rounded-lg border border-[#2A3648]">
+                      {f.status === 'loading' && <Loader2 className="w-3 h-3 text-[#2E7DFA] animate-spin flex-shrink-0" />}
                       {f.status === 'done' && <FileText className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
                       {f.status === 'error' && <FileText className="w-3 h-3 text-red-400 flex-shrink-0" />}
                       <span className="text-xs text-slate-300 flex-1 truncate">{f.name}</span>
@@ -612,7 +612,7 @@ export default function SkillStudio() {
               )}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white transition-colors border border-dashed border-[#1e2433] hover:border-[#3b82f6] rounded-lg px-3 py-2 w-full justify-center"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white transition-colors border border-dashed border-[#2A3648] hover:border-[#2E7DFA] rounded-lg px-3 py-2 w-full justify-center"
               >
                 <Paperclip className="w-3 h-3" /> Upload files
               </button>
@@ -625,8 +625,8 @@ export default function SkillStudio() {
               {kbUrls.length > 0 && (
                 <div className="space-y-1 mb-2">
                   {kbUrls.map((u, i) => (
-                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#131720] rounded-lg border border-[#1e2433]">
-                      {u.status === 'loading' && <Loader2 className="w-3 h-3 text-[#3b82f6] animate-spin flex-shrink-0" />}
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-[#1B2431] rounded-lg border border-[#2A3648]">
+                      {u.status === 'loading' && <Loader2 className="w-3 h-3 text-[#2E7DFA] animate-spin flex-shrink-0" />}
                       {u.status === 'done' && <Link2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
                       {u.status === 'error' && <Link2 className="w-3 h-3 text-red-400 flex-shrink-0" />}
                       {u.status === 'idle' && <Link2 className="w-3 h-3 text-slate-500 flex-shrink-0" />}
@@ -645,12 +645,12 @@ export default function SkillStudio() {
                   onChange={e => setUrlInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl() } }}
                   placeholder="https://..."
-                  className="flex-1 px-3 py-1.5 text-xs border border-[#1e2433] rounded-lg bg-[#131720] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+                  className="flex-1 px-3 py-1.5 text-xs border border-[#2A3648] rounded-lg bg-[#1B2431] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#2E7DFA] focus:border-[#2E7DFA]"
                 />
                 <button
                   onClick={handleAddUrl}
                   disabled={!urlInput.trim()}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#3b82f6] text-white disabled:opacity-40 hover:bg-[#60a5fa] transition-colors flex-shrink-0"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#2E7DFA] text-white disabled:opacity-40 hover:bg-[#5B96F5] transition-colors flex-shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -661,7 +661,7 @@ export default function SkillStudio() {
 
         {/* Left: Manual wizard */}
         {mode === 'manual' && phase === 'intake' && (
-          <div className="flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]" style={{ width: '480px' }}>
+          <div className="flex-shrink-0 flex flex-col border-r border-[#2A3648] bg-[#1B2431]" style={{ width: '480px' }}>
             <ManualWizard
               skillSlug={skill?.slug ?? ''}
               skillName={skill?.name ?? 'Deliverable'}
@@ -673,20 +673,20 @@ export default function SkillStudio() {
 
         {/* Left: Chat intake */}
         {mode === 'ai' && (
-        <div className="w-80 flex-shrink-0 flex flex-col border-r border-[#1e2433] bg-[#131720]">
+        <div className="w-80 flex-shrink-0 flex flex-col border-r border-[#2A3648] bg-[#1B2431]">
 
           {/* Progress pills */}
-          <div className="px-4 py-3 border-b border-[#1e2433] flex gap-1.5 flex-wrap">
+          <div className="px-4 py-3 border-b border-[#2A3648] flex gap-1.5 flex-wrap">
             {activeIntake.questions.map((q, i) => (
               <span
                 key={q.key}
                 className={cn(
                   'text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
                   i < questionIndex
-                    ? 'bg-[#131720] text-white'
+                    ? 'bg-[#1B2431] text-white'
                     : i === questionIndex && phase === 'intake'
-                      ? 'bg-[#3b82f6] text-white'
-                      : 'bg-[#1a1e2e] text-slate-600'
+                      ? 'bg-[#2E7DFA] text-white'
+                      : 'bg-[#222E3E] text-slate-600'
                 )}
               >
                 {q.label}
@@ -703,7 +703,7 @@ export default function SkillStudio() {
                   'max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                   msg.role === 'assistant'
                     ? 'bg-[#0E0E0E] text-white rounded-tl-sm self-start mr-auto'
-                    : 'bg-[#131720] text-white rounded-tr-sm ml-auto'
+                    : 'bg-[#1B2431] text-white rounded-tr-sm ml-auto'
                 )}
               >
                 {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
@@ -714,7 +714,7 @@ export default function SkillStudio() {
               <div className="bg-[#0E0E0E] rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-slate-600 flex items-center gap-2 max-w-[90%]">
                 <div className="flex gap-1">
                   {[0,1,2].map(i => (
-                    <div key={i} className="w-1.5 h-1.5 bg-[#3b82f6] rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />
+                    <div key={i} className="w-1.5 h-1.5 bg-[#2E7DFA] rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />
                   ))}
                 </div>
                 {genProgress}
@@ -728,7 +728,7 @@ export default function SkillStudio() {
             const currentQ = activeIntake.questions[questionIndex]
             if (currentQ?.choices) {
               return (
-                <div className="px-4 py-3 border-t border-[#1e2433] space-y-2">
+                <div className="px-4 py-3 border-t border-[#2A3648] space-y-2">
                   {currentQ.choices.map(c => (
                     <button
                       key={c.value}
@@ -756,7 +756,7 @@ export default function SkillStudio() {
                           }
                         }, 0)
                       }}
-                      className="w-full text-left px-3 py-2.5 rounded-xl border border-[#1e2433] bg-[#131720] hover:border-[#3b82f6] hover:bg-[#3b82f6]/5 transition-colors"
+                      className="w-full text-left px-3 py-2.5 rounded-xl border border-[#2A3648] bg-[#1B2431] hover:border-[#2E7DFA] hover:bg-[#2E7DFA]/5 transition-colors"
                     >
                       <span className="text-sm font-semibold text-white capitalize">{c.value}</span>
                       <span className="text-xs text-slate-600 ml-2">{c.desc}</span>
@@ -766,7 +766,7 @@ export default function SkillStudio() {
               )
             }
             return (
-              <div className="px-4 py-3 border-t border-[#1e2433]">
+              <div className="px-4 py-3 border-t border-[#2A3648]">
                 <div className="flex gap-2">
                   <input
                     ref={inputRef}
@@ -774,13 +774,13 @@ export default function SkillStudio() {
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your answer..."
-                    className="flex-1 px-3 py-2 text-sm border border-[#1e2433] rounded-xl bg-[#131720] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+                    className="flex-1 px-3 py-2 text-sm border border-[#2A3648] rounded-xl bg-[#1B2431] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#2E7DFA] focus:border-[#2E7DFA]"
                     autoFocus
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!input.trim()}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#3b82f6] text-white disabled:opacity-40 hover:bg-[#60a5fa] transition-colors flex-shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#2E7DFA] text-white disabled:opacity-40 hover:bg-[#5B96F5] transition-colors flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -790,7 +790,7 @@ export default function SkillStudio() {
           })()}
 
           {phase === 'intake' && allQuestionsAnswered && (
-            <div className="px-4 py-3 border-t border-[#1e2433]">
+            <div className="px-4 py-3 border-t border-[#2A3648]">
               <Button className="w-full" leftIcon={<Sparkles className="w-4 h-4" />} onClick={() => handleGenerate()}>
                 Generate {skill?.name}
               </Button>
@@ -803,7 +803,7 @@ export default function SkillStudio() {
         <div className="flex-1 flex flex-col min-w-0">
           {phase === 'generating' && (
             <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8">
-              <div className="w-12 h-12 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
+              <div className="w-12 h-12 border-2 border-[#2E7DFA] border-t-transparent rounded-full animate-spin" />
               <div>
                 <p className="text-base font-semibold text-white">{genProgress}</p>
                 <p className="text-sm text-slate-600 mt-1">The AI is generating your {skill?.name} deliverable.<br />This usually takes 20-60 seconds.</p>
@@ -813,7 +813,7 @@ export default function SkillStudio() {
 
           {phase === 'intake' && !selectedDraft && (
             <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-[#1a1e2e] flex items-center justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#222E3E] flex items-center justify-center">
                 <Sparkles className="w-8 h-8 text-slate-600" />
               </div>
               <div>
@@ -850,7 +850,7 @@ export default function SkillStudio() {
 
           {/* Draft history — bottom strip */}
           {drafts.length > 0 && (
-            <div className="flex-shrink-0 border-t border-[#1e2433] bg-[#131720] px-4 py-2 flex items-center gap-2 overflow-x-auto">
+            <div className="flex-shrink-0 border-t border-[#2A3648] bg-[#1B2431] px-4 py-2 flex items-center gap-2 overflow-x-auto">
               <span className="text-xs font-medium text-slate-600 mr-1 flex-shrink-0">History:</span>
               {drafts.map((d, i) => (
                 <div key={d.id} className="flex items-center gap-0.5 flex-shrink-0">
@@ -859,8 +859,8 @@ export default function SkillStudio() {
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1 rounded-l-full text-xs font-medium border transition-colors',
                       selectedDraft?.id === d.id
-                        ? 'bg-[#131720] text-white border-[#1A1A1A]'
-                        : 'bg-[#131720] text-slate-300 border-[#1e2433] hover:border-[#3b82f6]'
+                        ? 'bg-[#1B2431] text-white border-[#1A1A1A]'
+                        : 'bg-[#1B2431] text-slate-300 border-[#2A3648] hover:border-[#2E7DFA]'
                     )}
                   >
                     Draft {drafts.length - i}
@@ -886,8 +886,8 @@ export default function SkillStudio() {
                     className={cn(
                       'px-1.5 py-1 rounded-r-full border-t border-b border-r text-xs transition-colors',
                       selectedDraft?.id === d.id
-                        ? 'border-[#1A1A1A] bg-[#131720] text-slate-500 hover:text-red-300'
-                        : 'border-[#1e2433] bg-[#131720] text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
+                        ? 'border-[#1A1A1A] bg-[#1B2431] text-slate-500 hover:text-red-300'
+                        : 'border-[#2A3648] bg-[#1B2431] text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
                     )}
                   >
                     <Trash2 className="w-3 h-3" />

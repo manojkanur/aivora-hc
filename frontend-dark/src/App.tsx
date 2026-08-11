@@ -41,9 +41,9 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, EBState> {
       if (this.state.isChunkError) {
         // Show a loading spinner — auto-reload is coming
         return (
-          <div className="min-h-screen bg-[#0c0e14] flex items-center justify-center">
+          <div className="min-h-screen bg-[#0B1220] flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-10 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-[#2A3648] border-t-blue-500 animate-spin" />
               <p className="text-sm text-slate-500 font-medium">Loading…</p>
             </div>
           </div>
@@ -51,7 +51,7 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, EBState> {
       }
       // Non-chunk error — show a minimal recovery UI
       return (
-        <div className="min-h-screen bg-[#0c0e14] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-[#0B1220] flex items-center justify-center p-4">
           <div className="text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
               <span className="text-red-400 text-xl">!</span>

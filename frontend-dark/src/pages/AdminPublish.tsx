@@ -132,7 +132,7 @@ export default function AdminPublish() {
       </header>
 
       {/* Connection strip */}
-      <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] px-4 py-3 flex items-center gap-3">
+      <div className="rounded-2xl border border-[#2A3648] bg-[#0f1117] px-4 py-3 flex items-center gap-3">
         <div className={cn('w-2 h-2 rounded-full flex-shrink-0', status?.connected ? 'bg-emerald-400' : 'bg-slate-600')} />
         <p className="text-sm text-slate-300 flex-1 truncate">
           {status?.connected ? 'LinkedIn connected' : 'Not connected'}
@@ -213,7 +213,7 @@ function ComposeStep({
 }) {
   const canGenerate = prompt.trim().length >= 3 && !generating
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#0f1117] p-5 space-y-5">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#0f1117] p-5 space-y-5">
       <div>
         <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-2">
           Format
@@ -229,7 +229,7 @@ function ComposeStep({
                   'text-left rounded-xl border px-3.5 py-3 transition-colors',
                   active
                     ? 'border-blue-500/40 bg-blue-500/10'
-                    : 'border-[#1e2433] bg-[#0c0e14] hover:border-[#2a3048]'
+                    : 'border-[#2A3648] bg-[#0B1220] hover:border-[#2a3048]'
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -261,11 +261,11 @@ function ComposeStep({
                 ? 'e.g. Why annual performance reviews are the wrong ritual for a hybrid workforce.'
                 : 'e.g. Why succession planning fails when boards focus only on the CEO seat.'
           }
-          className="w-full bg-[#0c0e14] border border-[#1e2433] rounded-xl px-3.5 py-3 text-[15px] text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 resize-y leading-relaxed"
+          className="w-full bg-[#0B1220] border border-[#2A3648] rounded-xl px-3.5 py-3 text-[15px] text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 resize-y leading-relaxed"
         />
       </div>
 
-      <div className="flex items-center justify-end pt-2 border-t border-[#1e2433]">
+      <div className="flex items-center justify-end pt-2 border-t border-[#2A3648]">
         <button
           onClick={onGenerate}
           disabled={!canGenerate}
@@ -311,7 +311,7 @@ function PreviewStep({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
       {/* Preview panel */}
-      <div className="lg:col-span-2 rounded-2xl border border-[#1e2433] bg-[#0f1117] p-5 space-y-4">
+      <div className="lg:col-span-2 rounded-2xl border border-[#2A3648] bg-[#0f1117] p-5 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500">Preview</p>
           <button
@@ -331,7 +331,7 @@ function PreviewStep({
 
         {hasImages ? (
           <div className={cn(
-            'relative rounded-xl overflow-hidden border border-[#1e2433] bg-[#0c0e14] transition-opacity',
+            'relative rounded-xl overflow-hidden border border-[#2A3648] bg-[#0B1220] transition-opacity',
             regenerating && 'opacity-40'
           )}>
             <img src={draft.images[carouselIdx]} alt="preview" className="w-full h-auto" />
@@ -372,7 +372,7 @@ function PreviewStep({
             )}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-[#1e2433] bg-[#0c0e14] py-10 text-center">
+          <div className="rounded-xl border border-dashed border-[#2A3648] bg-[#0B1220] py-10 text-center">
             <Type className="w-6 h-6 text-slate-500 mx-auto mb-2" />
             <p className="text-xs text-slate-500">Text-only post - no attached image</p>
           </div>
@@ -384,7 +384,7 @@ function PreviewStep({
       </div>
 
       {/* Caption + publish panel */}
-      <div className="lg:col-span-3 rounded-2xl border border-[#1e2433] bg-[#0f1117] p-5 space-y-4">
+      <div className="lg:col-span-3 rounded-2xl border border-[#2A3648] bg-[#0f1117] p-5 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500">Caption · edit before publishing</p>
           <button
@@ -398,10 +398,10 @@ function PreviewStep({
           value={draft.caption}
           onChange={e => onCaptionChange(e.target.value)}
           rows={12}
-          className="w-full bg-[#0c0e14] border border-[#1e2433] rounded-xl px-3.5 py-3 text-[14px] text-white focus:outline-none focus:border-blue-500/40 resize-y leading-relaxed"
+          className="w-full bg-[#0B1220] border border-[#2A3648] rounded-xl px-3.5 py-3 text-[14px] text-white focus:outline-none focus:border-blue-500/40 resize-y leading-relaxed"
         />
 
-        <div className="flex items-center justify-between pt-2 border-t border-[#1e2433]">
+        <div className="flex items-center justify-between pt-2 border-t border-[#2A3648]">
           <div className="flex gap-2">
             {(['PUBLIC', 'CONNECTIONS'] as const).map(v => (
               <button
@@ -411,7 +411,7 @@ function PreviewStep({
                   'px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors',
                   visibility === v
                     ? 'bg-blue-500/15 text-blue-200 border-blue-500/40'
-                    : 'bg-transparent text-slate-500 border-[#1e2433] hover:text-slate-300'
+                    : 'bg-transparent text-slate-500 border-[#2A3648] hover:text-slate-300'
                 )}
               >
                 {v === 'PUBLIC' ? 'Public' : 'Connections'}

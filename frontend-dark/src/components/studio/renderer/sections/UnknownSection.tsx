@@ -8,7 +8,7 @@ interface UnknownProps {
 
 export default function UnknownSection({ layout, title, data }: UnknownProps) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#1e2433] bg-[#131720] p-5">
+    <div className="rounded-2xl border border-dashed border-[#2A3648] bg-[#1B2431] p-5">
       <div className="flex items-center gap-2 mb-3">
         <HelpCircle className="w-4 h-4 text-amber-400" />
         <div className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
@@ -16,7 +16,7 @@ export default function UnknownSection({ layout, title, data }: UnknownProps) {
         </div>
       </div>
       {title && <div className="text-sm text-white mb-2">{title}</div>}
-      <pre className="text-[11px] text-slate-400 leading-relaxed overflow-x-auto bg-[#0c0e14] rounded-lg p-3 border border-[#1e2433]">
+      <pre className="text-[11px] text-slate-400 leading-relaxed overflow-x-auto bg-[#0B1220] rounded-lg p-3 border border-[#2A3648]">
         {JSON.stringify(data, null, 2)}
       </pre>
     </div>

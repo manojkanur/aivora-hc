@@ -17,11 +17,11 @@ export default function TableSection({ data }: { data: TableData }) {
   if (rows.length === 0 || headers.length === 0) return null
 
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] overflow-hidden">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-[#1e2433]">
+            <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-[#2A3648]">
               {headers.map((h, i) => (
                 <th
                   key={i}

@@ -62,7 +62,7 @@ export default function ArtifactView() {
       {/* ── Aivora header ── */}
       <header className="border-b border-slate-200 bg-white">
         <div className="max-w-4xl mx-auto px-5 sm:px-8 h-14 flex items-center">
-          <AivoraLogo size="sm" />
+          <AivoraLogo size="sm" inverted />
         </div>
       </header>
 

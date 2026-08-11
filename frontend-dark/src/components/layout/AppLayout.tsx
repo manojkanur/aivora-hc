@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Briefcase, Inbox, Download,
   Share2, Settings, CreditCard, X, ShieldCheck, Sparkles,
-  HelpCircle, ChevronRight, ChevronLeft, ArrowRight, Rocket,
+  HelpCircle, ChevronRight, ChevronLeft, ArrowRight,
   PanelLeftClose, PanelLeftOpen, Brain, Sun, Moon, BookOpen,
 } from 'lucide-react'
 import { AivoraLogo } from '../brand/AivoraLogo'
@@ -65,7 +65,7 @@ function NavItemRow({ item, onLinkClick, collapsed }: { item: NavItem; onLinkCli
             'flex items-center gap-3 rounded-xl text-sm font-semibold transition-all duration-150 border',
             collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3.5 py-2.5',
             isActive
-              ? 'bg-blue-600/15 text-blue-400 border-blue-500/30 shadow-[0_0_0_1px_rgba(59,130,246,0.1)]'
+              ? 'bg-blue-600/15 text-blue-400 border-blue-500/30 shadow-[0_0_0_1px_rgba(46,125,250,0.1)]'
               : 'text-slate-400 hover:bg-white/5 hover:text-white border-transparent'
           )
         }
@@ -78,7 +78,7 @@ function NavItemRow({ item, onLinkClick, collapsed }: { item: NavItem; onLinkCli
         'absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none transition-opacity duration-150 hidden lg:block',
         collapsed ? 'opacity-0 group-hover/nav:opacity-100' : 'opacity-0 group-hover/nav:opacity-100'
       )}>
-        <div className="bg-[#131720] border border-[#1e2433] text-white text-xs rounded-lg px-3 py-2 w-52 shadow-xl leading-relaxed whitespace-nowrap">
+        <div className="bg-[#1B2431] border border-[#2A3648] text-white text-xs rounded-lg px-3 py-2 w-52 shadow-xl leading-relaxed whitespace-nowrap">
           <p className="font-semibold mb-0.5 text-blue-400">{item.label}</p>
           <p className="text-slate-500">{item.desc}</p>
         </div>
@@ -91,7 +91,7 @@ function NavSection({ title, items, onLinkClick, collapsed }: { title: string; i
   return (
     <div>
       {!collapsed && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-2">{title}</p>}
-      {collapsed && <div className="w-full h-px bg-[#1a1e2e] my-2.5" />}
+      {collapsed && <div className="w-full h-px bg-[#222E3E] my-2.5" />}
       <div className="space-y-1">
         {items.map(item => (
           <NavItemRow key={item.href} item={item} onLinkClick={onLinkClick} collapsed={collapsed} />
@@ -129,11 +129,11 @@ function LearningCenterPanel({ onClose }: { onClose: () => void }) {
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.97 }}
         transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-        className="bg-[#0c0e14] border border-[#1e2433] rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
+        className="bg-[#0B1220] border border-[#2A3648] rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e2433] flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A3648] flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
               <Brain className="w-4 h-4 text-violet-400" />
@@ -158,12 +158,12 @@ function LearningCenterPanel({ onClose }: { onClose: () => void }) {
           ) : (
             <>
               {/* Knowledge bar */}
-              <div className="bg-[#131720] border border-[#1e2433] rounded-xl p-4">
+              <div className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-slate-300">Agent Knowledge Level</span>
                   <span className="text-sm font-bold text-violet-400">{Math.min(100, totalKnown * 8)}%</span>
                 </div>
-                <div className="w-full h-2 bg-[#1e2433] rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-[#2A3648] rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }} animate={{ width: `${Math.min(100, totalKnown * 8)}%` }}
                     transition={{ duration: 1.2, ease: 'easeOut' }}
@@ -182,7 +182,7 @@ function LearningCenterPanel({ onClose }: { onClose: () => void }) {
                   </div>
                   <div className="space-y-2">
                     {items.map(ins => (
-                      <div key={ins.id} className="flex items-start justify-between gap-3 bg-[#131720] border border-[#1e2433] rounded-xl px-4 py-3 hover:border-[#2a3045] transition-colors">
+                      <div key={ins.id} className="flex items-start justify-between gap-3 bg-[#1B2431] border border-[#2A3648] rounded-xl px-4 py-3 hover:border-[#2a3045] transition-colors">
                         <div className="min-w-0">
                           <p className="text-sm text-slate-200 leading-snug">{ins.value}</p>
                           {ins.source && <p className="text-[10px] text-slate-600 mt-0.5 italic truncate">"{ins.source.slice(0, 80)}{ins.source.length > 80 ? '…' : ''}"</p>}
@@ -222,9 +222,9 @@ function ProductTour({ onClose }: { onClose: () => void }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 16 }}
-        className="fixed bottom-20 left-4 z-50 w-72 bg-[#131720] border border-blue-500/20 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+        className="fixed bottom-20 left-4 z-50 w-72 bg-[#1B2431] border border-blue-500/20 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden"
       >
-        <div className="h-0.5 bg-[#1e2433]">
+        <div className="h-0.5 bg-[#2A3648]">
           <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${((step + 1) / TOUR_STEPS.length) * 100}%` }} />
         </div>
         <div className="p-5">
@@ -268,14 +268,14 @@ function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, on
   const totalInsights = useConversationInsights(s => (s.insights ?? []).length)
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0e14]">
+    <div className="flex flex-col h-full bg-[#0B1220]">
       {/* Header */}
-      <div className={cn('border-b border-[#1a1e2e] flex-shrink-0', collapsed ? 'px-2 py-3' : 'h-16 px-4 flex items-center')}>
+      <div className={cn('border-b border-[#222E3E] flex-shrink-0', collapsed ? 'px-2 py-3' : 'h-16 px-4 flex items-center')}>
         {collapsed ? (
           // Collapsed: stack icons vertically, all centered
           <div className="flex flex-col items-center gap-2">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-[0_0_14px_rgba(59,130,246,0.35)]">
-              <Rocket className="w-[18px] h-[18px] text-white" />
+            <div className="w-9 h-9 rounded-xl bg-[#0060FF] flex items-center justify-center flex-shrink-0 shadow-[0_0_14px_rgba(0,96,255,0.35)]">
+              <AivoraLogo variant="mark" size="xs" color="#FFFFFF" />
             </div>
             <button
               onClick={toggleTheme}
@@ -302,10 +302,10 @@ function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, on
         ) : (
           // Expanded: logo on left, action buttons on right
           <div className="flex items-center justify-between w-full">
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <AivoraLogo size="sm" />
+            <div className="flex flex-col gap-1 min-w-0">
+              <AivoraLogo size="md" />
               {tenant && (
-                <span className="text-[10px] text-slate-500 leading-none truncate pl-9 uppercase tracking-wider">{tenant.name}</span>
+                <span className="text-[10px] text-slate-500 leading-none truncate uppercase tracking-wider">{tenant.name}</span>
               )}
             </div>
             <div className="flex items-center gap-1">
@@ -370,7 +370,7 @@ function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, on
                 </button>
                 {collapsed && (
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none opacity-0 group-hover/nav:opacity-100 transition-opacity hidden lg:block">
-                    <div className="bg-[#131720] border border-[#1e2433] text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
+                    <div className="bg-[#1B2431] border border-[#2A3648] text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
                       <p className="font-semibold text-violet-400">Learning Journey</p>
                       <p className="text-slate-500">{totalInsights} insights captured</p>
                     </div>
@@ -388,7 +388,7 @@ function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, on
         )}
       </nav>
 
-      <div className={cn('py-4 border-t border-[#1a1e2e] space-y-2', collapsed ? 'px-2' : 'px-3')}>
+      <div className={cn('py-4 border-t border-[#222E3E] space-y-2', collapsed ? 'px-2' : 'px-3')}>
         {/* Product tour */}
         <div className="relative group/nav">
           <button
@@ -408,7 +408,7 @@ function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, on
           </button>
           {collapsed && (
             <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none opacity-0 group-hover/nav:opacity-100 transition-opacity hidden lg:block">
-              <div className="bg-[#131720] border border-[#1e2433] text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap text-blue-400 font-semibold">
+              <div className="bg-[#1B2431] border border-[#2A3648] text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap text-blue-400 font-semibold">
                 Product Tour
               </div>
             </div>
@@ -417,7 +417,7 @@ function Sidebar({ onClose, onStartTour, collapsed, pinned, onToggleCollapse, on
 
         {/* User */}
         <div className={cn('flex items-center pt-1', collapsed ? 'justify-center px-1' : 'gap-3 px-1.5')}>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-[0_0_12px_rgba(59,130,246,0.3)]">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-[0_0_12px_rgba(46,125,250,0.3)]">
             {user ? getInitials(user.name) : '?'}
           </div>
           {!collapsed && (
@@ -462,7 +462,7 @@ export function AppLayout() {
   }, [])
 
   return (
-    <div className="flex h-screen bg-[#0c0e14] overflow-hidden">
+    <div className="flex h-screen bg-[#0B1220] overflow-hidden">
       {/* Desktop sidebar - the LAYOUT column reserves only the rail width (60px)
           when not pinned, so content keeps full width; the sidebar itself
           expands as a floating overlay on hover. */}
@@ -476,7 +476,7 @@ export function AppLayout() {
           animate={{ width: expanded ? 264 : 60 }}
           transition={{ type: 'spring', damping: 28, stiffness: 260 }}
           className={cn(
-            'absolute left-0 top-0 h-full flex flex-col border-r border-[#1a1e2e] overflow-hidden bg-[#0c0e14]',
+            'absolute left-0 top-0 h-full flex flex-col border-r border-[#222E3E] overflow-hidden bg-[#0B1220]',
             !sidebarPinned && expanded && 'shadow-[8px_0_32px_rgba(0,0,0,0.55)]',
           )}
         >
@@ -502,7 +502,7 @@ export function AppLayout() {
             <motion.div
               initial={{ x: -264 }} animate={{ x: 0 }} exit={{ x: -264 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 h-full w-[264px] border-r border-[#1a1e2e] z-50 lg:hidden"
+              className="fixed left-0 top-0 h-full w-[264px] border-r border-[#222E3E] z-50 lg:hidden"
             >
               <Sidebar onClose={() => setSidebarOpen(false)} onStartTour={() => { setSidebarOpen(false); setTourActive(true) }} onLearningClick={() => setLearningOpen(true)} />
             </motion.div>
@@ -512,7 +512,7 @@ export function AppLayout() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
-        <main id="main-content" className="flex-1 overflow-y-auto bg-[#0c0e14]">
+        <main id="main-content" className="flex-1 overflow-y-auto bg-[#0B1220]">
           <Outlet />
         </main>
       </div>

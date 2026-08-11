@@ -32,7 +32,7 @@ export interface HeroStatData {
 }
 
 const SENT: Record<Sentiment, string> = {
-  good: '#10b981', warning: '#f59e0b', bad: '#ef4444', neutral: '#94a3b8', accent: '#3b82f6',
+  good: '#2E9E5B', warning: '#C97A1E', bad: '#D14343', neutral: '#8C96A6', accent: '#2E7DFA',
 }
 
 function BigNumber({ value }: { value: number | string }) {
@@ -57,7 +57,7 @@ export default function HeroStat({ data }: { title?: string; data: HeroStatData;
     >
       <div className="flex flex-col sm:flex-row sm:items-center gap-6">
         {/* Hero number */}
-        <div className="sm:pr-8 sm:border-r sm:border-[#1e2433]">
+        <div className="sm:pr-8 sm:border-r sm:border-[#2A3648]">
           {data.label && (
             <div className="text-[11px] uppercase tracking-widest font-bold text-slate-500 mb-1">{data.label}</div>
           )}

@@ -120,7 +120,27 @@ function derivePersona(clientProfile: unknown): string {
 // Markdown rendering for assistant replies
 // ---------------------------------------------------------------------------
 
+// Strip stray HTML the model shouldn't emit in chat (raw tags, ```html fences,
+// full-document scaffolding) so it never shows as ugly literal text.
+function cleanChatContent(raw: string): string {
+  let s = raw || ''
+  // Drop ```html ... ``` (or ```svg) fenced blocks entirely - chat visuals are
+  // rendered from structured data, not HTML.
+  s = s.replace(/```(?:html|xml|svg)\b[\s\S]*?```/gi, '')
+  // If the whole message is an HTML document, keep only visible text.
+  if (/<!DOCTYPE|<html[\s>]|<body[\s>]/i.test(s)) {
+    s = s.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '')
+    s = s.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim()
+  } else {
+    // Otherwise strip only block-level layout tags that would render as text,
+    // leaving inline markdown (**bold**, lists) intact.
+    s = s.replace(/<\/?(?:div|span|section|table|tr|td|th|thead|tbody|svg|path|rect|g|style|script)[^>]*>/gi, '')
+  }
+  return s
+}
+
 export function AssistantMarkdown({ content }: { content: string }) {
+  const clean = cleanChatContent(content)
   return (
     <div className="text-sm text-slate-200 leading-relaxed space-y-3 [&_strong]:text-white [&_code]:text-blue-300 [&_code]:bg-slate-500/15 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[0.85em]">
       <ReactMarkdown
@@ -138,12 +158,12 @@ export function AssistantMarkdown({ content }: { content: string }) {
             </div>
           ),
           thead: ({ children }) => <thead className="text-slate-300">{children}</thead>,
-          th: ({ children }) => <th className="text-left font-semibold border border-[#1e2433] bg-[#0c0e14] px-2.5 py-1.5">{children}</th>,
-          td: ({ children }) => <td className="border border-[#1e2433] px-2.5 py-1.5 align-top">{children}</td>,
+          th: ({ children }) => <th className="text-left font-semibold border border-[#2A3648] bg-[#0B1220] px-2.5 py-1.5">{children}</th>,
+          td: ({ children }) => <td className="border border-[#2A3648] px-2.5 py-1.5 align-top">{children}</td>,
           blockquote: ({ children }) => <blockquote className="border-l-2 border-blue-500/40 pl-3 text-slate-400 italic">{children}</blockquote>,
         }}
       >
-        {content}
+        {clean}
       </ReactMarkdown>
     </div>
   )
@@ -196,7 +216,7 @@ const SEVERITY_STYLE: Record<string, string> = {
   critical: 'bg-red-500/10 border-red-500/30 text-red-300',
   high: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
   moderate: 'bg-blue-500/10 border-blue-500/30 text-blue-300',
-  watch: 'bg-[#0c0e14] border-[#1e2433] text-slate-400',
+  watch: 'bg-[#0B1220] border-[#2A3648] text-slate-400',
 }
 
 function slugLabel(v?: string): string {
@@ -211,7 +231,7 @@ function BriefingCard({ content }: { content: BriefContent }) {
   const drivers = sit.strategicDrivers ?? []
   const outputs = content.desiredOutputs?.outputTypes ?? []
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4 sm:p-5 space-y-3">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
@@ -266,10 +286,10 @@ function PrefsModal({ prefs, onSave, onClose }: { prefs: ChatPrefs; onSave: (p: 
   const [draft, setDraft] = useState<ChatPrefs>(prefs)
   const chip = (active: boolean) => active
     ? 'px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white transition-colors'
-    : 'px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 transition-colors'
+    : 'px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 border border-[#2A3648] bg-[#0B1220] hover:border-blue-500/40 transition-colors'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-5" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6 space-y-5" onClick={e => e.stopPropagation()}>
         <div>
           <h2 className="text-lg font-bold text-white">Configure chat</h2>
           <p className="text-xs text-slate-500 mt-1">Shape how the advisor responds in this workspace.</p>
@@ -299,7 +319,7 @@ function PrefsModal({ prefs, onSave, onClose }: { prefs: ChatPrefs; onSave: (p: 
               onChange={e => setDraft(d => ({ ...d, instructions: e.target.value }))}
               rows={3}
               placeholder="e.g. Always give GCC-specific examples, avoid jargon, address me as the CHRO"
-              className="mt-3 w-full rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+              className="mt-3 w-full rounded-xl bg-[#0B1220] border border-[#2A3648] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
             />
           )}
         </div>
@@ -328,12 +348,12 @@ type SessionReport =
   | { kind: 'detailed'; document: StudioOutputDocument }
   | { kind: 'summary'; summary: SummaryReport }
 
-const DONUT_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4']
+const DONUT_COLORS = ['#2E7DFA', '#22c55e', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4']
 
 function SummaryReportView({ summary }: { summary: SummaryReport }) {
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-6">
+      <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6">
         <h2 className="text-xl font-bold text-white">{summary.title}</h2>
         {summary.subtitle && <p className="text-sm text-slate-400 mt-1">{summary.subtitle}</p>}
         <p className="text-sm text-slate-300 leading-relaxed mt-4">{summary.overview}</p>
@@ -342,7 +362,7 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
       {summary.kpis && summary.kpis.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {summary.kpis.map((k, i) => (
-            <div key={i} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4">
+            <div key={i} className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-4">
               <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500">{k.label}</p>
               <p className="text-2xl font-bold text-white mt-1">{k.value}{k.unit && <span className="text-sm text-slate-400 ml-1">{k.unit}</span>}</p>
               {k.meaning && <p className="text-xs text-slate-500 mt-2 leading-relaxed">{k.meaning}</p>}
@@ -356,14 +376,14 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
         if (c.type === 'gantt') {
           const span = Math.max(6, ...c.items.map(it => (it.start ?? 0) + (it.duration ?? 1)))
           return (
-            <div key={ci} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+            <div key={ci} className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5">
               <h3 className="text-sm font-semibold text-white">{c.title}</h3>
               {c.explanation && <p className="text-xs text-slate-500 mt-1 mb-4">{c.explanation}</p>}
               <div className="space-y-2.5 mt-4">
                 {c.items.map((it, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <span className="w-36 text-xs text-slate-300 truncate flex-shrink-0">{it.label}</span>
-                    <div className="flex-1 h-5 rounded-md bg-[#1e2433] relative overflow-hidden">
+                    <div className="flex-1 h-5 rounded-md bg-[#2A3648] relative overflow-hidden">
                       <div
                         className="absolute top-0 h-full rounded-md bg-gradient-to-r from-blue-600 to-blue-400 flex items-center px-2"
                         style={{ left: `${((it.start ?? 0) / span) * 100}%`, width: `${Math.max(4, ((it.duration ?? 1) / span) * 100)}%` }}
@@ -381,7 +401,7 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
           )
         }
         return (
-          <div key={ci} className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+          <div key={ci} className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5">
             <h3 className="text-sm font-semibold text-white">{c.title}</h3>
             {c.explanation && <p className="text-xs text-slate-500 mt-1 mb-4">{c.explanation}</p>}
             {c.type === 'donut' || c.type === 'pie' ? (
@@ -392,7 +412,7 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
                     return `${DONUT_COLORS[i % DONUT_COLORS.length]} ${start}% ${start + ((it.value ?? 0) / total) * 100}%`
                   }).join(', ')})`,
                 }}>
-                  {c.type === 'donut' && <div className="w-full h-full rounded-full" style={{ background: 'radial-gradient(circle at center, #131720 0 38%, transparent 39%)' }} />}
+                  {c.type === 'donut' && <div className="w-full h-full rounded-full" style={{ background: 'radial-gradient(circle at center, #1B2431 0 38%, transparent 39%)' }} />}
                 </div>
                 <div className="space-y-1.5">
                   {c.items.map((it, i) => (
@@ -412,7 +432,7 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
                       <span className="text-slate-300">{it.label}</span>
                       <span className="text-slate-500 tabular-nums">{it.value ?? 0}</span>
                     </div>
-                    <div className="h-2.5 rounded-full bg-[#1e2433] overflow-hidden">
+                    <div className="h-2.5 rounded-full bg-[#2A3648] overflow-hidden">
                       <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, Math.max(0, it.value ?? 0))}%` }} />
                     </div>
                   </div>
@@ -424,7 +444,7 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
       })}
 
       {summary.takeaways && summary.takeaways.length > 0 && (
-        <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+        <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5">
           <h3 className="text-sm font-semibold text-white mb-3">What this means</h3>
           <div className="space-y-3">
             {summary.takeaways.map((t, i) => (
@@ -456,7 +476,7 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
       )}
 
       {summary.next_steps && summary.next_steps.length > 0 && (
-        <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+        <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5">
           <h3 className="text-sm font-semibold text-white mb-3">Next steps</h3>
           <ol className="space-y-2">
             {summary.next_steps.map((st, i) => (
@@ -476,8 +496,8 @@ function SummaryReportView({ summary }: { summary: SummaryReport }) {
 function PlanCardInline({ plan }: { plan: ChatPlan }) {
   const done = plan.steps.filter(st => st.status === 'done').length
   return (
-    <div className="mt-3 rounded-xl border border-blue-500/25 bg-[#0c0e14] overflow-hidden">
-      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-[#1e2433] bg-blue-500/5">
+    <div className="mt-3 rounded-xl border border-blue-500/25 bg-[#0B1220] overflow-hidden">
+      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-[#2A3648] bg-blue-500/5">
         <ListChecks className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
         <p className="text-xs font-bold text-white flex-1 truncate">{plan.title}</p>
         <span className="text-[11px] font-bold text-blue-400 tabular-nums">{done}/{plan.steps.length}</span>
@@ -489,7 +509,7 @@ function PlanCardInline({ plan }: { plan: ChatPlan }) {
               'w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5 border',
               st.status === 'done' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
                 : st.status === 'in_progress' ? 'bg-blue-500/15 border-blue-500/40 text-blue-400'
-                : 'bg-[#131720] border-[#1e2433] text-slate-500'
+                : 'bg-[#1B2431] border-[#2A3648] text-slate-500'
             )}>
               {st.status === 'done' ? <Check className="w-3 h-3" /> : i + 1}
             </span>
@@ -509,13 +529,13 @@ function PlanCardInline({ plan }: { plan: ChatPlan }) {
 function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize: (t: 'summary' | 'detailed') => void; finalizing: 'summary' | 'detailed' | null }) {
   const doneCount = plan.steps.filter(st => st.status === 'done').length
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4 space-y-3 lg:sticky lg:top-4">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-4 space-y-3 lg:sticky lg:top-4">
       <div className="flex items-center gap-2">
         <ListChecks className="w-4 h-4 text-blue-400 flex-shrink-0" />
         <p className="text-xs font-bold uppercase tracking-wider text-slate-400 flex-1 truncate">{plan.title}</p>
         <span className="text-xs font-bold text-blue-400">{doneCount}/{plan.steps.length}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+      <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
         <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
           animate={{ width: `${plan.steps.length ? (doneCount / plan.steps.length) * 100 : 0}%` }}
           transition={{ duration: 0.5, ease: 'easeOut' }} />
@@ -525,26 +545,26 @@ function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize
           <div key={i} className={
             st.status === 'done' ? 'rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3.5 py-2.5'
               : st.status === 'in_progress' ? 'rounded-xl border border-blue-500/30 bg-blue-500/5 px-3.5 py-2.5'
-              : 'rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3.5 py-2.5'
+              : 'rounded-xl border border-[#2A3648] bg-[#0B1220] px-3.5 py-2.5'
           }>
             <div className="flex items-center gap-2.5">
               {st.status === 'done'
                 ? <span className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0"><Check className="w-3 h-3 text-emerald-400" /></span>
                 : <span className={st.status === 'in_progress'
                     ? 'w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/40 text-blue-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0'
-                    : 'w-5 h-5 rounded-full bg-[#131720] border border-[#1e2433] text-slate-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0'}>{i + 1}</span>}
+                    : 'w-5 h-5 rounded-full bg-[#1B2431] border border-[#2A3648] text-slate-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0'}>{i + 1}</span>}
               <span className={st.status === 'pending' ? 'text-sm font-medium text-slate-500' : 'text-sm font-medium text-white'}>{st.title}</span>
             </div>
             {st.note && <p className="text-[11px] text-slate-500 mt-1.5 pl-7">{st.note}</p>}
           </div>
         ))}
       </div>
-      <div className="pt-2 border-t border-[#1e2433] space-y-2">
+      <div className="pt-2 border-t border-[#2A3648] space-y-2">
         <p className="text-[11px] text-slate-500 leading-relaxed">Happy with the plan? Turn this session into a report.</p>
         <button
           onClick={() => onFinalize('summary')}
           disabled={!!finalizing}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border border-[#1e2433] bg-[#0c0e14] text-slate-200 hover:border-blue-500/40 transition-colors disabled:opacity-50"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border border-[#2A3648] bg-[#0B1220] text-slate-200 hover:border-blue-500/40 transition-colors disabled:opacity-50"
         >
           {finalizing === 'summary' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileBarChart2 className="w-3.5 h-3.5" />}
           Summary report
@@ -552,7 +572,7 @@ function PlanRail({ plan, onFinalize, finalizing }: { plan: ChatPlan; onFinalize
         <button
           onClick={() => onFinalize('detailed')}
           disabled={!!finalizing}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors disabled:opacity-50"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_2px_12px_rgba(23,95,204,0.35)] transition-colors disabled:opacity-50"
         >
           {finalizing === 'detailed' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
           Detailed report
@@ -582,7 +602,7 @@ function ApprovalCard({
       <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
         <Sparkles className="w-4 h-4 text-blue-400" />
       </div>
-      <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 min-w-0">
+      <div className="rounded-2xl rounded-tl-sm bg-[#1B2431] border border-[#2A3648] px-4 py-3 min-w-0">
         <div className="flex items-center gap-1.5 mb-2">
           <Wand2 className="w-3.5 h-3.5 text-blue-400" />
           <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300">Deep research + report</span>
@@ -599,7 +619,7 @@ function ApprovalCard({
             <Check className="w-3.5 h-3.5" /> Approve
           </button>
           <button onClick={onEdit}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#2A3648] bg-[#0B1220] hover:border-blue-500/40 text-slate-200 text-xs font-semibold transition-colors">
             <Pencil className="w-3.5 h-3.5" /> Change studio
           </button>
           <button onClick={onCancel}
@@ -1437,13 +1457,13 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         : planActive ? 'lg:grid-cols-[minmax(0,1fr)_320px]'
         : 'grid-cols-1')}>
       {/* ─────────────────── LEFT: conversation ─────────────────── */}
-      <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden w-full">
+      <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#2A3648] bg-[#0B1220] overflow-hidden w-full">
         {/* Toolbar: threads + active studio chip (set via /slash command) + report toggle */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[#161b28] flex-wrap">
           {/* Thread switcher */}
           <div className="relative">
             <button onClick={() => { setThreadsOpen(o => !o); if (!threadsOpen) void refreshThreads() }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 transition-colors max-w-[220px]">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#2A3648] bg-[#1B2431] hover:border-blue-500/40 px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 transition-colors max-w-[220px]">
               <MessageSquare className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
               <span className="truncate">{threads.find(t => t.id === sessionId)?.title || 'Chat'}</span>
               <ChevronDown className="w-3 h-3 text-slate-500 flex-shrink-0" />
@@ -1451,7 +1471,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             {threadsOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setThreadsOpen(false)} />
-                <div className="absolute left-0 top-full mt-1.5 z-40 w-72 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
+                <div className="absolute left-0 top-full mt-1.5 z-40 w-72 rounded-xl border border-[#2A3648] bg-[#0B1220] overflow-hidden shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
                   <button onClick={newThread}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-[#161b28] hover:bg-white/5 transition-colors">
                     <Plus className="w-3.5 h-3.5 text-blue-400" />
@@ -1481,7 +1501,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             )}
           </div>
           <button onClick={newThread} title="New chat"
-            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#2A3648] bg-[#1B2431] hover:border-blue-500/40 text-slate-300 hover:text-white transition-colors flex-shrink-0">
             <Plus className="w-3.5 h-3.5" />
           </button>
           <div className="flex-1" />
@@ -1532,7 +1552,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 <div className="flex flex-wrap justify-center gap-2">
                   {ADVISORY_PATHS.map(p => (
                     <button key={p} onClick={() => sendMessage(p)}
-                      className="rounded-full border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-4 py-2 text-sm text-slate-200 transition-colors">
+                      className="rounded-full border border-[#2A3648] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-4 py-2 text-sm text-slate-200 transition-colors">
                       {p}
                     </button>
                   ))}
@@ -1550,7 +1570,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                     <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                       <Sparkles className="w-4 h-4 text-blue-400" />
                     </div>
-                    <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 min-w-0">
+                    <div className="rounded-2xl rounded-tl-sm bg-[#1B2431] border border-[#2A3648] px-4 py-3 min-w-0">
                       <AssistantMarkdown content={m.content} />
                       {/* Inline visuals: charts/infographics the advisor drafted in this turn */}
                       {Array.isArray(m.visuals) && m.visuals.length > 0 && (
@@ -1564,7 +1584,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   </div>
                 ) : editingId === m.id ? (
                   <div className="flex justify-end">
-                    <div className="w-full max-w-[85%] rounded-2xl border border-blue-500/40 bg-[#0c0e14] p-2">
+                    <div className="w-full max-w-[85%] rounded-2xl border border-blue-500/40 bg-[#0B1220] p-2">
                       <textarea autoFocus value={editDraft}
                         onChange={e => setEditDraft(e.target.value)}
                         onKeyDown={e => {
@@ -1592,7 +1612,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                       className="mt-1.5 flex-shrink-0 w-7 h-7 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
+                    <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(23,95,204,0.25)] px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
                       {m.content}
                     </div>
                   </div>
@@ -1623,7 +1643,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-4 h-4 text-blue-400" />
               </div>
-              <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 flex items-center gap-1.5">
+              <div className="rounded-2xl rounded-tl-sm bg-[#1B2431] border border-[#2A3648] px-4 py-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '150ms' }} />
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '300ms' }} />
@@ -1638,7 +1658,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         </div>
 
         {/* Composer */}
-        <div className="border-t border-[#1e2433] bg-[#0f1117] py-3.5">
+        <div className="border-t border-[#2A3648] bg-[#0f1117] py-3.5">
           <div className="w-full px-5 sm:px-8 relative">
           {/* Generate-report affordance */}
           {canGenerate && !pendingApproval && (
@@ -1654,7 +1674,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           {/* Slash-command studio menu - floats ABOVE the composer so the full
               list (all 27) is reachable and scrollable, never clipped. */}
           {slashOpen && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 z-40 rounded-xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
+            <div className="absolute bottom-full left-0 right-0 mb-2 z-40 rounded-xl border border-[#2A3648] bg-[#0B1220] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#161b28]">
                 <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600">
                   Command
@@ -1684,7 +1704,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                       onMouseEnter={() => setSlashIdx(i)} onClick={() => runSlashItem(item)}
                       className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',
                         i === slashIdx ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
-                      <span className="w-7 h-7 rounded-lg bg-[#131720] border border-[#1e2433] flex items-center justify-center flex-shrink-0">
+                      <span className="w-7 h-7 rounded-lg bg-[#1B2431] border border-[#2A3648] flex items-center justify-center flex-shrink-0">
                         <LayoutGrid className="w-3.5 h-3.5 text-blue-400" />
                       </span>
                       <span className="min-w-0 flex-1">
@@ -1697,7 +1717,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               </div>
             </div>
           )}
-          <div className="flex flex-col rounded-2xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors px-2 py-2">
+          <div className="flex flex-col rounded-2xl border border-[#2A3648] bg-[#0B1220] focus-within:border-blue-500/40 transition-colors px-2 py-2">
             {/* Attached context (studio + evidence) - inside the input box, above the text */}
             {(selectedSkillObj || extraSkillObjs.length > 0 || attachments.length > 0) && (
               <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-0.5">
@@ -1755,7 +1775,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none px-2 py-2 resize-none leading-relaxed self-center" />
             <button onClick={() => sendMessage(draft)} disabled={!draft.trim() || sending} title="Send (Enter)"
               className={draft.trim() && !sending
-                ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-[0_2px_10px_rgba(37,99,235,0.35)] transition-colors'
+                ? 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-[0_2px_10px_rgba(23,95,204,0.35)] transition-colors'
                 : 'flex-shrink-0 w-9 h-9 rounded-xl bg-blue-600/25 text-white/60 flex items-center justify-center cursor-not-allowed transition-colors'}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -1766,7 +1786,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               {models.length > 0 && (
                 <div className="relative flex-shrink-0">
                   <button onClick={() => { setModelMenuOpen(o => !o); setTierMenuOpen(false) }} disabled={!!finalizing}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] pl-2 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#2A3648] bg-[#0B1220] pl-2 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
                     <Sparkles className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
                     <span className="max-w-[100px] sm:max-w-[150px] truncate">{modelLabel}</span>
                     <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', modelMenuOpen && 'rotate-180')} />
@@ -1774,7 +1794,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   {modelMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={() => setModelMenuOpen(false)} />
-                      <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+                      <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#2A3648] bg-[#0B1220] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
                         <div className="px-3.5 py-2 border-b border-[#161b28] flex items-center justify-between">
                           <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Model</span>
                           <span className="text-[10px] text-slate-600 tabular-nums">{models.length}</span>
@@ -1809,7 +1829,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               <div className="relative flex-shrink-0">
                 <button onClick={() => { setTierMenuOpen(o => !o); setModelMenuOpen(false) }} disabled={!!finalizing}
                   title="How deep should the generated report go?"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#1e2433] bg-[#0c0e14] pl-2.5 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#2A3648] bg-[#0B1220] pl-2.5 pr-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-blue-500/50 hover:text-white transition-colors disabled:opacity-50">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
                   <span className="truncate">{tiers.find(t => t.id === tier)?.label ?? 'Thinking'}</span>
                   <ChevronDown className={cn('w-3.5 h-3.5 text-slate-500 transition-transform flex-shrink-0', tierMenuOpen && 'rotate-180')} />
@@ -1817,7 +1837,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 {tierMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setTierMenuOpen(false)} />
-                    <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(15rem,calc(100vw-2rem))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(15rem,calc(100vw-2rem))] rounded-2xl border border-[#2A3648] bg-[#0B1220] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
                       <div className="px-3.5 py-2 border-b border-[#161b28] text-[10px] uppercase tracking-widest font-bold text-slate-500">Report depth</div>
                       <div className="max-h-[min(50vh,20rem)] overflow-y-auto overscroll-contain py-1">
                         {tiers.map(t => (
@@ -1841,7 +1861,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 <button onClick={() => { setStudioMenuOpen(o => !o); setModelMenuOpen(false); setTierMenuOpen(false); setStudioQuery('') }} disabled={!!finalizing}
                   title="Pick the studio to shape the report"
                   className={cn('inline-flex items-center gap-1.5 rounded-full border pl-2.5 pr-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50',
-                    selectedSkillObj ? 'border-blue-500/50 bg-blue-500/10 text-blue-300' : 'border-[#1e2433] bg-[#0c0e14] text-slate-200 hover:border-blue-500/50 hover:text-white')}>
+                    selectedSkillObj ? 'border-blue-500/50 bg-blue-500/10 text-blue-300' : 'border-[#2A3648] bg-[#0B1220] text-slate-200 hover:border-blue-500/50 hover:text-white')}>
                   <LayoutGrid className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
                   {(() => {
                     const count = (selectedSkill ? 1 : 0) + extraStudios.length
@@ -1852,7 +1872,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 {studioMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setStudioMenuOpen(false)} />
-                    <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#2A3648] bg-[#0B1220] overflow-hidden shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
                       <div className="px-2.5 py-2 border-b border-[#161b28] flex items-center gap-2">
                         <Search className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                         <input autoFocus value={studioQuery} onChange={e => setStudioQuery(e.target.value)}
@@ -1869,7 +1889,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                             onClick={() => { pickStudioSlash(s); setStudioMenuOpen(false) }}
                             className={cn('w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
                               s.slug === selectedSkill || extraStudios.includes(s.slug) ? 'bg-blue-600/15' : 'hover:bg-white/5')}>
-                            <span className="w-6 h-6 rounded-lg bg-[#131720] border border-[#1e2433] flex items-center justify-center flex-shrink-0">
+                            <span className="w-6 h-6 rounded-lg bg-[#1B2431] border border-[#2A3648] flex items-center justify-center flex-shrink-0">
                               <LayoutGrid className="w-3 h-3 text-blue-400" />
                             </span>
                             <span className="min-w-0 flex-1">
@@ -1898,7 +1918,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
         const active = plan.steps.find(s => s.status === 'in_progress')
         const pct = plan.steps.length ? Math.round((done / plan.steps.length) * 100) : 0
         return (
-          <div className="self-start rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
+          <div className="self-start rounded-2xl border border-[#2A3648] bg-[#0f1117] overflow-hidden">
             {/* Compact header: title + N/M */}
             <button onClick={() => setPlanExpanded(v => !v)}
               className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors">
@@ -1914,7 +1934,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             </button>
             {/* Progress bar */}
             <div className="px-4 pb-3">
-              <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+              <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
                 <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
                   animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} />
               </div>
@@ -1936,8 +1956,8 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
       {/* ─────────────────── RIGHT: live report canvas ─────────────────── */}
       {hasReportPane && (
-        <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#1e2433] bg-[#0f1117] overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e2433] bg-[#0f1117]/95 backdrop-blur flex-wrap">
+        <div className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl border border-[#2A3648] bg-[#0f1117] overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2A3648] bg-[#0f1117]/95 backdrop-blur flex-wrap">
             <FileBarChart2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white truncate">
@@ -1951,7 +1971,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             </div>
             {revisions.length > 0 && (
               <button onClick={() => { setRevsOpen(o => !o); if (!revsOpen) void refreshRevisions() }}
-                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-300 transition-colors">
+                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[#2A3648] bg-[#1B2431] hover:border-blue-500/40 text-[11px] font-semibold text-slate-300 transition-colors">
                 <History className="w-3 h-3" /> v{revisions[0]?.version ?? 1}
               </button>
             )}
@@ -1963,7 +1983,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
 
           {/* Revision trail dropdown */}
           {revsOpen && revisions.length > 0 && (
-            <div className="border-b border-[#1e2433] bg-[#0c0e14] max-h-52 overflow-y-auto">
+            <div className="border-b border-[#2A3648] bg-[#0B1220] max-h-52 overflow-y-auto">
               {revisions.map(r => (
                 <button key={r.version} onClick={() => restoreRevision(r)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition-colors border-b border-[#161b28] last:border-0">
@@ -1999,7 +2019,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   <motion.p key={genStatus} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="text-[11px] text-slate-500 mb-4 pl-6">{genStatus}</motion.p>
                 </AnimatePresence>
-                <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden mb-4">
+                <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden mb-4">
                   <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
                     animate={{ width: `${(plan.steps.filter(s => s.status === 'done').length / plan.steps.length) * 100}%` }}
                     transition={{ duration: 0.6, ease: 'easeOut' }} />
@@ -2012,7 +2032,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                       <span className={cn('w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border text-[10px] font-bold',
                         st.status === 'done' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
                           : st.status === 'in_progress' ? 'bg-blue-500/15 border-blue-500/40 text-blue-400'
-                          : 'bg-[#131720] border-[#1e2433] text-slate-500')}>
+                          : 'bg-[#1B2431] border-[#2A3648] text-slate-500')}>
                         {st.status === 'done' ? <Check className="w-3 h-3" /> : st.status === 'in_progress' ? <Loader2 className="w-3 h-3 animate-spin" /> : i + 1}
                       </span>
                       <span className="text-sm truncate">{st.title}</span>
@@ -2022,7 +2042,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <div className="w-10 h-10 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+                <div className="w-10 h-10 rounded-full border-2 border-[#2A3648] border-t-blue-500 animate-spin" />
                 <AnimatePresence mode="wait">
                   <motion.p key={genStatus} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="text-sm text-slate-500">{genStatus || `Researching and building the ${finalizing === 'summary' ? 'executive summary' : 'studio report'}...`}</motion.p>
@@ -2032,7 +2052,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
           </div>
 
           {/* Report actions + refine */}
-          <div className="border-t border-[#1e2433] bg-[#0c0e14] px-4 py-3 space-y-2.5">
+          <div className="border-t border-[#2A3648] bg-[#0B1220] px-4 py-3 space-y-2.5">
             {report && (
               <div className="flex items-center gap-1.5 flex-wrap relative">
                 {/* Public share (client #5) - always available once a report exists */}
@@ -2040,21 +2060,21 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                   <button onClick={() => { setShareOpen(o => !o); if (!shareToken && !shareOpen) void createShareLink() }}
                     disabled={!sessionId || sharing}
                     className={cn('inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors disabled:opacity-50',
-                      shareToken ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : 'border-[#1e2433] bg-[#131720] text-slate-200 hover:border-blue-500/40')}>
+                      shareToken ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : 'border-[#2A3648] bg-[#1B2431] text-slate-200 hover:border-blue-500/40')}>
                     {sharing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />}
                     Share
                   </button>
                   {shareOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 z-40 w-72 rounded-xl border border-[#1e2433] bg-[#0c0e14] p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
+                    <div className="absolute bottom-full left-0 mb-2 z-40 w-72 rounded-xl border border-[#2A3648] bg-[#0B1220] p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.55)]">
                       <p className="text-[11px] font-semibold text-white flex items-center gap-1.5"><Link2 className="w-3 h-3 text-blue-400" /> Public share link</p>
                       <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">Anyone with this link can view the live report - no login. It always shows the latest version.</p>
                       {shareUrl ? (
                         <>
                           <div className="mt-2 flex items-center gap-1">
                             <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
-                              className="flex-1 min-w-0 rounded-lg border border-[#1e2433] bg-[#131720] px-2 py-1.5 text-[11px] text-slate-300" />
+                              className="flex-1 min-w-0 rounded-lg border border-[#2A3648] bg-[#1B2431] px-2 py-1.5 text-[11px] text-slate-300" />
                             <button onClick={copyShareUrl} title="Copy link"
-                              className="flex-shrink-0 w-8 h-8 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-slate-300 flex items-center justify-center transition-colors">
+                              className="flex-shrink-0 w-8 h-8 rounded-lg border border-[#2A3648] bg-[#1B2431] hover:border-blue-500/40 text-slate-300 flex items-center justify-center transition-colors">
                               {shareCopied ? <Check className="w-3.5 h-3.5 text-blue-400" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>
                           </div>
@@ -2075,14 +2095,14 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                 {/* Social post (client #8) */}
                 <button onClick={() => { setSocialOpen(true); if (!socialDraft) void generateSocial() }}
                   disabled={!!socialBusy}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#2A3648] bg-[#1B2431] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
                   <Share2 className="w-3 h-3" /> Social
                 </button>
                 {savedDraftId ? (
                   <>
                     {(['pdf', 'pptx', 'docx', 'html'] as const).map(fmt => (
                       <button key={fmt} onClick={() => exportDraft(fmt)} disabled={!!exporting}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1e2433] bg-[#131720] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#2A3648] bg-[#1B2431] hover:border-blue-500/40 text-[11px] font-semibold text-slate-200 transition-colors disabled:opacity-50">
                         {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                         {fmt.toUpperCase()}
                       </button>
@@ -2114,7 +2134,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       {prefsOpen && <PrefsModal prefs={prefs} onSave={savePrefs} onClose={() => setPrefsOpen(false)} />}
       {socialOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setSocialOpen(false)}>
-          <div className="w-full max-w-lg rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-white flex items-center gap-2"><Share2 className="w-4 h-4 text-blue-400" /> Social post</h2>
               <button onClick={() => setSocialOpen(false)} className="w-7 h-7 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 flex items-center justify-center transition-colors"><X className="w-4 h-4" /></button>
@@ -2126,7 +2146,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             ) : socialDraft ? (
               <>
                 {socialDraft.image && (
-                  <img src={socialDraft.image} alt="Generated infographic" className="w-full rounded-xl border border-[#1e2433]" />
+                  <img src={socialDraft.image} alt="Generated infographic" className="w-full rounded-xl border border-[#2A3648]" />
                 )}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -2136,11 +2156,11 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
                     </button>
                   </div>
                   <textarea value={socialDraft.caption} onChange={e => setSocialDraft(d => d ? { ...d, caption: e.target.value } : d)}
-                    rows={7} className="w-full rounded-xl border border-[#1e2433] bg-[#0c0e14] px-3 py-2.5 text-sm text-slate-200 resize-y focus:border-blue-500/40 outline-none" />
+                    rows={7} className="w-full rounded-xl border border-[#2A3648] bg-[#0B1220] px-3 py-2.5 text-sm text-slate-200 resize-y focus:border-blue-500/40 outline-none" />
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-1">
                   <button onClick={generateSocial} disabled={!!socialBusy}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#1e2433] text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-50">
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#2A3648] text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-50">
                     <RotateCcw className="w-3.5 h-3.5" /> Regenerate
                   </button>
                   <button onClick={publishSocial} disabled={!!socialBusy}
@@ -2163,7 +2183,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
       )}
       {consentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setConsentOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl border border-[#1e2433] bg-[#131720] p-6 space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-2.5">
               <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
@@ -2176,7 +2196,7 @@ function ConversationPanel({ profile, workspaceId, workspaceName }: { profile: A
             </div>
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input type="checkbox" checked={uploadConsent} onChange={e => setUploadConsent(e.target.checked)}
-                className="w-4 h-4 rounded border-[#2a3048] bg-[#0c0e14] text-blue-600 focus:ring-blue-500/40 focus:ring-2 cursor-pointer" />
+                className="w-4 h-4 rounded border-[#2a3048] bg-[#0B1220] text-blue-600 focus:ring-blue-500/40 focus:ring-2 cursor-pointer" />
               <span className="text-xs font-medium text-slate-200">I understand and consent to uploading these documents for advisory use only.</span>
             </label>
             <div className="flex justify-end gap-2 pt-1">
@@ -2252,7 +2272,7 @@ function DeliverablePanel() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5">
+      <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5">
         <div className="flex items-center gap-2 mb-4">
           <LayoutGrid className="w-4 h-4 text-blue-400" />
           <h3 className="text-sm font-semibold text-white">Generate Framework / Program</h3>
@@ -2265,7 +2285,7 @@ function DeliverablePanel() {
             value={topic}
             onChange={e => setTopic(e.target.value)}
             disabled={loading}
-            className="flex-1 rounded-xl bg-[#0c0e14] border border-[#1e2433] text-sm text-slate-100 px-3 py-2.5 focus:outline-none focus:border-blue-500/50"
+            className="flex-1 rounded-xl bg-[#0B1220] border border-[#2A3648] text-sm text-slate-100 px-3 py-2.5 focus:outline-none focus:border-blue-500/50"
           >
             {DELIVERABLE_TOPICS.map(t => (
               <option key={t.key} value={t.key}>{t.label}</option>
@@ -2274,7 +2294,7 @@ function DeliverablePanel() {
           <button
             onClick={generate}
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] ring-1 ring-blue-500/40"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-[0_2px_12px_rgba(23,95,204,0.35)] ring-1 ring-blue-500/40"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</> : <><Sparkles className="w-4 h-4" /> Generate</>}
           </button>
@@ -2285,7 +2305,7 @@ function DeliverablePanel() {
       </div>
 
       {doc && (
-        <div className="rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+        <div className="rounded-2xl border border-[#2A3648] bg-[#0B1220] overflow-hidden">
           <StudioOutput document={doc} onRegenerateSection={handleRegenerateSection} />
         </div>
       )}
@@ -2399,7 +2419,7 @@ function GuidedDiagnostic() {
     <div>
       {(bubbles.length > 0 || showReport) && (
         <div className="flex justify-end mb-3">
-          <button onClick={restart} className="text-xs text-slate-400 hover:text-white flex items-center gap-2 px-3 py-2 rounded-xl border border-[#1e2433] hover:border-blue-500/40">
+          <button onClick={restart} className="text-xs text-slate-400 hover:text-white flex items-center gap-2 px-3 py-2 rounded-xl border border-[#2A3648] hover:border-blue-500/40">
             <RotateCcw className="w-3.5 h-3.5" /> Restart diagnostic
           </button>
         </div>
@@ -2411,7 +2431,7 @@ function GuidedDiagnostic() {
             <span>Guided assessment progress</span>
             <span>{currentIdx} of {allQuestions.length}</span>
           </div>
-          <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
             <motion.div
               className="h-full bg-blue-500"
               initial={{ width: 0 }}
@@ -2436,14 +2456,14 @@ function GuidedDiagnostic() {
                   <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-4 h-4 text-blue-400" />
                   </div>
-                  <div className="rounded-2xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-4 py-3 text-sm text-slate-200 leading-relaxed">
+                  <div className="rounded-2xl rounded-tl-sm bg-[#1B2431] border border-[#2A3648] px-4 py-3 text-sm text-slate-200 leading-relaxed">
                     {b.text}
                   </div>
                 </div>
               )}
               {b.role === 'user' && (
                 <div className="flex justify-end">
-                  <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] px-4 py-2.5 text-sm max-w-[70%]">
+                  <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(23,95,204,0.25)] px-4 py-2.5 text-sm max-w-[70%]">
                     {b.text}
                   </div>
                 </div>
@@ -2522,7 +2542,7 @@ function WorkspacePicker() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] p-7 sm:p-8 space-y-6"
+        className="w-full max-w-xl rounded-2xl border border-[#2A3648] bg-[#1B2431] p-7 sm:p-8 space-y-6"
       >
         <div className="text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
@@ -2546,7 +2566,7 @@ function WorkspacePicker() {
               <Link
                 key={ws.id}
                 to={`/advisor/${ws.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] px-4 py-3 hover:border-blue-500/40 transition-colors group"
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#2A3648] bg-[#0B1220] px-4 py-3 hover:border-blue-500/40 transition-colors group"
               >
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-white truncate">{ws.name}</div>
@@ -2614,7 +2634,7 @@ export default function AdvisorChat() {
   if (!profile) {
     return (
       <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
-        <span className="w-6 h-6 rounded-full border-2 border-[#1e2433] border-t-blue-500 animate-spin" />
+        <span className="w-6 h-6 rounded-full border-2 border-[#2A3648] border-t-blue-500 animate-spin" />
       </div>
     )
   }
@@ -2673,7 +2693,7 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; on
       onClick={onClick}
       className={
         active
-          ? 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.35)] transition-colors'
+          ? 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-[0_2px_8px_rgba(23,95,204,0.35)] transition-colors'
           : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-colors'
       }
     >
@@ -2695,7 +2715,7 @@ function ReportPanel({ standalone = false }: { standalone?: boolean }) {
 
   return (
     <div className={standalone ? '' : 'pl-11'}>
-      <div className="rounded-2xl border border-[#1e2433] bg-gradient-to-br from-[#131720] to-[#0c0e14] p-6 space-y-6">
+      <div className="rounded-2xl border border-[#2A3648] bg-gradient-to-br from-[#1B2431] to-[#0B1220] p-6 space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Assessment complete</div>
@@ -2716,12 +2736,12 @@ function ReportPanel({ standalone = false }: { standalone?: boolean }) {
               const dim = getDimension(d.dimensionId)!
               const t = getTier(d.tier)
               return (
-                <div key={d.dimensionId} className="rounded-xl border border-[#1e2433] bg-[#0c0e14] p-3">
+                <div key={d.dimensionId} className="rounded-xl border border-[#2A3648] bg-[#0B1220] p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-white">{dim.name}</span>
                     <span className="text-xs font-semibold" style={{ color: t.color }}>{d.score}</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${d.score}%`, backgroundColor: t.color }} />
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1.5">{t.label}</div>
@@ -2737,7 +2757,7 @@ function ReportPanel({ standalone = false }: { standalone?: boolean }) {
             {recs.map(r => {
               const dim = getDimension(r.dimensionId)
               return (
-                <div key={r.id} className="rounded-xl border border-[#1e2433] bg-[#0c0e14] p-4">
+                <div key={r.id} className="rounded-xl border border-[#2A3648] bg-[#0B1220] p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
                       <div className="text-xs uppercase tracking-wider text-blue-400 mb-1">{dim?.name} · {r.horizon}</div>
@@ -2766,13 +2786,13 @@ function ReportPanel({ standalone = false }: { standalone?: boolean }) {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
-          <Link to="/workspaces" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] ring-1 ring-blue-500/40">
+          <Link to="/workspaces" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-[0_2px_12px_rgba(23,95,204,0.35)] ring-1 ring-blue-500/40">
             <Plus className="w-4 h-4" /> Add workspace
           </Link>
-          <Link to="/dashboard" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1e2433] hover:border-blue-500/40 text-slate-200 text-sm">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#2A3648] hover:border-blue-500/40 text-slate-200 text-sm">
             Open dashboard <ArrowRight className="w-4 h-4" />
           </Link>
-          <Link to="/skills" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1e2433] hover:border-blue-500/40 text-slate-200 text-sm">
+          <Link to="/skills" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#2A3648] hover:border-blue-500/40 text-slate-200 text-sm">
             Browse studios
           </Link>
         </div>

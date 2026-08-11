@@ -15,7 +15,7 @@ export default function StatBlockSection({ data }: { data: StatBlockData }) {
   const stats = data.stats || []
   if (stats.length === 0) return null
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-gradient-to-br from-[#0f1117] to-[#131720] p-6 sm:p-8">
+    <div className="rounded-2xl border border-[#2A3648] bg-gradient-to-br from-[#0f1117] to-[#1B2431] p-6 sm:p-8">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
         {stats.map((s, i) => (
           <motion.div

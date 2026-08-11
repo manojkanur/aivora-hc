@@ -48,19 +48,19 @@ export function SkillCard({ skill, onClick, showUpgradeCTA = true }: SkillCardPr
       whileHover={isLocked ? undefined : { y: -4, transition: { duration: 0.2 } }}
       onClick={isLocked ? undefined : onClick}
       className={cn(
-        'relative rounded-xl border bg-[#131720] p-5 transition-shadow',
+        'relative rounded-xl border bg-[#1B2431] p-5 transition-shadow',
         isLocked
-          ? 'border-[#1e2433] opacity-75 cursor-default'
-          : 'border-[#1e2433] shadow-[0_1px_3px_rgba(0,0,0,0.4)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(59,130,246,0.15)] cursor-pointer',
-        isRunning && 'border-[#3b82f6]'
+          ? 'border-[#2A3648] opacity-75 cursor-default'
+          : 'border-[#2A3648] shadow-[0_1px_3px_rgba(0,0,0,0.4)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(46,125,250,0.15)] cursor-pointer',
+        isRunning && 'border-[#2E7DFA]'
       )}
     >
       {isRunning && (
-        <div className="absolute inset-0 rounded-xl border-2 border-[#3b82f6] animate-pulse pointer-events-none" />
+        <div className="absolute inset-0 rounded-xl border-2 border-[#2E7DFA] animate-pulse pointer-events-none" />
       )}
 
       {isLocked && (
-        <div className="absolute inset-0 rounded-xl bg-[#131720]/60 flex items-center justify-center z-10">
+        <div className="absolute inset-0 rounded-xl bg-[#1B2431]/60 flex items-center justify-center z-10">
           <div className="text-center">
             <Lock className="w-5 h-5 text-slate-600 mx-auto mb-1" />
             {showUpgradeCTA && (
@@ -71,7 +71,7 @@ export function SkillCard({ skill, onClick, showUpgradeCTA = true }: SkillCardPr
       )}
 
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="w-10 h-10 rounded-lg bg-[#1a1e2e] flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-[#222E3E] flex items-center justify-center flex-shrink-0">
           {(() => { const Icon = categoryIcons[skill.category] ?? Compass; return <Icon className="w-5 h-5 text-slate-300" /> })()}
         </div>
         <Badge tier={skill.tier}>{tierLabels[skill.tier]}</Badge>
@@ -106,13 +106,13 @@ export function SkillCard({ skill, onClick, showUpgradeCTA = true }: SkillCardPr
       </div>
 
       {isRunning && (
-        <div className="mt-3 pt-3 border-t border-[#1e2433]">
+        <div className="mt-3 pt-3 border-t border-[#2A3648]">
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               {[...Array(3)].map((_, i) => (
                 <div
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] animate-bounce"
+                  className="w-1.5 h-1.5 rounded-full bg-[#2E7DFA] animate-bounce"
                   style={{ animationDelay: `${i * 0.15}s` }}
                 />
               ))}

@@ -117,7 +117,7 @@ export function narrativeparagraph({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export function narrativeparagraph({
           <SourceBadge source={(data as any)?.source} footnote={footnote} />
         </div>
         {typeof data.readingTimeMin === 'number' && data.readingTimeMin > 0 && (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#1e2433] bg-[#0c0e14] text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#2A3648] bg-[#0B1220] text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
             <Clock className="w-3 h-3 text-slate-500" />
             <span className="tabular-nums">{data.readingTimeMin}</span>
             <span>min read</span>
@@ -140,7 +140,7 @@ export function narrativeparagraph({
       </p>
 
       {footnote && (
-        <p className="mt-4 pt-4 border-t border-[#1e2433] text-xs text-slate-500 leading-relaxed">
+        <p className="mt-4 pt-4 border-t border-[#2A3648] text-xs text-slate-500 leading-relaxed">
           {footnote}
         </p>
       )}

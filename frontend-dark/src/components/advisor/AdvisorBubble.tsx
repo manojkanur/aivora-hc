@@ -180,15 +180,15 @@ export function AdvisorBubble() {
           >
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-blue-500/40 blur-xl group-hover:bg-blue-500/60 transition-colors" />
-              <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 border border-blue-400/40 shadow-[0_10px_30px_rgba(37,99,235,0.35)] flex items-center justify-center hover:scale-105 transition-transform">
+              <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 border border-blue-400/40 shadow-[0_10px_30px_rgba(23,95,204,0.35)] flex items-center justify-center hover:scale-105 transition-transform">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               {unread && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-[#0c0e14]" />
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-[#0B1220]" />
               )}
               {/* Hover tooltip */}
               <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
-                <div className="bg-[#131720] border border-[#1e2433] text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
+                <div className="bg-[#1B2431] border border-[#2A3648] text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
                   <p className="font-semibold text-blue-300">Ask your HC advisor</p>
                   <p className="text-slate-500 mt-0.5">Studios · Brief · Anything HC</p>
                 </div>
@@ -207,10 +207,10 @@ export function AdvisorBubble() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-5 right-5 z-40 w-[calc(100vw-2.5rem)] sm:w-[420px] max-w-[420px] h-[600px] max-h-[calc(100vh-3rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] shadow-[0_20px_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden"
+            className="fixed bottom-5 right-5 z-40 w-[calc(100vw-2.5rem)] sm:w-[420px] max-w-[420px] h-[600px] max-h-[calc(100vh-3rem)] rounded-2xl border border-[#2A3648] bg-[#0B1220] shadow-[0_20px_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1e2e] bg-[#0f1117]">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#222E3E] bg-[#0f1117]">
               <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-4 h-4 text-blue-400" />
               </div>
@@ -269,7 +269,7 @@ export function AdvisorBubble() {
                       <button
                         key={i}
                         onClick={() => sendMessage(s)}
-                        className="w-full text-left rounded-xl border border-[#1e2433] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-3 py-2.5 text-xs text-slate-200 leading-relaxed transition-colors"
+                        className="w-full text-left rounded-xl border border-[#2A3648] bg-[#0f1117] hover:border-blue-500/40 hover:bg-[#111420] px-3 py-2.5 text-xs text-slate-200 leading-relaxed transition-colors"
                       >
                         {s}
                       </button>
@@ -291,13 +291,13 @@ export function AdvisorBubble() {
                         <div className="w-6 h-6 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <Sparkles className="w-3 h-3 text-blue-400" />
                         </div>
-                        <div className="rounded-xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-3 py-2.5 text-[13px] text-slate-200 leading-relaxed whitespace-pre-wrap max-w-[calc(100%-2rem)]">
+                        <div className="rounded-xl rounded-tl-sm bg-[#1B2431] border border-[#2A3648] px-3 py-2.5 text-[13px] text-slate-200 leading-relaxed whitespace-pre-wrap max-w-[calc(100%-2rem)]">
                           {m.content}
                         </div>
                       </div>
                     ) : (
                       <div className="flex justify-end">
-                        <div className="rounded-xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] px-3 py-2 text-[13px] max-w-[85%] whitespace-pre-wrap">
+                        <div className="rounded-xl rounded-tr-sm bg-blue-600 text-white shadow-[0_2px_8px_rgba(23,95,204,0.25)] px-3 py-2 text-[13px] max-w-[85%] whitespace-pre-wrap">
                           {m.content}
                         </div>
                       </div>
@@ -311,7 +311,7 @@ export function AdvisorBubble() {
                   <div className="w-6 h-6 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Sparkles className="w-3 h-3 text-blue-400" />
                   </div>
-                  <div className="rounded-xl rounded-tl-sm bg-[#131720] border border-[#1e2433] px-3 py-2.5 flex items-center gap-1">
+                  <div className="rounded-xl rounded-tl-sm bg-[#1B2431] border border-[#2A3648] px-3 py-2.5 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '150ms' }} />
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '300ms' }} />
@@ -327,9 +327,9 @@ export function AdvisorBubble() {
             </div>
 
             {/* Composer */}
-            <div className="border-t border-[#1a1e2e] bg-[#0f1117] px-3 py-3">
+            <div className="border-t border-[#222E3E] bg-[#0f1117] px-3 py-3">
               <div className="flex items-end gap-2">
-                <div className="flex-1 rounded-xl border border-[#1e2433] bg-[#0c0e14] focus-within:border-blue-500/40 transition-colors">
+                <div className="flex-1 rounded-xl border border-[#2A3648] bg-[#0B1220] focus-within:border-blue-500/40 transition-colors">
                   <textarea
                     ref={textareaRef}
                     value={draft}
@@ -346,7 +346,7 @@ export function AdvisorBubble() {
                   disabled={!draft.trim() || sending}
                   className={
                     draft.trim() && !sending
-                      ? 'inline-flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 shadow-[0_2px_8px_rgba(37,99,235,0.35)] transition-colors flex-shrink-0'
+                      ? 'inline-flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 shadow-[0_2px_8px_rgba(23,95,204,0.35)] transition-colors flex-shrink-0'
                       : 'inline-flex items-center justify-center rounded-xl bg-slate-800 text-slate-500 w-9 h-9 cursor-not-allowed flex-shrink-0'
                   }
                   aria-label="Send"

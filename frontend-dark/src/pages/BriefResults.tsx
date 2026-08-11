@@ -123,7 +123,7 @@ const BASIS_LABELS: Record<string, string> = {
 function MaturityBar({ score, color = 'bg-blue-500' }: { score: number; color?: string }) {
   const pct = Math.min(100, (score / 5) * 100)
   return (
-    <div className="h-2 bg-[#1e2433] rounded-full overflow-hidden">
+    <div className="h-2 bg-[#2A3648] rounded-full overflow-hidden">
       <motion.div
         className={`h-full rounded-full ${color}`}
         initial={{ width: 0 }}
@@ -157,7 +157,7 @@ function WhyThisScore({ explanation }: { explanation: ScoringExplanation }) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-3 rounded-lg border border-[#1e2433] bg-[#0f1117] p-4 space-y-3 text-xs">
+            <div className="mt-3 rounded-lg border border-[#2A3648] bg-[#0f1117] p-4 space-y-3 text-xs">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-blue-500/30 bg-blue-500/10 text-blue-300 font-semibold">
                   {BASIS_LABELS[explanation.basis] || explanation.basis}
@@ -232,7 +232,7 @@ function DimensionCard({ d, index }: { d: DimensionResult; index: number }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="rounded-xl border border-[#1a1e2e] bg-[#131720] p-5"
+      className="rounded-xl border border-[#222E3E] bg-[#1B2431] p-5"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
@@ -269,7 +269,7 @@ function RecommendationCard({ r, index }: { r: RecommendationOut; index: number 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="rounded-xl border border-[#1a1e2e] bg-[#131720] p-5"
+      className="rounded-xl border border-[#222E3E] bg-[#1B2431] p-5"
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="font-semibold text-white text-sm">{r.title}</div>
@@ -323,7 +323,7 @@ function Collapsible({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-xl border border-[#1a1e2e] bg-[#131720] overflow-hidden">
+    <div className="rounded-xl border border-[#222E3E] bg-[#1B2431] overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-[#161a26] transition-colors"
@@ -344,7 +344,7 @@ function Collapsible({
             transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 border-t border-[#1e2433] pt-4">{children}</div>
+            <div className="px-5 pb-5 border-t border-[#2A3648] pt-4">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -399,7 +399,7 @@ export default function BriefResults() {
 
   if (loading) {
     return (
-      <div className="min-h-full bg-[#0c0e14] flex items-center justify-center">
+      <div className="min-h-full bg-[#0B1220] flex items-center justify-center">
         <div className="flex items-center gap-3 text-slate-400">
           <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           Loading diagnosis…
@@ -409,7 +409,7 @@ export default function BriefResults() {
   }
   if (error || !data) {
     return (
-      <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4">
+      <div className="min-h-full bg-[#0B1220] flex items-center justify-center px-4">
         <div className="max-w-md text-center space-y-4">
           <AlertTriangle className="w-12 h-12 text-rose-400 mx-auto" />
           <p className="text-white font-semibold">{error || 'No diagnosis found'}</p>
@@ -422,7 +422,7 @@ export default function BriefResults() {
   const nextAction = data.recommendations[0] ?? null
 
   return (
-    <div className="min-h-full bg-[#0c0e14]">
+    <div className="min-h-full bg-[#0B1220]">
       <div className="px-4 sm:px-6 py-8 sm:py-10 max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -447,7 +447,7 @@ export default function BriefResults() {
 
         {/* Overall score card */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-[#1a1e2e] bg-gradient-to-br from-[#0f1117] to-[#131720] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
+          className="rounded-2xl border border-[#222E3E] bg-gradient-to-br from-[#0f1117] to-[#1B2431] p-6 sm:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.4)]">
           <div className="flex items-center gap-3 mb-2">
             <Target className="w-5 h-5 text-blue-400" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">HC Maturity Score</h2>
@@ -495,7 +495,7 @@ export default function BriefResults() {
 
         {/* Key evidence + overall confidence */}
         {evidenceSummary && (
-          <div className="rounded-xl border border-[#1a1e2e] bg-[#131720] p-5">
+          <div className="rounded-xl border border-[#222E3E] bg-[#1B2431] p-5">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
                 <Info className="w-4 h-4 text-blue-400" />
@@ -550,7 +550,7 @@ export default function BriefResults() {
             >
               <div className="space-y-3">
                 {data.risk_flags.map((r, i) => (
-                  <div key={i} className="rounded-xl border border-[#1a1e2e] bg-[#0f1117] p-5">
+                  <div key={i} className="rounded-xl border border-[#222E3E] bg-[#0f1117] p-5">
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="font-semibold text-white text-sm">{r.risk_type.replace(/_/g, ' ')}</div>
                       <div className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold uppercase ${severityColor(r.severity)}`}>
@@ -558,7 +558,7 @@ export default function BriefResults() {
                       </div>
                     </div>
                     <p className="text-sm text-slate-300 leading-relaxed">{r.description}</p>
-                    <div className="mt-3 pt-3 border-t border-[#1e2433]">
+                    <div className="mt-3 pt-3 border-t border-[#2A3648]">
                       <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Suggested action</div>
                       <p className="text-sm text-blue-300">{r.suggested_action}</p>
                     </div>
@@ -579,10 +579,10 @@ export default function BriefResults() {
               {data.benchmark_positioning_summary && (
                 <p className="text-sm text-slate-300 mb-4 leading-relaxed max-w-3xl">{data.benchmark_positioning_summary}</p>
               )}
-              <div className="rounded-xl border border-[#1a1e2e] bg-[#0f1117] overflow-hidden">
+              <div className="rounded-xl border border-[#222E3E] bg-[#0f1117] overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-[#1e2433]">
+                    <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-[#2A3648]">
                       <th className="text-left px-4 py-3 font-semibold">Dimension</th>
                       <th className="text-right px-4 py-3 font-semibold">You</th>
                       <th className="text-right px-4 py-3 font-semibold">Peers</th>
@@ -593,7 +593,7 @@ export default function BriefResults() {
                   </thead>
                   <tbody>
                     {data.benchmark_dimensions.map((d, i) => (
-                      <tr key={d.code} className={i % 2 === 0 ? 'bg-transparent' : 'bg-[#131720]'}>
+                      <tr key={d.code} className={i % 2 === 0 ? 'bg-transparent' : 'bg-[#1B2431]'}>
                         <td className="px-4 py-3 text-white capitalize">{d.name || d.code.replace(/_/g, ' ')}</td>
                         <td className="px-4 py-3 text-right text-white tabular-nums">{d.company_score.toFixed(2)}</td>
                         <td className="px-4 py-3 text-right text-slate-400 tabular-nums">{d.benchmark_average.toFixed(2)}</td>
@@ -630,7 +630,7 @@ export default function BriefResults() {
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#1a1e2e]">
+        <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#222E3E]">
           <Button variant="ghost" onClick={() => navigate(-1)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
             Back to brief
           </Button>

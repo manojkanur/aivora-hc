@@ -80,7 +80,7 @@ function SectionRow({ label, icon: Icon, status, summary }: {
       'rounded-xl border px-3.5 py-3 transition-colors',
       status === 'complete' ? 'border-emerald-500/30 bg-emerald-500/5'
         : status === 'partial' ? 'border-blue-500/30 bg-blue-500/5'
-        : 'border-[#1e2433] bg-[#0c0e14]'
+        : 'border-[#2A3648] bg-[#0B1220]'
     )}>
       <div className="flex items-center gap-2.5">
         {status === 'complete'
@@ -314,7 +314,7 @@ export default function BriefChat() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
         {/* Chat column */}
-        <div className="flex flex-col h-[calc(100vh-13rem)] rounded-2xl border border-[#1e2433] bg-[#0c0e14] overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-13rem)] rounded-2xl border border-[#2A3648] bg-[#0B1220] overflow-hidden">
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
             {messages.map(m => (
               <div key={m.id} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
@@ -322,7 +322,7 @@ export default function BriefChat() {
                   'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                   m.role === 'user'
                     ? 'bg-blue-600 text-white rounded-br-md'
-                    : 'bg-[#131720] border border-[#1e2433] text-slate-200 rounded-bl-md'
+                    : 'bg-[#1B2431] border border-[#2A3648] text-slate-200 rounded-bl-md'
                 )}>
                   {m.role === 'assistant' ? <AssistantMarkdown content={m.content} /> : m.content}
                 </div>
@@ -330,7 +330,7 @@ export default function BriefChat() {
             ))}
             {sending && (
               <div className="flex justify-start">
-                <div className="bg-[#131720] border border-[#1e2433] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1.5">
+                <div className="bg-[#1B2431] border border-[#2A3648] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1.5">
                   {[0, 1, 2].map(i => (
                     <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400"
                       animate={{ opacity: [0.3, 1, 0.3] }}
@@ -357,7 +357,7 @@ export default function BriefChat() {
           )}
 
           {/* Composer */}
-          <div className="border-t border-[#1e2433] p-3 sm:p-4">
+          <div className="border-t border-[#2A3648] p-3 sm:p-4">
             <div className="flex items-end gap-2">
               <textarea
                 value={draft}
@@ -365,7 +365,7 @@ export default function BriefChat() {
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(draft) } }}
                 placeholder="Type your answer, or tap a suggestion above"
                 rows={1}
-                className="flex-1 resize-none rounded-xl bg-[#131720] border border-[#1e2433] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors max-h-36"
+                className="flex-1 resize-none rounded-xl bg-[#1B2431] border border-[#2A3648] text-sm text-white placeholder:text-slate-600 px-3.5 py-2.5 focus:outline-none focus:border-blue-500/50 transition-colors max-h-36"
               />
               <button
                 onClick={() => sendMessage(draft)}
@@ -380,12 +380,12 @@ export default function BriefChat() {
 
         {/* Progress rail */}
         <div className="space-y-3 lg:sticky lg:top-4">
-          <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-4 space-y-3">
+          <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Brief progress</p>
               <span className="text-xs font-bold text-blue-400">{completeCount}/{SECTION_META.length}</span>
             </div>
-            <div className="h-1.5 rounded-full bg-[#1e2433] overflow-hidden">
+            <div className="h-1.5 rounded-full bg-[#2A3648] overflow-hidden">
               <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
                 animate={{ width: `${(completeCount / SECTION_META.length) * 100}%` }}
                 transition={{ duration: 0.5, ease: 'easeOut' }} />
@@ -403,8 +403,8 @@ export default function BriefChat() {
             className={cn(
               'w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all',
               canGenerate && !launching
-                ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_2px_12px_rgba(37,99,235,0.35)]'
-                : 'bg-[#131720] border border-[#1e2433] text-slate-600 cursor-not-allowed'
+                ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_2px_12px_rgba(23,95,204,0.35)]'
+                : 'bg-[#1B2431] border border-[#2A3648] text-slate-600 cursor-not-allowed'
             )}
           >
             {launching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}

@@ -24,7 +24,7 @@ export default function HeatmapSection({ data }: { data: HeatmapData }) {
   const max = data.max ?? 5
   if (cells.length === 0) return null
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5 sm:p-6">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5 sm:p-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {cells.map((c, i) => {
           const pct = Math.max(0, Math.min(1, c.score / max))

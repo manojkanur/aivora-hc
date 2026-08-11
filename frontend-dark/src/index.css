@@ -1,41 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+/* ── AIVORA brand typeface: IBM Plex Sans (self-hosted, variable) ── */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('./assets/fonts/IBMPlexSans-Variable.ttf') format('truetype-variations');
+  font-weight: 300 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('./assets/fonts/IBMPlexSans-Italic-Variable.ttf') format('truetype-variations');
+  font-weight: 300 600;
+  font-style: italic;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* ── Dark mode (default) ── */
+  /* ══ AIVORA brand tokens (Developer Handoff) ══
+     Marketing/logo blue is #0060FF; the in-product action accent is
+     #2E7DFA (dark) / #175FCC (light) per the brand guideline. */
+
+  /* ── Dark mode (default) — Executive Workspace ── */
   html, html.dark {
-    --bg-base:    #0c0e14;
-    --bg-card:    #131720;
-    --bg-card2:   #1a1e2e;
-    --border:     #1e2433;
-    --border2:    #1a1e2e;
-    --text-pri:   #ffffff;
-    --text-sec:   #cbd5e1;
-    --text-muted: #64748b;
-    --scrollbar-track: #0c0e14;
-    --scrollbar-thumb: #1e2433;
+    --bg-base:    #0B1220;  /* color-bg-primary */
+    --bg-card:    #1B2431;  /* color-bg-panel */
+    --bg-card2:   #222E3E;
+    --border:     #2A3648;
+    --border2:    #222E3E;
+    --text-pri:   #F5F7FA;  /* color-text-primary */
+    --text-sec:   #8C96A6;  /* color-text-secondary */
+    --text-muted: #5A6474;
+    --brand:      #0060FF;  /* logo / marketing */
+    --accent:     #2E7DFA;  /* color-accent-action */
+    --accent-hover: #5B96F5;
+    --accent-ai:  #17BFA0;  /* color-accent-ai */
+    --scrollbar-track: #0B1220;
+    --scrollbar-thumb: #2A3648;
   }
 
-  /* ── Light mode ── */
+  /* ── Light mode — Dashboard & Documents ── */
   html.light {
-    --bg-base:    #f1f5f9;
-    --bg-card:    #ffffff;
-    --bg-card2:   #f8fafc;
-    --border:     #e2e8f0;
-    --border2:    #cbd5e1;
-    --text-pri:   #0f172a;
-    --text-sec:   #334155;
-    --text-muted: #94a3b8;
-    --scrollbar-track: #f1f5f9;
-    --scrollbar-thumb: #cbd5e1;
+    --bg-base:    #FAFBFC;  /* color-bg-primary (light) */
+    --bg-card:    #FFFFFF;
+    --bg-card2:   #E7ECF2;  /* color-bg-panel (light) */
+    --border:     #E7E9ED;
+    --border2:    #D3D6DC;
+    --text-pri:   #0B1220;  /* color-text-primary (light) */
+    --text-sec:   #5F6B7A;  /* color-text-secondary (light) */
+    --text-muted: #7A8190;
+    --brand:      #0060FF;
+    --accent:     #175FCC;  /* color-accent-action (light) */
+    --accent-hover: #0D3C82;
+    --accent-ai:  #0F9C82;  /* color-accent-ai (light) */
+    --scrollbar-track: #FAFBFC;
+    --scrollbar-thumb: #D3D6DC;
   }
 
   html {
     scroll-behavior: smooth;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
   }
 
   body {
@@ -47,7 +73,7 @@
   }
 
   ::selection {
-    background-color: #3b82f6;
+    background-color: #2E7DFA;
     color: #ffffff;
   }
 
@@ -66,7 +92,7 @@
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #3b82f6;
+    background: #2E7DFA;
   }
 
   * {
@@ -76,9 +102,7 @@
 
   /* ── Light mode overrides ── */
   /* Page-level + deepest dark backgrounds → soft slate page surface */
-  html.light [class*="bg-[#0c0e14]"],
-  html.light [class*="bg-[#0e1420]"],
-  html.light [class*="bg-[#101525]"],
+  html.light [class*="bg-[#0B1220]"],
   html.light [class*="bg-[#0a0d15]"],
   html.light [class*="bg-[#0a0c12]"],
   html.light [class*="bg-[#080a0f]"],
@@ -87,7 +111,7 @@
   html.light [class*="bg-[#0f1117]"] { background-color: #f1f5f9 !important; }
 
   /* Card-level dark backgrounds → white surface */
-  html.light [class*="bg-[#131720]"],
+  html.light [class*="bg-[#1B2431]"],
   html.light [class*="bg-[#131220]"],
   html.light [class*="bg-[#13182a]"],
   html.light [class*="bg-[#111420]"],
@@ -95,10 +119,10 @@
   html.light [class*="bg-[#161b28]"] { background-color: #ffffff !important; }
 
   /* Subtle surface tints → slate-50 */
-  html.light [class*="bg-[#1a1e2e]"],
+  html.light [class*="bg-[#222E3E]"],
   html.light [class*="bg-[#1a1f2e]"],
   html.light [class*="bg-[#1a2035]"],
-  html.light [class*="bg-[#1e2433]"] { background-color: #f8fafc !important; }
+  html.light [class*="bg-[#2A3648]"] { background-color: #f8fafc !important; }
 
   /* Slightly stronger surface (hover/elevated) → slate-200 */
   html.light [class*="bg-[#252d3f]"],
@@ -113,18 +137,16 @@
   html.light .bg-neutral-900 { background-color: #ffffff !important; }
 
   /* Hero gradient & decorative blurs — neutralize dark gradients */
-  html.light [class*="bg-gradient-to-br"][class*="from-[#101525]"],
-  html.light [class*="bg-gradient-to-br"][class*="from-[#0e1420]"],
-  html.light [class*="bg-gradient-to-br"][class*="from-[#131720]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#0B1220]"],
+  html.light [class*="bg-gradient-to-br"][class*="from-[#1B2431]"],
   html.light [class*="bg-gradient-to-br"][class*="from-[#131220]"],
-  html.light [class*="bg-gradient-to-br"][class*="from-[#0c0e14]"],
   html.light [class*="bg-gradient-to-br"][class*="from-[#0a0c12]"] {
     background-image: linear-gradient(to bottom right, #ffffff, #f8fafc) !important;
   }
 
   /* Borders */
-  html.light [class*="border-[#1e2433]"],
-  html.light [class*="border-[#1a1e2e]"],
+  html.light [class*="border-[#2A3648]"],
+  html.light [class*="border-[#222E3E]"],
   html.light [class*="border-[#1a1f2e]"],
   html.light [class*="border-[#1a2035]"],
   html.light [class*="border-[#252d3f]"],
@@ -137,7 +159,7 @@
 
   /* Keep white text on solid colored buttons/badges only (same element).
      We do NOT match descendant .text-white inside coloured containers, because
-     a "from-[#101525] via-[#0e1420] to-[#0c0e14]" hero gradient now renders as
+     a "from-[#0B1220] via-[#0B1220] to-[#0B1220]" hero gradient now renders as
      a light background — its inner h1 should switch to dark slate. */
   html.light [class*="bg-blue-5"][class*="text-white"],
   html.light [class*="bg-blue-6"][class*="text-white"],
@@ -207,8 +229,8 @@
   html.light .bg-black\/60  { background-color: rgba(15, 23, 42, 0.12) !important; }
 
   /* Blue accents stay visible (already light-on-anything) */
-  html.light .text-blue-400 { color: #2563eb !important; }
-  html.light .text-blue-500 { color: #2563eb !important; }
+  html.light .text-blue-400 { color: #175FCC !important; }
+  html.light .text-blue-500 { color: #175FCC !important; }
 
   /* Min-h-screen pages */
   html.light .min-h-screen { background-color: #f1f5f9; }
@@ -229,12 +251,12 @@
   }
 
   /* Sidebar dark background → light surface */
-  html.light .bg-\[\#0c0e14\] { background-color: #f8fafc !important; }
+  html.light .bg-\[\#0B1220\] { background-color: #f8fafc !important; }
 }
 
 @layer components {
   .focus-ring {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0e14];
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220];
   }
 
   .truncate-2 {
@@ -254,9 +276,9 @@
   .shimmer {
     background: linear-gradient(
       90deg,
-      #131720 25%,
+      #1B2431 25%,
       #1a2030 50%,
-      #131720 75%
+      #1B2431 75%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
@@ -271,7 +293,7 @@
     display: inline-block;
     width: 2px;
     height: 1em;
-    background-color: #3b82f6;
+    background-color: #2E7DFA;
     animation: blink 1s step-end infinite;
     vertical-align: text-bottom;
     margin-left: 1px;
@@ -284,12 +306,12 @@
 
   .blue-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(46,125,250,0.3), transparent);
   }
 
   /* Legacy alias — keeps any remaining .gold-divider classes visible */
   .gold-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(46,125,250,0.3), transparent);
   }
 }

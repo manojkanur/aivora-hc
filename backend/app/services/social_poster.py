@@ -32,28 +32,56 @@ import io
 import math
 from typing import Any
 
-# ── Light "consulting" palette ───────────────────────────────────────────────
+# ── AIVORA brand palette (Developer Handoff, light "documents" theme) ─────────
 BG = (255, 255, 255)
-INK = (15, 23, 42)          # slate-900 - headlines
-BODY = (71, 85, 105)        # slate-600 - body
-MUTED = (148, 163, 184)     # slate-400 - captions
-LINE = (226, 232, 240)      # slate-200 - hairlines
-PANEL = (248, 250, 252)     # slate-50 - panel fill
-ACCENT = (37, 99, 235)      # blue-600
-ACCENT_2 = (59, 130, 246)   # blue-500
-GOOD = (16, 185, 129)       # emerald-500
-AMBER = (245, 158, 11)
-VIOLET = (139, 92, 246)
-TRACK = (226, 232, 240)     # bar track
+INK = (11, 18, 32)          # #0B1220 - color-text-primary (light) - headlines
+BODY = (95, 107, 122)       # #5F6B7A - color-text-secondary (light)
+MUTED = (122, 129, 144)     # #7A8190 - neutral-500 captions
+LINE = (231, 233, 237)      # #E7E9ED - neutral-100 hairlines
+PANEL = (250, 251, 252)     # #FAFBFC - light base panel fill
+ACCENT = (0, 96, 255)       # #0060FF - brand primary
+ACCENT_2 = (46, 125, 250)   # #2E7DFA - action accent
+GOOD = (15, 156, 130)       # #0F9C82 - accent-ai / success
+AMBER = (201, 122, 30)      # #C97A1E - warning
+VIOLET = (91, 150, 245)     # #5B96F5 - brand mid (in-family, no off-brand hues)
+TRACK = (231, 233, 237)     # bar track
 
 W = H = 1200
 PAD = 80
 
-_BAR_PALETTE = [ACCENT, VIOLET, GOOD, AMBER, ACCENT_2]
+_BAR_PALETTE = [ACCENT, ACCENT_2, GOOD, VIOLET, AMBER]
+
+# IBM Plex Sans is the AIVORA brand typeface. We bundle the variable TTFs beside
+# this module and prefer them; fall back to any system sans if unavailable.
+import os
+_FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+
+
+def _plex_variable(size: int, weight: int):
+    """Load IBM Plex Sans variable font at a specific weight, if supported."""
+    from PIL import ImageFont
+    f = ImageFont.truetype(os.path.join(_FONT_DIR, "IBMPlexSans-Variable.ttf"), size)
+    try:
+        f.set_variation_by_axes([weight])  # single wght axis
+    except Exception:
+        pass
+    return f
 
 
 def _font(size: int, bold: bool = False, black: bool = False):
     from PIL import ImageFont
+    heavy = bool(bold or black)
+    # 1) IBM Plex Sans variable at brand weights (SemiBold 600 for emphasis, Regular 400 for body).
+    try:
+        return _plex_variable(size, 600 if heavy else 400)
+    except (OSError, IOError):
+        pass
+    # 2) IBM Plex Sans Medium static (single real brand file).
+    try:
+        return ImageFont.truetype(os.path.join(_FONT_DIR, "IBMPlexSans-Medium.ttf"), size)
+    except (OSError, IOError):
+        pass
+    # 3) System fallbacks.
     reg = [
         "/usr/share/fonts/opentype/inter/Inter-Regular.otf",
         "/usr/share/fonts/truetype/inter/Inter-Regular.ttf",
@@ -67,7 +95,7 @@ def _font(size: int, bold: bool = False, black: bool = False):
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     ]
-    for p in (bd if (bold or black) else reg):
+    for p in (bd if heavy else reg):
         try:
             return ImageFont.truetype(p, size)
         except (OSError, IOError):
@@ -102,6 +130,27 @@ def _str(x: Any, default: str = "") -> str:
     return str(x).strip() if x is not None else default
 
 
+# AIV logomark paths in their native 792x525 viewBox (from the brand kit).
+_AIV_PATHS = [
+    [(348.402, 350), (316.27, 350), (316.27, 218.516), (214.484, 350), (174, 350),
+     (309.464, 175), (348.402, 175)],
+    [(411.289, 350), (379.156, 350), (379.156, 175), (411.289, 175)],
+    [(475.74, 306.484), (475.74, 175), (443.607, 175), (443.607, 350), (482.536, 350),
+     (618, 175), (577.517, 175)],
+]
+
+
+def _draw_aiv_mark(draw, x: int, y: int, height: int, fill) -> int:
+    """Draw the AIV logomark at (x, y) scaled to `height`. Returns rendered width."""
+    # Native mark bbox: x 174..618, y 175..350 -> w 444, h 175.
+    scale = height / 175.0
+    ox, oy = 174.0, 175.0
+    for pts in _AIV_PATHS:
+        poly = [((px - ox) * scale + x, (py - oy) * scale + y) for (px, py) in pts]
+        draw.polygon(poly, fill=fill)
+    return int(444 * scale)
+
+
 def render_poster(data: dict[str, Any]) -> bytes:
     from PIL import Image, ImageDraw
 
@@ -119,13 +168,14 @@ def render_poster(data: dict[str, Any]) -> bytes:
 
     # ── Header ────────────────────────────────────────────────────────────
     y = PAD
-    # accent tick + brand
+    # accent tick + eyebrow (left)
     d.rounded_rectangle((PAD, y + 4, PAD + 34, y + 12), radius=4, fill=ACCENT)
     ey_font = _font(24, bold=True)
     d.text((PAD + 48, y - 4), eyebrow, font=ey_font, fill=ACCENT)
-    brand_font = _font(24, bold=True)
-    brand = "AIVORA HC"
-    d.text((W - PAD - _tw(d, brand, brand_font), y - 4), brand, font=brand_font, fill=INK)
+    # AIV logomark (right) — real brand mark in primary blue
+    mark_h = 30
+    mark_w = int(444 * (mark_h / 175.0))
+    _draw_aiv_mark(d, W - PAD - mark_w, y - 2, mark_h, ACCENT)
     y += 40
 
     # ── Title ─────────────────────────────────────────────────────────────
@@ -141,7 +191,7 @@ def render_poster(data: dict[str, Any]) -> bytes:
     hx0, hx1 = PAD, PAD + hero_w
     hy0, hy1 = y, y + row_h
     # Hero panel (accent-tinted)
-    d.rounded_rectangle((hx0, hy0, hx1, hy1), radius=28, fill=(239, 246, 255))
+    d.rounded_rectangle((hx0, hy0, hx1, hy1), radius=28, fill=(234, 242, 254))
     hval = _str(hero.get("value"), "")[:7]
     if hval:
         val_font = _font(150, black=True)
@@ -262,7 +312,7 @@ def render_poster(data: dict[str, Any]) -> bytes:
         ins_font = _font(30, bold=True)
         lines = _wrap(d, insight, ins_font, W - 2 * PAD - 60)[:3]
         box_h = 40 + len(lines) * 40
-        d.rounded_rectangle((PAD, y, W - PAD, y + box_h), radius=22, fill=(240, 249, 255))
+        d.rounded_rectangle((PAD, y, W - PAD, y + box_h), radius=22, fill=(234, 242, 254))
         d.rounded_rectangle((PAD, y, PAD + 8, y + box_h), radius=4, fill=ACCENT)
         iy = y + 24
         for ln in lines:

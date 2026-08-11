@@ -25,7 +25,7 @@ interface RadarChartProps {
   footnote?: string
 }
 
-const DEFAULT_PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#a855f7']
+const DEFAULT_PALETTE = ['#2E7DFA', '#17BFA0', '#5B96F5', '#0D3C82', '#8C96A6']
 
 function CustomTooltip({
   active,
@@ -38,7 +38,7 @@ function CustomTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null
   return (
-    <div className="rounded-lg border border-[#1e2433] bg-[#0f1117] px-3 py-2 shadow-lg">
+    <div className="rounded-lg border border-[#2A3648] bg-[#0f1117] px-3 py-2 shadow-lg">
       <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-1">{label}</div>
       <div className="space-y-1">
         {payload.map((p) => (
@@ -95,7 +95,7 @@ export function radarchart({ title, data, footnote }: RadarChartProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="mb-4 flex items-center gap-2">
         {title && <h3 className="text-base font-semibold text-white">{title}</h3>}
@@ -110,7 +110,7 @@ export function radarchart({ title, data, footnote }: RadarChartProps) {
               outerRadius="75%"
               margin={{ top: 8, right: 24, bottom: 8, left: 24 }}
             >
-              <PolarGrid stroke="#1e2433" strokeDasharray="2 4" />
+              <PolarGrid stroke="#2A3648" strokeDasharray="2 4" />
               <PolarAngleAxis
                 dataKey="axis"
                 tick={{
@@ -118,7 +118,7 @@ export function radarchart({ title, data, footnote }: RadarChartProps) {
                   fontSize: 11,
                   fontFamily: 'Inter, system-ui, sans-serif',
                 }}
-                stroke="#1e2433"
+                stroke="#2A3648"
               />
               <PolarRadiusAxis
                 angle={90}
@@ -132,7 +132,7 @@ export function radarchart({ title, data, footnote }: RadarChartProps) {
               />
               <Tooltip
                 content={<CustomTooltip />}
-                cursor={{ stroke: '#1e2433', strokeWidth: 1 }}
+                cursor={{ stroke: '#2A3648', strokeWidth: 1 }}
               />
               <defs>
                 {seriesConfig.map((s, i) => (

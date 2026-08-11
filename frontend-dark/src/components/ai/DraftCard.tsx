@@ -36,11 +36,11 @@ export function DraftCard({ draft, onReview, onApprove, onExport, onPublish }: D
   return (
     <motion.div
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      className="bg-[#131720] rounded-xl border border-[#1e2433] shadow-[0_1px_3px_rgba(0,0,0,0.4)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(59,130,246,0.15)] p-5"
+      className="bg-[#1B2431] rounded-xl border border-[#2A3648] shadow-[0_1px_3px_rgba(0,0,0,0.4)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(46,125,250,0.15)] p-5"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#1a1e2e] flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-full bg-[#222E3E] flex items-center justify-center flex-shrink-0">
             <span className="text-base">{draft.skill_icon || '📄'}</span>
           </div>
           <div>

@@ -26,7 +26,7 @@ export function JourneyTimeline({ current, workspaceId }: { current: JourneyStag
 
   return (
     <div className="flex items-center justify-center" aria-label="Engagement journey">
-      <div className="inline-flex items-center rounded-full border border-[#1e2433] bg-[#131720] px-2 py-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+      <div className="inline-flex items-center rounded-full border border-[#2A3648] bg-[#1B2431] px-2 py-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
         {STAGES.map((stage, i) => {
           const state = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'upcoming'
           const Icon = stage.icon
@@ -36,7 +36,7 @@ export function JourneyTimeline({ current, workspaceId }: { current: JourneyStag
             <span
               className={cn(
                 'inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap',
-                state === 'current' && 'bg-blue-600 text-white shadow-[0_0_14px_rgba(59,130,246,0.4)]',
+                state === 'current' && 'bg-blue-600 text-white shadow-[0_0_14px_rgba(46,125,250,0.4)]',
                 state === 'done' && 'text-blue-300',
                 state === 'done' && clickable && 'hover:bg-blue-500/10',
                 state === 'upcoming' && 'text-slate-600',
@@ -47,7 +47,7 @@ export function JourneyTimeline({ current, workspaceId }: { current: JourneyStag
                   'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border',
                   state === 'done' && 'bg-blue-500/15 border-blue-500/40',
                   state === 'current' && 'bg-white/15 border-white/30',
-                  state === 'upcoming' && 'bg-[#0c0e14] border-[#1e2433]',
+                  state === 'upcoming' && 'bg-[#0B1220] border-[#2A3648]',
                 )}
               >
                 {state === 'done'
@@ -68,7 +68,7 @@ export function JourneyTimeline({ current, workspaceId }: { current: JourneyStag
                 <span
                   className={cn(
                     'h-px w-6 sm:w-9 mx-1 flex-shrink-0 rounded-full',
-                    i < currentIdx ? 'bg-blue-500/60' : 'bg-[#1e2433]',
+                    i < currentIdx ? 'bg-blue-500/60' : 'bg-[#2A3648]',
                   )}
                 />
               )}

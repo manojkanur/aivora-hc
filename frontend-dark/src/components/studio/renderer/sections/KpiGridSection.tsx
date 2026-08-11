@@ -37,7 +37,7 @@ export default function KpiGridSection({ data }: { data: KpiGridData }) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.04 }}
-          className="rounded-xl border border-[#1e2433] bg-[#131720] p-4"
+          className="rounded-xl border border-[#2A3648] bg-[#1B2431] p-4"
         >
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
             {k.label}

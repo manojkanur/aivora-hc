@@ -65,10 +65,10 @@ export default function Landing() {
   const [videoOpen, setVideoOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[#0c0e14] text-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#0B1220] text-white font-sans overflow-x-hidden">
 
       {/* ── Nav ─────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 bg-[#0c0e14]/95 backdrop-blur-md border-b border-[#1a1e2e]">
+      <nav className="sticky top-0 z-50 bg-[#0B1220]/95 backdrop-blur-md border-b border-[#222E3E]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <AivoraLogo size="sm" />
           <div className="hidden md:flex items-center gap-6 text-sm text-slate-500">
@@ -78,7 +78,7 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm text-slate-500 hover:text-white transition-colors hidden sm:block">Sign in</Link>
-            <Link to="/signup" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500 transition-colors shadow-[0_0_12px_rgba(59,130,246,0.3)]">
+            <Link to="/signup" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500 transition-colors shadow-[0_0_12px_rgba(46,125,250,0.3)]">
               Get Started
             </Link>
           </div>
@@ -112,12 +112,12 @@ export default function Landing() {
             </motion.p>
 
             <motion.div variants={fadeUp} custom={3} className="flex items-center justify-center gap-3 flex-wrap">
-              <Link to="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_24px_rgba(59,130,246,0.35)]">
+              <Link to="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_24px_rgba(46,125,250,0.35)]">
                 Get Started Free <ArrowRight className="w-4 h-4" />
               </Link>
               <button
                 onClick={() => setVideoOpen(true)}
-                className="inline-flex items-center gap-2 px-7 py-3.5 border border-[#1e2433] text-slate-300 font-medium rounded-xl hover:border-[#252d3f] hover:text-white transition-all"
+                className="inline-flex items-center gap-2 px-7 py-3.5 border border-[#2A3648] text-slate-300 font-medium rounded-xl hover:border-[#252d3f] hover:text-white transition-all"
               >
                 <Play className="w-4 h-4 text-blue-400" /> Watch demo
               </button>
@@ -133,7 +133,7 @@ export default function Landing() {
 
       {/* ── Stats bar ───────────────────────────────────────────────── */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#1a1e2e] rounded-2xl overflow-hidden border border-[#1a1e2e]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#222E3E] rounded-2xl overflow-hidden border border-[#222E3E]">
           {stats.map(s => (
             <div key={s.label} className="bg-[#0f1117] px-6 py-5 text-center group hover:bg-[#111520] transition-colors">
               <s.icon className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
@@ -145,7 +145,7 @@ export default function Landing() {
       </section>
 
       {/* ── Flow ─────────────────────────────────────────────────────── */}
-      <section id="flow" className="border-y border-[#1a1e2e] bg-[#080a0f] py-20">
+      <section id="flow" className="border-y border-[#222E3E] bg-[#080a0f] py-20">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">The flow</span>
@@ -160,7 +160,7 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="relative rounded-2xl border border-[#1e2433] bg-[#0f1117] p-5 hover:border-[#252d3f] transition-colors group"
+                className="relative rounded-2xl border border-[#2A3648] bg-[#0f1117] p-5 hover:border-[#252d3f] transition-colors group"
               >
                 {i < flow.length - 1 && (
                   <div className="hidden lg:block absolute top-1/2 -right-2 -translate-y-1/2 z-10">
@@ -197,10 +197,10 @@ export default function Landing() {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.07 }}
-                  className={`rounded-xl border p-5 hover:border-blue-500/25 hover:bg-[#111520] transition-all ${s.featured ? 'border-blue-500/30 bg-blue-500/5' : 'border-[#1e2433] bg-[#0f1117]'}`}
+                  className={`rounded-xl border p-5 hover:border-blue-500/25 hover:bg-[#111520] transition-all ${s.featured ? 'border-blue-500/30 bg-blue-500/5' : 'border-[#2A3648] bg-[#0f1117]'}`}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center ${s.featured ? 'bg-blue-500/15 border-blue-500/30' : 'bg-[#1a1e2e] border-[#1e2433]'}`}>
+                    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center ${s.featured ? 'bg-blue-500/15 border-blue-500/30' : 'bg-[#222E3E] border-[#2A3648]'}`}>
                       <Icon className={`w-4 h-4 ${s.featured ? 'text-blue-400' : 'text-slate-400'}`} />
                     </div>
                     {s.featured && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white">Featured</span>}
@@ -223,7 +223,7 @@ export default function Landing() {
       </section>
 
       {/* ── Social proof / features ──────────────────────────────────── */}
-      <section className="border-y border-[#1a1e2e] bg-[#080a0f] py-20">
+      <section className="border-y border-[#222E3E] bg-[#080a0f] py-20">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
@@ -261,8 +261,8 @@ export default function Landing() {
                 transition={{ delay: i * 0.1 }}
                 className={`rounded-2xl p-6 border relative overflow-hidden ${
                   plan.highlighted
-                    ? 'bg-blue-600 border-blue-500 shadow-[0_0_40px_rgba(59,130,246,0.3)]'
-                    : 'bg-[#0f1117] border-[#1e2433] hover:border-[#252d3f] transition-colors'
+                    ? 'bg-blue-600 border-blue-500 shadow-[0_0_40px_rgba(46,125,250,0.3)]'
+                    : 'bg-[#0f1117] border-[#2A3648] hover:border-[#252d3f] transition-colors'
                 }`}
               >
                 {plan.highlighted && (
@@ -291,7 +291,7 @@ export default function Landing() {
                   className={`block text-center py-2.5 rounded-xl font-semibold text-sm transition-all ${
                     plan.highlighted
                       ? 'bg-white text-blue-600 hover:bg-blue-50 shadow-[0_4px_12px_rgba(0,0,0,0.3)]'
-                      : 'bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                      : 'bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_12px_rgba(46,125,250,0.2)]'
                   }`}>
                   {plan.cta}
                 </Link>
@@ -302,7 +302,7 @@ export default function Landing() {
       </section>
 
       {/* ── Final CTA ────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-t border-[#1a1e2e] py-24">
+      <section className="relative overflow-hidden border-t border-[#222E3E] py-24">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-600/5 to-transparent pointer-events-none" />
         <div className="max-w-3xl mx-auto px-6 text-center relative">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
@@ -312,7 +312,7 @@ export default function Landing() {
             <p className="text-slate-400 mb-8 max-w-lg mx-auto">
               Join HC advisors who use Aivora to deliver faster, better work. Setup in 5 minutes.
             </p>
-            <Link to="/signup" className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-all text-base shadow-[0_0_32px_rgba(59,130,246,0.35)]">
+            <Link to="/signup" className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-all text-base shadow-[0_0_32px_rgba(46,125,250,0.35)]">
               Get Started Free <ArrowRight className="w-5 h-5" />
             </Link>
             <p className="text-xs text-slate-600 mt-4">No credit card required</p>
@@ -321,7 +321,7 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <footer className="border-t border-[#1a1e2e] bg-[#0c0e14]">
+      <footer className="border-t border-[#222E3E] bg-[#0B1220]">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <AivoraLogo size="xs" />
           <div className="flex items-center gap-6 text-xs text-slate-600">

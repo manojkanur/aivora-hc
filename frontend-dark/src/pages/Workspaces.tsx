@@ -86,13 +86,13 @@ function OrgSelect<T extends string>({ label, value, onChange, options, placehol
         value={value}
         onChange={e => { if (e.target.value) onChange(e.target.value as T) }}
         className={cn(
-          'w-full px-3 py-2 text-sm border border-[#1e2433] rounded-lg bg-[#131720] focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]',
+          'w-full px-3 py-2 text-sm border border-[#2A3648] rounded-lg bg-[#1B2431] focus:outline-none focus:ring-2 focus:ring-[#2E7DFA] focus:border-[#2E7DFA]',
           value ? 'text-white' : 'text-slate-500'
         )}
       >
-        <option value="" className="text-slate-500 bg-[#131720]">{placeholder}</option>
+        <option value="" className="text-slate-500 bg-[#1B2431]">{placeholder}</option>
         {options.map(o => (
-          <option key={o.value} value={o.value} className="text-white bg-[#131720]">{o.label}</option>
+          <option key={o.value} value={o.value} className="text-white bg-[#1B2431]">{o.label}</option>
         ))}
       </select>
     </div>
@@ -219,11 +219,11 @@ export default function Workspaces() {
             leftElement={<Search className="w-4 h-4" />}
           />
         </div>
-        <div className="flex gap-1 border border-[#1e2433] rounded-lg p-1 bg-[#131720]">
+        <div className="flex gap-1 border border-[#2A3648] rounded-lg p-1 bg-[#1B2431]">
           {(['active', 'archived', 'all'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={cn('px-3 py-1.5 rounded text-xs font-medium capitalize transition-colors',
-                filter === f ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-[#1a1e2e]')}>
+                filter === f ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-[#222E3E]')}>
               {f}
             </button>
           ))}
@@ -256,9 +256,9 @@ export default function Workspaces() {
           {filtered.map((ws, i) => (
             <motion.div key={ws.id} variants={fadeUp} custom={i} className="relative h-full">
               <Link to={`/workspaces/${ws.id}`} className="block h-full">
-                <div className="h-full flex flex-col bg-[#131720] rounded-xl border border-[#1e2433] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(59,130,246,0.15)] hover:border-[#252d3f] transition-all p-5 cursor-pointer group">
+                <div className="h-full flex flex-col bg-[#1B2431] rounded-xl border border-[#2A3648] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_0_1px_rgba(46,125,250,0.15)] hover:border-[#252d3f] transition-all p-5 cursor-pointer group">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-[#1a1e2e] flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-[#222E3E] flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-slate-300" />
                     </div>
                     {ws.status === 'archived' && (
@@ -269,7 +269,7 @@ export default function Workspaces() {
                   {ws.client_name && ws.client_name !== ws.name && (
                     <p className="text-sm text-slate-600 mt-0.5">{ws.client_name}</p>
                   )}
-                  <div className="flex items-center gap-4 mt-auto pt-4 border-t border-[#1e2433]">
+                  <div className="flex items-center gap-4 mt-auto pt-4 border-t border-[#2A3648]">
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-slate-600" />
                       <span className="text-xs text-slate-300">{ws.skill_count} studios</span>
@@ -336,7 +336,7 @@ export default function Workspaces() {
                     }))}
                     className={selected
                       ? 'px-3 py-1.5 rounded-lg text-xs font-medium border bg-blue-600/20 border-blue-500/50 text-blue-300 transition-all'
-                      : 'px-3 py-1.5 rounded-lg text-xs font-medium border bg-[#131720] border-[#1e2433] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 transition-all'}
+                      : 'px-3 py-1.5 rounded-lg text-xs font-medium border bg-[#1B2431] border-[#2A3648] text-slate-400 hover:border-[#2a3048] hover:text-slate-300 transition-all'}
                   >
                     {opt.label}
                   </button>
@@ -383,7 +383,7 @@ export default function Workspaces() {
               placeholder="Brief description of this engagement..."
               value={formData.description}
               onChange={e => setFormData(d => ({ ...d, description: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-[#1e2433] rounded-lg bg-[#131720] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 resize-none"
+              className="w-full px-3 py-2 text-sm border border-[#2A3648] rounded-lg bg-[#1B2431] text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 resize-none"
               rows={2}
             />
           </div>

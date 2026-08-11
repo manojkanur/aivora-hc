@@ -29,7 +29,7 @@ export default function RecommendationsSection({ data }: { data: Recommendations
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.04 }}
-          className="rounded-xl border border-[#1e2433] bg-[#131720] p-5"
+          className="rounded-xl border border-[#2A3648] bg-[#1B2431] p-5"
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="flex items-start gap-2 flex-1">

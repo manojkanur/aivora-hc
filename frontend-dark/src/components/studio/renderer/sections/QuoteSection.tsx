@@ -11,7 +11,7 @@ export default function QuoteSection({ data }: { data: QuoteData }) {
   const text = data.text || data.body
   if (!text) return null
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-gradient-to-br from-[#0f1117] to-[#131720] p-6 sm:p-8">
+    <div className="rounded-2xl border border-[#2A3648] bg-gradient-to-br from-[#0f1117] to-[#1B2431] p-6 sm:p-8">
       <Quote className="w-6 h-6 text-blue-400/60 mb-3" />
       <blockquote className="text-base sm:text-lg text-white leading-relaxed font-medium max-w-3xl">
         “{text}”

@@ -15,7 +15,7 @@ export function Skeleton({ className, variant = 'line', lines = 1 }: SkeletonPro
 
   if (variant === 'card') {
     return (
-      <div className={cn('rounded-xl border border-[#1e2433] bg-[#131720] p-5', className)}>
+      <div className={cn('rounded-xl border border-[#2A3648] bg-[#1B2431] p-5', className)}>
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 rounded-full shimmer flex-shrink-0" />
           <div className="flex-1 space-y-2">

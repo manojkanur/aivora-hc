@@ -104,18 +104,18 @@ export function comparisontable({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 sm:p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 sm:p-6"
     >
       <div className="flex items-center gap-2 mb-4">
         {title && <h3 className="text-lg font-semibold text-white">{title}</h3>}
         <SourceBadge source={(data as any)?.source} footnote={footnote} />
       </div>
 
-      <div className="rounded-xl border border-[#1e2433] overflow-hidden">
+      <div className="rounded-xl border border-[#2A3648] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-[#0f1117] border-b border-[#1e2433]">
+              <tr className="bg-[#0f1117] border-b border-[#2A3648]">
                 <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500 font-semibold whitespace-nowrap">
                   {rowLabelHeader}
                 </th>
@@ -127,7 +127,7 @@ export function comparisontable({
                       className={[
                         'px-4 py-3 text-[10px] uppercase tracking-wider font-semibold whitespace-nowrap text-left',
                         highlight
-                          ? 'text-blue-300 bg-blue-500/10 border-l border-r border-blue-500/30 shadow-[inset_0_0_18px_rgba(59,130,246,0.18)]'
+                          ? 'text-blue-300 bg-blue-500/10 border-l border-r border-blue-500/30 shadow-[inset_0_0_18px_rgba(46,125,250,0.18)]'
                           : 'text-slate-500',
                       ].join(' ')}
                     >
@@ -145,7 +145,7 @@ export function comparisontable({
                 <tr
                   key={`${row.label}-${rIdx}`}
                   className={[
-                    'border-b border-[#1e2433] last:border-b-0',
+                    'border-b border-[#2A3648] last:border-b-0',
                     rIdx % 2 === 0 ? 'bg-transparent' : 'bg-[#0f1117]',
                   ].join(' ')}
                 >
@@ -201,7 +201,7 @@ export function comparisontable({
                                   'px-1.5 py-0.5 rounded-md border text-[10px] uppercase tracking-wider font-semibold',
                                   highlight
                                     ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
-                                    : 'border-[#1e2433] bg-[#0f1117] text-slate-400',
+                                    : 'border-[#2A3648] bg-[#0f1117] text-slate-400',
                                 ].join(' ')}
                               >
                                 {cell.badge}

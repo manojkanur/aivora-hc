@@ -54,10 +54,10 @@ function formatValue(v: number, fmt: 'number' | 'percent' | undefined): string {
   return Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2)
 }
 
-// Diverging endpoints: rose-500 → slate-500 → emerald-500
-const DIVERGING_BAD: [number, number, number] = [244, 63, 94]
-const DIVERGING_MID: [number, number, number] = [100, 116, 139]
-const DIVERGING_GOOD: [number, number, number] = [16, 185, 129]
+// Diverging endpoints: brand risk red -> neutral -> brand success green
+const DIVERGING_BAD: [number, number, number] = [209, 67, 67]
+const DIVERGING_MID: [number, number, number] = [140, 150, 166]
+const DIVERGING_GOOD: [number, number, number] = [46, 158, 91]
 
 // Sequential base: a light tint that blends toward the accent, so low values
 // are pale and high values saturate - readable on the light report paper.
@@ -94,7 +94,7 @@ export function heatmap({
   const { scale, valueFormat, colorScale = 'sequential' } = data
   const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null)
 
-  const accentRgb = useMemo(() => hexToRgb(accentColor || '#3b82f6'), [accentColor])
+  const accentRgb = useMemo(() => hexToRgb(accentColor || '#2E7DFA'), [accentColor])
 
   const { min, max, absMax } = useMemo(() => {
     if (scale) {
@@ -157,7 +157,7 @@ export function heatmap({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-6"
+      className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-6"
     >
       <div className="flex items-center gap-2 mb-4">
         {title && <h3 className="text-sm font-semibold text-white">{title}</h3>}
@@ -227,7 +227,7 @@ export function heatmap({
                         height={cellSize - 2}
                         rx={4}
                         fill={colorFor(v)}
-                        stroke={isHover ? '#1d4ed8' : '#e2e8f0'}
+                        stroke={isHover ? '#0D3C82' : '#e2e8f0'}
                         strokeWidth={isHover ? 2 : 1}
                         initial={{ opacity: 0, scale: 0.6 }}
                         animate={{ opacity: 1, scale: isHover ? 1.06 : 1 }}
@@ -270,7 +270,7 @@ export function heatmap({
 
         {hover && (
           <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-[#1e2433] bg-[#0c0e14] px-3 py-2 text-xs shadow-lg"
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-[#2A3648] bg-[#0B1220] px-3 py-2 text-xs shadow-lg"
             style={{ left: hover.x, top: hover.y - 6 }}
           >
             <div className="text-slate-400">

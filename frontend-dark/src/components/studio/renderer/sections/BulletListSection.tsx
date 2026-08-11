@@ -8,7 +8,7 @@ export default function BulletListSection({ data }: { data: BulletData }) {
   const items = data.items || []
   if (items.length === 0) return null
   return (
-    <div className="rounded-2xl border border-[#1e2433] bg-[#131720] p-5 sm:p-6">
+    <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-5 sm:p-6">
       <ul className="space-y-3">
         {items.map((item, i) => {
           const isObj = typeof item === 'object' && item !== null

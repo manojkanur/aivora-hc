@@ -50,7 +50,7 @@ export default function NineBoxGrid({ title, data, footnote }: NineBoxGridProps)
   const yAxis = data?.y_axis ?? 'Potential'
 
   return (
-    <div className="rounded-xl border border-[#1e2433] bg-[#131720] p-5 sm:p-6">
+    <div className="rounded-xl border border-[#2A3648] bg-[#1B2431] p-5 sm:p-6">
       <div className="flex items-center gap-2 mb-4 text-slate-300">
         <Grid3x3 className="w-4 h-4 text-blue-400" />
         <span className="text-xs uppercase tracking-widest text-slate-500">

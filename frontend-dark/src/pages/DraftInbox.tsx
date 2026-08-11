@@ -201,14 +201,14 @@ export default function DraftInbox() {
             leftElement={<Search className="w-4 h-4" />}
           />
         </div>
-        <div className="flex gap-1 border border-[#1e2433] rounded-lg p-1 bg-[#131720]">
+        <div className="flex gap-1 border border-[#2A3648] rounded-lg p-1 bg-[#1B2431]">
           {statusOptions.map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               className={cn(
                 'px-3 py-1.5 rounded text-xs font-medium capitalize transition-colors',
-                statusFilter === s ? 'bg-[#3b82f6] text-white' : 'text-slate-300 hover:bg-[#1a1e2e]'
+                statusFilter === s ? 'bg-[#2E7DFA] text-white' : 'text-slate-300 hover:bg-[#222E3E]'
               )}
             >
               {s}
@@ -250,12 +250,12 @@ export default function DraftInbox() {
           </p>
         </div>
       ) : (
-        <div className="bg-[#131720] rounded-xl border border-[#1e2433] overflow-hidden">
+        <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e2433] bg-[#0E0E0E]">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#2A3648] bg-[#0E0E0E]">
             <input
               type="checkbox"
-              className="rounded border-[#1e2433] accent-[#3b82f6]"
+              className="rounded border-[#2A3648] accent-[#2E7DFA]"
               checked={selected.length === filtered.length && filtered.length > 0}
               onChange={e => setSelected(e.target.checked ? filtered.map(d => d.id) : [])}
             />
@@ -271,11 +271,11 @@ export default function DraftInbox() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="flex items-center gap-3 px-4 py-4 border-b border-[#1e2433] last:border-0 hover:bg-[#0E0E0E] transition-colors"
+              className="flex items-center gap-3 px-4 py-4 border-b border-[#2A3648] last:border-0 hover:bg-[#0E0E0E] transition-colors"
             >
               <input
                 type="checkbox"
-                className="rounded border-[#1e2433] accent-[#3b82f6] flex-shrink-0"
+                className="rounded border-[#2A3648] accent-[#2E7DFA] flex-shrink-0"
                 checked={selected.includes(draft.id)}
                 onChange={() => toggleSelect(draft.id)}
               />
@@ -298,14 +298,14 @@ export default function DraftInbox() {
                 <button
                   onClick={() => editingId === draft.id ? cancelEdit() : beginEdit(draft)}
                   title="Edit inline"
-                  className="p-1.5 rounded-lg text-slate-600 hover:bg-[#1a1e2e] hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg text-slate-600 hover:bg-[#222E3E] hover:text-white transition-colors"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => navigate(`/canvas/${draft.id}?title=${encodeURIComponent(getDraftTitle(draft))}`)}
                   title="Open in Canvas"
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#3b82f6] text-[#3b82f6] hover:bg-[#3b82f6]/10 text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#2E7DFA] text-[#2E7DFA] hover:bg-[#2E7DFA]/10 text-xs font-semibold transition-colors"
                 >
                   <Layout className="w-3.5 h-3.5" /> Canvas
                 </button>
@@ -313,7 +313,7 @@ export default function DraftInbox() {
                   <button
                     onClick={() => handleApprove(draft.id)}
                     title="Approve"
-                    className="p-1.5 rounded-lg text-slate-600 hover:bg-[#1a1e2e] hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg text-slate-600 hover:bg-[#222E3E] hover:text-white transition-colors"
                   >
                     <CheckCircle className="w-4 h-4" />
                   </button>
@@ -323,7 +323,7 @@ export default function DraftInbox() {
                     onClick={() => handleExport(draft.id)}
                     disabled={exportingId === draft.id}
                     title="Export"
-                    className="p-1.5 rounded-lg text-slate-600 hover:bg-[#1a1e2e] hover:text-white transition-colors disabled:opacity-40"
+                    className="p-1.5 rounded-lg text-slate-600 hover:bg-[#222E3E] hover:text-white transition-colors disabled:opacity-40"
                   >
                     <Download className="w-4 h-4" />
                   </button>
@@ -338,14 +338,14 @@ export default function DraftInbox() {
               </div>
             </motion.div>
             {editingId === draft.id && (
-              <div className="px-4 pb-4 pt-1 border-b border-[#1e2433] bg-[#0a0c12]">
+              <div className="px-4 pb-4 pt-1 border-b border-[#2A3648] bg-[#0a0c12]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] uppercase tracking-wider text-slate-500">Inline editor</span>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={cancelEdit} className="px-2.5 py-1 rounded-lg border border-[#1e2433] text-slate-400 hover:text-white text-xs flex items-center gap-1">
+                    <button onClick={cancelEdit} className="px-2.5 py-1 rounded-lg border border-[#2A3648] text-slate-400 hover:text-white text-xs flex items-center gap-1">
                       <XIcon className="w-3 h-3" /> Cancel
                     </button>
-                    <button onClick={() => saveEdit(draft)} disabled={savingEdit} className="px-2.5 py-1 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs font-semibold flex items-center gap-1 disabled:opacity-60">
+                    <button onClick={() => saveEdit(draft)} disabled={savingEdit} className="px-2.5 py-1 rounded-lg bg-[#2E7DFA] hover:bg-[#175FCC] text-white text-xs font-semibold flex items-center gap-1 disabled:opacity-60">
                       <Check className="w-3 h-3" /> {savingEdit ? 'Saving…' : 'Save'}
                     </button>
                   </div>
@@ -354,7 +354,7 @@ export default function DraftInbox() {
                   value={editText}
                   onChange={e => setEditText(e.target.value)}
                   rows={8}
-                  className="w-full bg-[#0c0e14] border border-[#1e2433] rounded-lg px-3 py-2.5 text-sm text-slate-200 font-mono leading-relaxed focus:border-blue-500/50 focus:outline-none resize-y"
+                  className="w-full bg-[#0B1220] border border-[#2A3648] rounded-lg px-3 py-2.5 text-sm text-slate-200 font-mono leading-relaxed focus:border-blue-500/50 focus:outline-none resize-y"
                   placeholder="Edit the draft body here…"
                 />
                 <p className="text-[11px] text-slate-600 mt-1.5">For richer editing (sections, formatting, exports) use Canvas.</p>

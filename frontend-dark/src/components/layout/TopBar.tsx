@@ -93,7 +93,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
   return (
     <>
-      <header className="flex items-center justify-between h-16 px-5 bg-[#0c0e14] border-b border-[#1a1e2e] flex-shrink-0">
+      <header className="flex items-center justify-between h-16 px-5 bg-[#0B1220] border-b border-[#222E3E] flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onMenuClick}
             className="p-2 rounded-xl hover:bg-white/5 text-slate-500 hover:text-white lg:hidden flex-shrink-0 transition-colors">
@@ -124,7 +124,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label={themeMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             data-testid="theme-toggle"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#1e2433] bg-[#131720] hover:bg-[#1a1e2e] hover:border-blue-500/40 transition-all"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#2A3648] bg-[#1B2431] hover:bg-[#222E3E] hover:border-blue-500/40 transition-all"
           >
             {themeMode === 'dark'
               ? <Sun className="w-4 h-4 text-amber-400" />
@@ -145,14 +145,14 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
           <div className="relative">
             <button onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white flex items-center justify-center text-xs font-bold hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(59,130,246,0.3)]">
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white flex items-center justify-center text-xs font-bold hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(46,125,250,0.3)]">
               {user ? getInitials(user.name) : '?'}
             </button>
             {userMenuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 w-52 bg-[#131720] border border-[#1e2433] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)] z-40 py-1 overflow-hidden">
-                  <div className="px-3 py-2 border-b border-[#1e2433]">
+                <div className="absolute right-0 top-full mt-1 w-52 bg-[#1B2431] border border-[#2A3648] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)] z-40 py-1 overflow-hidden">
+                  <div className="px-3 py-2 border-b border-[#2A3648]">
                     <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
                     <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                   </div>
@@ -166,7 +166,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     onClick={() => setUserMenuOpen(false)}>
                     <CreditCard className="w-4 h-4" /> Billing
                   </Link>
-                  <div className="border-t border-[#1e2433] mt-1 pt-1">
+                  <div className="border-t border-[#2A3648] mt-1 pt-1">
                     <button onClick={handleLogout}
                       className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-950/30 transition-colors">
                       <LogOut className="w-4 h-4" /> Sign out

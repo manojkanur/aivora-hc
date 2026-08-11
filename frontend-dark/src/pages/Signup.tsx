@@ -69,7 +69,7 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0e14] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0B1220] flex items-center justify-center p-4">
       <motion.div
         initial="hidden"
         animate="visible"
@@ -80,7 +80,7 @@ export default function Signup() {
           <AivoraLogo size="md" />
         </div>
 
-        <div className="bg-[#131720] rounded-2xl border border-[#1a1e2e] shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-8">
+        <div className="bg-[#1B2431] rounded-2xl border border-[#222E3E] shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-8">
           <div className="text-center mb-6">
             <h1 className="text-xl font-bold text-white">Create your account</h1>
             <p className="text-sm text-slate-600 mt-1">Start your HC advisory platform today</p>
@@ -114,9 +114,9 @@ export default function Signup() {
           </Button>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-[#1a1e2e]" />
+            <div className="flex-1 h-px bg-[#222E3E]" />
             <span className="text-xs text-slate-600">or sign up with email</span>
-            <div className="flex-1 h-px bg-[#1a1e2e]" />
+            <div className="flex-1 h-px bg-[#222E3E]" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,7 +131,7 @@ export default function Signup() {
               autoComplete="new-password"
               helperText="Must be at least 8 characters"
               rightElement={
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-600 hover:text-[#3b82f6] transition-colors">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-600 hover:text-[#2E7DFA] transition-colors">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               }
@@ -139,12 +139,12 @@ export default function Signup() {
             <Input label="Confirm Password" type={showPassword ? 'text' : 'password'} placeholder="Repeat password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
 
             <label className="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-0.5 w-4 h-4 rounded border-[#1e2433] accent-[#3b82f6] bg-[#131720]" />
+              <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-0.5 w-4 h-4 rounded border-[#2A3648] accent-[#2E7DFA] bg-[#1B2431]" />
               <span className="text-sm text-slate-500">
                 I agree to the{' '}
-                <a href="#" className="text-[#3b82f6] font-medium hover:text-[#60a5fa] transition-colors">Terms of Service</a>
+                <a href="#" className="text-[#2E7DFA] font-medium hover:text-[#5B96F5] transition-colors">Terms of Service</a>
                 {' '}and{' '}
-                <a href="#" className="text-[#3b82f6] font-medium hover:text-[#60a5fa] transition-colors">Privacy Policy</a>
+                <a href="#" className="text-[#2E7DFA] font-medium hover:text-[#5B96F5] transition-colors">Privacy Policy</a>
               </span>
             </label>
 
@@ -155,7 +155,7 @@ export default function Signup() {
 
           <p className="text-center text-sm text-slate-600 mt-5">
             Already have an account?{' '}
-            <Link to="/login" className="text-[#3b82f6] font-medium hover:text-[#60a5fa] transition-colors">
+            <Link to="/login" className="text-[#2E7DFA] font-medium hover:text-[#5B96F5] transition-colors">
               Sign in
             </Link>
           </p>

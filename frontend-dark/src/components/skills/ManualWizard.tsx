@@ -807,8 +807,8 @@ function PillGroup({ options, selected, onToggle }: { options: string[]; selecte
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150',
               on
-                ? 'bg-[#3b82f6] border-[#3b82f6] text-black'
-                : 'bg-[#131720] border-[#1e2433] text-slate-300 hover:border-[#3b82f6] hover:text-white'
+                ? 'bg-[#2E7DFA] border-[#2E7DFA] text-black'
+                : 'bg-[#1B2431] border-[#2A3648] text-slate-300 hover:border-[#2E7DFA] hover:text-white'
             )}>
             {opt}
           </button>
@@ -837,8 +837,8 @@ function ProgressDots({ total, current, completed }: { total: number; current: n
         return (
           <div key={n} className={cn(
             'rounded-full transition-all duration-300',
-            done   ? 'w-2 h-2 bg-[#3b82f6]' :
-            active ? 'w-3 h-3 bg-[#3b82f6]' :
+            done   ? 'w-2 h-2 bg-[#2E7DFA]' :
+            active ? 'w-3 h-3 bg-[#2E7DFA]' :
                      'w-2 h-2 bg-[#2A2A2A]'
           )} />
         )
@@ -906,9 +906,9 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
   return (
     <div className="flex h-full flex-col min-h-0">
       {/* Header: step counter + progress dots */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-[#1e2433] flex items-center justify-between">
+      <div className="flex-shrink-0 px-6 py-4 border-b border-[#2A3648] flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-[#3b82f6] tracking-widest">
+          <p className="text-xs font-bold text-[#2E7DFA] tracking-widest">
             {String(step).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
           </p>
           <p className="text-xs text-slate-600 mt-0.5">{current.label}</p>
@@ -943,7 +943,7 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
                   onChange={e => { markTouched(current.key); setCtx(c => ({ ...c, [current.key]: e.target.value })) }}
                   placeholder={current.placeholder}
                   autoFocus
-                  className="w-full px-4 py-3 rounded-xl border border-[#1e2433] bg-[#131720] text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-[#2A3648] bg-[#1B2431] text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#2E7DFA] focus:border-[#2E7DFA] transition-colors"
                 />
               )}
 
@@ -954,7 +954,7 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
                   placeholder={current.placeholder}
                   rows={4}
                   autoFocus
-                  className="w-full px-4 py-3 rounded-xl border border-[#1e2433] bg-[#131720] text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#3b82f6] focus:border-[#3b82f6] resize-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-[#2A3648] bg-[#1B2431] text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#2E7DFA] focus:border-[#2E7DFA] resize-none transition-colors"
                 />
               )}
 
@@ -977,13 +977,13 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
               {/* Selection count for multi */}
               {current.type === 'multi' && arrVal.length > 0 && (
                 <p className="text-xs text-slate-600">
-                  <span className="text-[#3b82f6] font-semibold">{arrVal.length}</span> selected
+                  <span className="text-[#2E7DFA] font-semibold">{arrVal.length}</span> selected
                 </p>
               )}
 
               {/* Pre-filled-from-brief hint */}
               {showPrefillHint && (
-                <p className="text-[11px] text-[#60a5fa]/80 mt-1">
+                <p className="text-[11px] text-[#5B96F5]/80 mt-1">
                   Pre-filled from your brief - edit if needed
                 </p>
               )}
@@ -993,7 +993,7 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
       </div>
 
       {/* Footer nav */}
-      <div className="flex-shrink-0 border-t border-[#1e2433] px-6 py-4 flex items-center justify-between bg-[#131720]">
+      <div className="flex-shrink-0 border-t border-[#2A3648] px-6 py-4 flex items-center justify-between bg-[#1B2431]">
         <button
           onClick={goBack}
           disabled={step === 1}
@@ -1014,7 +1014,7 @@ export function ManualWizard({ skillSlug, skillName, onGenerate, isGenerating }:
         ) : (
           <button
             onClick={goNext}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#131720] border border-[#1e2433] text-xs font-semibold text-white hover:border-[#3b82f6] hover:bg-[#3b82f6]/5 transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#1B2431] border border-[#2A3648] text-xs font-semibold text-white hover:border-[#2E7DFA] hover:bg-[#2E7DFA]/5 transition-all"
           >
             Next <ChevronRight className="w-4 h-4" />
           </button>

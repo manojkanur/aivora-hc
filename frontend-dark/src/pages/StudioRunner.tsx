@@ -37,14 +37,14 @@ function StudioWorkspacePicker({ studioId, studioName }: { studioId: string; stu
   }, [navigate, studioId])
 
   if (error) {
-    return <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4"><p className="text-sm text-slate-400">Could not load your workspaces. Refresh to try again.</p></div>
+    return <div className="min-h-full bg-[#0B1220] flex items-center justify-center px-4"><p className="text-sm text-slate-400">Could not load your workspaces. Refresh to try again.</p></div>
   }
   if (!workspaces) {
-    return <div className="min-h-full bg-[#0c0e14] flex items-center justify-center"><Loader2 className="w-6 h-6 text-blue-400 animate-spin" /></div>
+    return <div className="min-h-full bg-[#0B1220] flex items-center justify-center"><Loader2 className="w-6 h-6 text-blue-400 animate-spin" /></div>
   }
   return (
-    <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-xl rounded-2xl border border-[#1e2433] bg-[#131720] p-7 sm:p-8 space-y-6">
+    <div className="min-h-full bg-[#0B1220] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-xl rounded-2xl border border-[#2A3648] bg-[#1B2431] p-7 sm:p-8 space-y-6">
         <div className="text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center mx-auto">
             <Sparkles className="w-5 h-5 text-blue-400" />
@@ -65,7 +65,7 @@ function StudioWorkspacePicker({ studioId, studioName }: { studioId: string; stu
           <div className="space-y-2">
             {workspaces.map(w => (
               <button key={w.id} onClick={() => navigate(`/studio/${studioId}/${w.id}`)}
-                className="w-full flex items-center gap-3 rounded-xl border border-[#1e2433] bg-[#0c0e14] hover:border-blue-500/40 px-4 py-3 text-left transition-colors">
+                className="w-full flex items-center gap-3 rounded-xl border border-[#2A3648] bg-[#0B1220] hover:border-blue-500/40 px-4 py-3 text-left transition-colors">
                 <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
                 <span className="text-sm font-semibold text-white flex-1 truncate">{w.name}</span>
                 <ArrowLeft className="w-4 h-4 text-slate-500 rotate-180" />
@@ -104,7 +104,7 @@ function StudioRunIntro({ studioName, studio, brief, workspaceId, onRun }: {
   ].filter(f => f.value) : []
 
   return (
-    <div className="min-h-full bg-[#0c0e14] px-4 sm:px-6 py-8 sm:py-10">
+    <div className="min-h-full bg-[#0B1220] px-4 sm:px-6 py-8 sm:py-10">
       <div className="max-w-3xl mx-auto space-y-6">
         <button onClick={() => navigate(`/advisor/${workspaceId}`)} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white">
           <ArrowLeft className="w-4 h-4" /> Back to workspace
@@ -125,7 +125,7 @@ function StudioRunIntro({ studioName, studio, brief, workspaceId, onRun }: {
         ) : (
           <>
             {/* Prefilled workspace facts */}
-            <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5">
+            <div className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Using this workspace's data</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {facts.map(f => (
@@ -138,7 +138,7 @@ function StudioRunIntro({ studioName, studio, brief, workspaceId, onRun }: {
             </div>
 
             {/* Summary + analysis */}
-            <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-5 space-y-4">
+            <div className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-5 space-y-4">
               {brief.strategicDrivers.length > 0 && (
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Strategic drivers</p>
@@ -188,35 +188,35 @@ interface ExportRecord {
 
 function StudioSkeleton({ studioName }: { studioName: string }) {
   return (
-    <div className="min-h-full bg-[#0c0e14]">
+    <div className="min-h-full bg-[#0B1220]">
       <div className="px-4 sm:px-6 py-8 sm:py-10 max-w-6xl mx-auto space-y-8">
         <div className="space-y-3">
           <div className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-semibold">
             {studioName}
           </div>
-          <div className="h-9 w-2/3 rounded-lg bg-[#131720] border border-[#1a1e2e] animate-pulse" />
-          <div className="h-4 w-1/2 rounded bg-[#131720] border border-[#1a1e2e] animate-pulse" />
+          <div className="h-9 w-2/3 rounded-lg bg-[#1B2431] border border-[#222E3E] animate-pulse" />
+          <div className="h-4 w-1/2 rounded bg-[#1B2431] border border-[#222E3E] animate-pulse" />
         </div>
 
-        <div className="rounded-2xl border border-[#1a1e2e] bg-[#131720] p-6 sm:p-8 space-y-4">
+        <div className="rounded-2xl border border-[#222E3E] bg-[#1B2431] p-6 sm:p-8 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-slate-400">Synthesising your {studioName.toLowerCase()}…</span>
           </div>
           <div className="space-y-3 pt-2">
-            <div className="h-4 w-full rounded bg-[#0c0e14] animate-pulse" />
-            <div className="h-4 w-5/6 rounded bg-[#0c0e14] animate-pulse" />
-            <div className="h-4 w-4/6 rounded bg-[#0c0e14] animate-pulse" />
+            <div className="h-4 w-full rounded bg-[#0B1220] animate-pulse" />
+            <div className="h-4 w-5/6 rounded bg-[#0B1220] animate-pulse" />
+            <div className="h-4 w-4/6 rounded bg-[#0B1220] animate-pulse" />
           </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
           {[0, 1, 2, 3].map(i => (
-            <div key={i} className="rounded-xl border border-[#1a1e2e] bg-[#131720] p-5 space-y-3">
-              <div className="h-4 w-2/3 rounded bg-[#0c0e14] animate-pulse" />
-              <div className="h-8 w-1/3 rounded bg-[#0c0e14] animate-pulse" />
-              <div className="h-2 w-full rounded bg-[#0c0e14] animate-pulse" />
-              <div className="h-3 w-full rounded bg-[#0c0e14] animate-pulse" />
+            <div key={i} className="rounded-xl border border-[#222E3E] bg-[#1B2431] p-5 space-y-3">
+              <div className="h-4 w-2/3 rounded bg-[#0B1220] animate-pulse" />
+              <div className="h-8 w-1/3 rounded bg-[#0B1220] animate-pulse" />
+              <div className="h-2 w-full rounded bg-[#0B1220] animate-pulse" />
+              <div className="h-3 w-full rounded bg-[#0B1220] animate-pulse" />
             </div>
           ))}
         </div>
@@ -320,7 +320,7 @@ export default function StudioRunner() {
     toast.info('Generating PNG…')
     try {
       const canvas = await html2canvas(node as HTMLElement, {
-        backgroundColor: '#0c0e14',
+        backgroundColor: '#0B1220',
         scale: Math.min(2, window.devicePixelRatio || 1) * 2,
         useCORS: true,
         logging: false,
@@ -386,7 +386,7 @@ export default function StudioRunner() {
 
   if (!studio) {
     return (
-      <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4">
+      <div className="min-h-full bg-[#0B1220] flex items-center justify-center px-4">
         <div className="max-w-md text-center space-y-4">
           <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto" />
           <p className="text-white font-semibold">Studio not found</p>
@@ -403,7 +403,7 @@ export default function StudioRunner() {
 
   if (error || !doc) {
     return (
-      <div className="min-h-full bg-[#0c0e14] flex items-center justify-center px-4">
+      <div className="min-h-full bg-[#0B1220] flex items-center justify-center px-4">
         <div className="max-w-md text-center space-y-4">
           <AlertTriangle className="w-12 h-12 text-rose-400 mx-auto" />
           <p className="text-white font-semibold">{error || 'No output generated'}</p>
@@ -424,9 +424,9 @@ export default function StudioRunner() {
   }
 
   return (
-    <div className="min-h-full bg-[#0c0e14]">
+    <div className="min-h-full bg-[#0B1220]">
       {/* Action bar */}
-      <div className="border-b border-[#1a1e2e] bg-[#0c0e14]/95 backdrop-blur sticky top-0 z-10">
+      <div className="border-b border-[#222E3E] bg-[#0B1220]/95 backdrop-blur sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-3 max-w-6xl mx-auto flex items-center justify-between gap-3">
           <button
             onClick={() => navigate(backTarget)}
@@ -470,32 +470,32 @@ export default function StudioRunner() {
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 mt-2 w-44 rounded-xl border border-[#1a1e2e] bg-[#131720] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-20"
+                  className="absolute right-0 mt-2 w-44 rounded-xl border border-[#222E3E] bg-[#1B2431] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-20"
                 >
                   <button
                     onClick={() => handleExport('pdf')}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#1a1e2e]"
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#222E3E]"
                   >
                     <FileText className="w-4 h-4 text-rose-400" />
                     Export as PDF
                   </button>
                   <button
                     onClick={() => handleExport('pptx')}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#1a1e2e] border-t border-[#1a1e2e]"
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#222E3E] border-t border-[#222E3E]"
                   >
                     <Presentation className="w-4 h-4 text-amber-400" />
                     Export as PPTX
                   </button>
                   <button
                     onClick={() => handleExport('xlsx')}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#1a1e2e] border-t border-[#1a1e2e]"
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#222E3E] border-t border-[#222E3E]"
                   >
                     <Sheet className="w-4 h-4 text-emerald-400" />
                     Export as XLSX
                   </button>
                   <button
                     onClick={() => handleExport('png')}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#1a1e2e] border-t border-[#1a1e2e]"
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-slate-200 hover:bg-[#222E3E] border-t border-[#222E3E]"
                   >
                     <ImageIcon className="w-4 h-4 text-sky-400" />
                     Export as PNG

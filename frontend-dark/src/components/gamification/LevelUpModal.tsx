@@ -76,7 +76,7 @@ export function LevelUpModal() {
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', damping: 12, stiffness: 150, delay: 0.2 }}
-              className="w-24 h-24 rounded-full bg-[#131720] flex items-center justify-center mb-6"
+              className="w-24 h-24 rounded-full bg-[#1B2431] flex items-center justify-center mb-6"
             >
               <span className="text-4xl font-bold text-black">{level}</span>
             </motion.div>

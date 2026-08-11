@@ -264,7 +264,7 @@ export default function WorkspaceDetail() {
         </div>
         <div className="flex items-center gap-4 flex-wrap">
           <button onClick={() => navigate(`/advisor/${id}`)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-[0_2px_12px_rgba(23,95,204,0.35)] transition-colors">
             <Sparkles className="w-4 h-4" />
             AI Advisory
           </button>
@@ -446,7 +446,7 @@ export default function WorkspaceDetail() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 border-b border-[#1e2433] overflow-x-auto">
+          <div className="flex gap-1 border-b border-[#2A3648] overflow-x-auto">
             {tabs.map(tab => (
               <button
                 key={tab.id}
@@ -514,7 +514,7 @@ export default function WorkspaceDetail() {
               ) : (
                 <div className="space-y-3">
                   {exports.map(exp => (
-                    <div key={exp.id} className="bg-[#131720] border border-[#1e2433] rounded-xl p-4 flex items-center justify-between">
+                    <div key={exp.id} className="bg-[#1B2431] border border-[#2A3648] rounded-xl p-4 flex items-center justify-between">
                       <div>
                         <p className="font-medium text-white text-sm">{exp.skill_name}</p>
                         <p className="text-xs text-slate-600 mt-0.5 uppercase">{exp.format}</p>
@@ -542,7 +542,7 @@ export default function WorkspaceDetail() {
           )}
 
           {activeTab === 'briefs' && (
-            <div className="rounded-xl border border-[#1e2433] bg-[#131720] p-5">
+            <div className="rounded-xl border border-[#2A3648] bg-[#1B2431] p-5">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <p className="font-semibold text-white">{existingBrief?.organizationName}: Challenge Brief</p>

@@ -82,7 +82,7 @@ export default function Billing() {
       </motion.div>
 
       {/* Current Plan */}
-      <div className="bg-[#3b82f6] text-white rounded-2xl p-6">
+      <div className="bg-[#2E7DFA] text-white rounded-2xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-white/70 text-sm font-medium">Current Plan</p>
@@ -100,7 +100,7 @@ export default function Billing() {
       </div>
 
       {/* Credits Usage */}
-      <div className="bg-[#131720] rounded-xl border border-[#1e2433] p-5">
+      <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Coins className="w-5 h-5 text-slate-300" />
@@ -115,9 +115,9 @@ export default function Billing() {
             <span>{billingStatus?.credits_used || 0} used</span>
             <span>{billingStatus?.credits_total || 50} total</span>
           </div>
-          <div className="h-2.5 bg-[#1a1e2e] rounded-full overflow-hidden">
+          <div className="h-2.5 bg-[#222E3E] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#3b82f6] rounded-full transition-all"
+              className="h-full bg-[#2E7DFA] rounded-full transition-all"
               style={{ width: `${creditsPercent}%` }}
             />
           </div>
@@ -133,7 +133,7 @@ export default function Billing() {
             return (
               <div
                 key={plan.id}
-                className={`rounded-xl border p-5 ${isCurrent ? 'border-[#3b82f6] bg-[#3b82f6]-light' : 'border-[#1e2433] bg-[#131720]'}`}
+                className={`rounded-xl border p-5 ${isCurrent ? 'border-[#2E7DFA] bg-[#2E7DFA]-light' : 'border-[#2A3648] bg-[#1B2431]'}`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -170,7 +170,7 @@ export default function Billing() {
 
       {/* Payment Method */}
       {billingStatus?.payment_method && (
-        <div className="bg-[#131720] rounded-xl border border-[#1e2433] p-5">
+        <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CreditCard className="w-5 h-5 text-slate-300" />
@@ -190,10 +190,10 @@ export default function Billing() {
       {transactions.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Transaction History</h3>
-          <div className="bg-[#131720] rounded-xl border border-[#1e2433] overflow-hidden">
+          <div className="bg-[#1B2431] rounded-xl border border-[#2A3648] overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#1e2433] bg-[#0E0E0E]">
+                <tr className="border-b border-[#2A3648] bg-[#0E0E0E]">
                   <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3">Description</th>
                   <th className="text-left text-xs font-semibold text-slate-600 px-4 py-3 hidden sm:table-cell">Date</th>
                   <th className="text-right text-xs font-semibold text-slate-600 px-4 py-3">Credits</th>
@@ -201,7 +201,7 @@ export default function Billing() {
               </thead>
               <tbody>
                 {transactions.map(tx => (
-                  <tr key={tx.id} className="border-b border-[#1e2433] last:border-0">
+                  <tr key={tx.id} className="border-b border-[#2A3648] last:border-0">
                     <td className="px-4 py-3">
                       <span className="text-sm text-slate-300">{tx.description}</span>
                     </td>
@@ -222,7 +222,7 @@ export default function Billing() {
       )}
 
       {/* Cancel */}
-      <div className="pt-4 border-t border-[#1e2433]">
+      <div className="pt-4 border-t border-[#2A3648]">
         <Button
           variant="danger"
           leftIcon={<AlertTriangle className="w-4 h-4" />}
