@@ -159,10 +159,33 @@ async def _fetch_live_models() -> list[dict[str, Any]] | None:
     return out
 
 
-async def get_model_catalogue() -> list[dict[str, Any]]:
-    """The live OpenRouter catalogue when reachable, else the curated fallback."""
+async def get_model_catalogue(custom_models: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """The live OpenRouter catalogue when reachable, else the curated fallback.
+
+    ``custom_models`` (admin-added, from LLM Config) are prepended so they appear
+    at the top of the picker; duplicates by id are dropped.
+    """
     live = await _fetch_live_models()
-    return live if live else MODEL_CATALOGUE
+    base = live if live else MODEL_CATALOGUE
+    if not custom_models:
+        return base
+    seen: set[str] = set()
+    merged: list[dict[str, Any]] = []
+    for m in custom_models:
+        mid = m.get("id")
+        if mid and mid not in seen:
+            merged.append({
+                "id": mid,
+                "label": m.get("label") or mid,
+                "provider": m.get("provider") or "Custom",
+                "hint": "Admin-added",
+            })
+            seen.add(mid)
+    for m in base:
+        if m["id"] not in seen:
+            merged.append(m)
+            seen.add(m["id"])
+    return merged
 
 # Depth tiers surfaced in the chat (shown in the tier dropdown).
 TIER_CATALOGUE: list[dict[str, str]] = [

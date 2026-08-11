@@ -28,7 +28,16 @@ _cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 def default_llm_config() -> dict[str, Any]:
-    return {"global_model": DEFAULT_GLOBAL_MODEL, "skill_overrides": {}}
+    return {
+        "global_model": DEFAULT_GLOBAL_MODEL,
+        "skill_overrides": {},
+        # Admin-added models on top of the built-in catalogue. Each entry:
+        # {"id": "provider/model", "label": "...", "provider": "openrouter|openai"}
+        "custom_models": [],
+        # Ordered fallback chain: if the selected model errors, generation retries
+        # down this list. Empty -> use the code-level RELIABLE_FALLBACKS default.
+        "fallback_chain": [],
+    }
 
 
 async def get_llm_config(db: AsyncSession) -> dict[str, Any]:
@@ -50,7 +59,32 @@ async def get_llm_config(db: AsyncSession) -> dict[str, Any]:
             config["skill_overrides"] = {
                 str(k): str(v) for k, v in data["skill_overrides"].items() if v
             }
+        if isinstance(data.get("custom_models"), list):
+            cleaned: list[dict[str, str]] = []
+            for m in data["custom_models"]:
+                if isinstance(m, dict) and isinstance(m.get("id"), str) and m["id"].strip():
+                    cleaned.append({
+                        "id": m["id"].strip()[:100],
+                        "label": str(m.get("label") or m["id"]).strip()[:80],
+                        "provider": str(m.get("provider") or "openrouter").strip()[:32],
+                    })
+            config["custom_models"] = cleaned
+        if isinstance(data.get("fallback_chain"), list):
+            config["fallback_chain"] = [
+                str(x).strip()[:100] for x in data["fallback_chain"] if str(x).strip()
+            ]
     return config
+
+
+async def get_fallback_chain(db: AsyncSession) -> list[str]:
+    """Admin-configured fallback chain (cached with the rest of the config)."""
+    cached = _cache.get(LLM_CONFIG_KEY)
+    now = time.monotonic()
+    if cached and now - cached[0] < _CACHE_TTL_SECONDS:
+        return list(cached[1].get("fallback_chain") or [])
+    config = await get_llm_config(db)
+    _cache[LLM_CONFIG_KEY] = (now, config)
+    return list(config.get("fallback_chain") or [])
 
 
 async def save_llm_config(db: AsyncSession, config: dict[str, Any]) -> None:

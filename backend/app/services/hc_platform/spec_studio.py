@@ -261,6 +261,7 @@ async def generate_spec_report(
     context_blocks: list[str] | None = None,
     model: str = "gpt-4o",
     spec: str | None = None,
+    fallback_chain: list[str] | None = None,
 ) -> dict[str, Any]:
     """Generate a spec-driven StudioOutputDocument. Raises on LLM failure.
 
@@ -318,7 +319,15 @@ async def generate_spec_report(
     primary = resolve_model(model)
     from app.services.llm_models import RELIABLE_FALLBACKS
 
-    fallbacks = [f for f in RELIABLE_FALLBACKS if f != primary]
+    # Admin-configured fallback chain (from LLM Config) takes precedence over the
+    # code-level reliable defaults. Deduplicate and never repeat the primary.
+    chain = fallback_chain if fallback_chain else RELIABLE_FALLBACKS
+    seen = {primary}
+    fallbacks = []
+    for f in chain:
+        if f and f not in seen:
+            fallbacks.append(f)
+            seen.add(f)
     raw = None
     last_err: Exception | None = None
     for m in [primary, *fallbacks]:

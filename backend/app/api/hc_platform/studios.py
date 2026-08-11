@@ -62,10 +62,14 @@ async def run_studio_endpoint(
                 "CLIENT BRIEF:\n" + _json.dumps(body.brief, ensure_ascii=True)[:8000]
                 if body.brief else ""
             )
-            from app.services.model_settings import get_global_model
+            from app.services.model_settings import get_fallback_chain, get_global_model
 
             output = await generate_spec_report(
-                studio_id, spec=resolved_spec, context_blocks=[brief_block], model=await get_global_model(db)
+                studio_id,
+                spec=resolved_spec,
+                context_blocks=[brief_block],
+                model=await get_global_model(db),
+                fallback_chain=await get_fallback_chain(db),
             )
             await _audit(
                 current_tenant.id,

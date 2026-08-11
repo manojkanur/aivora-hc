@@ -95,9 +95,17 @@ interface SkillInsight {
   last_evolved?: string
 }
 
+interface CustomModel {
+  id: string
+  label?: string
+  provider?: string
+}
+
 interface LlmConfig {
   global_model: string
   skill_overrides: Record<string, string>
+  custom_models?: CustomModel[]
+  fallback_chain?: string[]
 }
 
 type AdminTab = 'skills' | 'categories' | 'llm' | 'users' | 'audit'
@@ -1537,7 +1545,10 @@ function CategoryFormModal({ initial, skills, onSave, onClose }: {
 // ─── LLM Configuration Tab ────────────────────────────────────────────────────
 
 function LlmTab({ skills }: { skills: Skill[] }) {
-  const [config, setConfig] = useState<LlmConfig>({ global_model: 'gpt-4o', skill_overrides: {} })
+  const [config, setConfig] = useState<LlmConfig>({ global_model: 'gpt-4o', skill_overrides: {}, custom_models: [], fallback_chain: [] })
+  const [newModelId, setNewModelId] = useState('')
+  const [newModelLabel, setNewModelLabel] = useState('')
+  const [newModelProvider, setNewModelProvider] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -1574,6 +1585,42 @@ function LlmTab({ skills }: { skills: Skill[] }) {
       return { ...c, skill_overrides: overrides }
     })
   const clearAllOverrides = () => setConfig(c => ({ ...c, skill_overrides: {} }))
+
+  const addCustomModel = () => {
+    const id = newModelId.trim()
+    if (!id) return
+    setConfig(c => {
+      const existing = c.custom_models ?? []
+      if (existing.some(m => m.id === id)) return c
+      return { ...c, custom_models: [...existing, { id, label: newModelLabel.trim() || id, provider: newModelProvider.trim() || 'openrouter' }] }
+    })
+    setNewModelId(''); setNewModelLabel(''); setNewModelProvider('')
+  }
+  const removeCustomModel = (id: string) =>
+    setConfig(c => ({ ...c, custom_models: (c.custom_models ?? []).filter(m => m.id !== id) }))
+
+  const addToFallback = (id: string) =>
+    setConfig(c => {
+      const chain = c.fallback_chain ?? []
+      if (!id || chain.includes(id)) return c
+      return { ...c, fallback_chain: [...chain, id] }
+    })
+  const removeFromFallback = (id: string) =>
+    setConfig(c => ({ ...c, fallback_chain: (c.fallback_chain ?? []).filter(m => m !== id) }))
+  const moveFallback = (idx: number, dir: -1 | 1) =>
+    setConfig(c => {
+      const chain = [...(c.fallback_chain ?? [])]
+      const j = idx + dir
+      if (j < 0 || j >= chain.length) return c
+      ;[chain[idx], chain[j]] = [chain[j], chain[idx]]
+      return { ...c, fallback_chain: chain }
+    })
+
+  // All selectable model ids: built-in options + admin-added custom models.
+  const allModelIds = [
+    ...LLM_OPTIONS.map(o => ({ id: o.id, label: o.label })),
+    ...(config.custom_models ?? []).map(m => ({ id: m.id, label: m.label || m.id })),
+  ]
 
   const filtered = skills.filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()))
   const overrideCount = Object.keys(config.skill_overrides).length
@@ -1634,6 +1681,84 @@ function LlmTab({ skills }: { skills: Skill[] }) {
             </span>
           </div>
         )}
+      </div>
+
+      {/* Custom models — add any provider/model id */}
+      <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+            <Plus className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Add a Model</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Connect any current or future model by its id (e.g. <code className="text-slate-400">anthropic/claude-opus-5</code> or an OpenRouter/OpenAI id). It becomes selectable above and in the chat picker.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_140px_auto] gap-2 items-end">
+          <div>
+            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Model id</label>
+            <Input placeholder="provider/model-id" value={newModelId} onChange={e => setNewModelId(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Label (optional)</label>
+            <Input placeholder="Display name" value={newModelLabel} onChange={e => setNewModelLabel(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Provider</label>
+            <Input placeholder="openrouter" value={newModelProvider} onChange={e => setNewModelProvider(e.target.value)} />
+          </div>
+          <Button variant="secondary" onClick={addCustomModel} disabled={!newModelId.trim()}>Add</Button>
+        </div>
+        {(config.custom_models ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {(config.custom_models ?? []).map(m => (
+              <span key={m.id} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0B1220] border border-[#2A3648] text-xs">
+                <span className="font-semibold text-white">{m.label || m.id}</span>
+                <span className="text-slate-500">{m.id}</span>
+                <button type="button" onClick={() => removeCustomModel(m.id)} className="text-slate-500 hover:text-rose-400" aria-label={`Remove ${m.id}`}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Fallback chain — routing when the chosen model errors */}
+      <div className="rounded-2xl border border-[#2A3648] bg-[#1B2431] p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+            <Settings2 className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Fallback Routing</h3>
+            <p className="text-xs text-slate-500 mt-0.5">If the selected model errors or times out during report generation, AIVORA retries down this ordered list so output never fails. Empty = use the built-in reliable defaults.</p>
+          </div>
+        </div>
+        {(config.fallback_chain ?? []).length > 0 ? (
+          <div className="space-y-2">
+            {(config.fallback_chain ?? []).map((id, idx) => (
+              <div key={id} className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#0B1220] border border-[#2A3648]">
+                <span className="text-xs font-bold text-slate-500 w-5">{idx + 1}</span>
+                <span className="flex-1 text-sm text-white truncate">{allModelIds.find(m => m.id === id)?.label || id}</span>
+                <span className="text-xs text-slate-500 truncate max-w-[200px]">{id}</span>
+                <button type="button" onClick={() => moveFallback(idx, -1)} disabled={idx === 0} className="text-slate-500 hover:text-white disabled:opacity-30" aria-label="Move up"><ChevronUp className="w-4 h-4" /></button>
+                <button type="button" onClick={() => moveFallback(idx, 1)} disabled={idx === (config.fallback_chain ?? []).length - 1} className="text-slate-500 hover:text-white disabled:opacity-30" aria-label="Move down"><ChevronDown className="w-4 h-4" /></button>
+                <button type="button" onClick={() => removeFromFallback(id)} className="text-slate-500 hover:text-rose-400" aria-label="Remove"><X className="w-4 h-4" /></button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 italic">No custom chain set. Built-in reliable defaults are used.</p>
+        )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {allModelIds.filter(m => !(config.fallback_chain ?? []).includes(m.id)).slice(0, 12).map(m => (
+            <button key={m.id} type="button" onClick={() => addToFallback(m.id)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0B1220] border border-[#2A3648] text-xs text-slate-300 hover:border-blue-500/40 hover:text-white transition-colors">
+              <Plus className="w-3 h-3" /> {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Per-studio overrides */}

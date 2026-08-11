@@ -196,9 +196,17 @@ async def admin_update_skill(
     return SkillResponse.model_validate(skill)
 
 
+class CustomModel(BaseModel):
+    id: str
+    label: str | None = None
+    provider: str | None = None
+
+
 class LlmConfigUpdate(BaseModel):
     global_model: str | None = None
     skill_overrides: dict[str, str] | None = None
+    custom_models: list[CustomModel] | None = None
+    fallback_chain: list[str] | None = None
 
 
 @router.get("/llm-config")
@@ -220,6 +228,20 @@ async def admin_update_llm_config(
     config = await get_llm_config(db)
     if payload.skill_overrides is not None:
         config["skill_overrides"] = {k: v for k, v in payload.skill_overrides.items() if v}
+
+    if payload.custom_models is not None:
+        config["custom_models"] = [
+            {
+                "id": m.id.strip()[:100],
+                "label": (m.label or m.id).strip()[:80],
+                "provider": (m.provider or "openrouter").strip()[:32],
+            }
+            for m in payload.custom_models
+            if m.id and m.id.strip()
+        ]
+
+    if payload.fallback_chain is not None:
+        config["fallback_chain"] = [x.strip()[:100] for x in payload.fallback_chain if x and x.strip()]
 
     if payload.global_model is not None:
         model = payload.global_model.strip()

@@ -219,16 +219,18 @@ async def list_prompt_templates(
 
 
 @router.get("/models")
-async def list_advisory_models(current_user: CurrentUser) -> dict[str, Any]:
+async def list_advisory_models(current_user: CurrentUser, db: DBDep) -> dict[str, Any]:
     """Curated LLM catalogue for the chat model picker (OpenRouter + OpenAI).
 
-    Only the picker list is returned; whether OpenRouter is actually configured
-    is surfaced so the UI can hint if a key is missing.
+    Includes any admin-added custom models. Whether OpenRouter is actually
+    configured is surfaced so the UI can hint if a key is missing.
     """
     from app.config import settings
     from app.services.llm_models import TIER_CATALOGUE, default_model_id, get_model_catalogue
+    from app.services.model_settings import get_llm_config
 
-    catalogue = await get_model_catalogue()
+    cfg = await get_llm_config(db)
+    catalogue = await get_model_catalogue(cfg.get("custom_models"))
     return {
         "models": catalogue,
         "tiers": TIER_CATALOGUE,
@@ -853,6 +855,7 @@ async def finalize_report(
     # fall back to the admin global model. OpenRouter ids ("provider/model") route
     # through OpenRouter, bare ids stay on OpenAI.
     from app.services.llm_models import resolve_model as _resolve_model
+    from app.services.model_settings import get_fallback_chain as _get_fallback_chain
     from app.services.model_settings import get_global_model as _get_global_model
 
     chosen_model = payload.model or await _get_global_model(db)
@@ -879,6 +882,7 @@ async def finalize_report(
                     revise_block,
                 ],
                 model=chosen_model,
+                fallback_chain=await _get_fallback_chain(db),
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=502, detail=f"Report generation failed: {exc}")
