@@ -944,8 +944,18 @@ def generate_xlsx(content: dict[str, Any], brand: dict[str, Any]) -> bytes:
 
 def generate_html(content: dict[str, Any], brand: dict[str, Any]) -> bytes:
     """Standalone responsive HTML page that mirrors the frontend infographic."""
-    primary = brand.get("primary_color") or "#3b82f6"
-    secondary = brand.get("secondary_color") or "#0ea5e9"
+    # StudioOutputDocument reports use a typed sections[] shape (layout + data).
+    # report_export.build_html renders those per-layout (narrative, kpi_grid,
+    # tables, callouts, charts). The legacy key-based path below only understands
+    # the older flat findings/recs/metrics shape and would otherwise dump raw
+    # section data, so route typed documents to the correct renderer.
+    from app.services.hc_platform import report_export
+
+    if report_export.is_studio_document(content):
+        return report_export.build_html(content, _org_name(_source(content), _title(content)))
+
+    primary = brand.get("primary_color") or "#0060FF"
+    secondary = brand.get("secondary_color") or "#17BFA0"
     accent_text = "#0f172a"
 
     source = _source(content)

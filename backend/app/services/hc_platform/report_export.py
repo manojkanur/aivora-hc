@@ -20,7 +20,7 @@ MUTED = "#64748b"
 FAINT = "#94a3b8"
 LINE = "#e2e8f0"
 PANEL = "#f8fafc"
-BLUE = "#1d4ed8"
+BLUE = "#0060FF"
 GOOD = "#059669"
 WARN = "#b45309"
 BAD = "#dc2626"
@@ -145,7 +145,23 @@ def _table_for(layout: str, data: dict[str, Any]) -> list[list[str]] | None:
 
 
 def _narrative_text(data: dict[str, Any]) -> str:
-    return _strip_md(data.get("body") or data.get("text") or "")
+    body = data.get("body") or data.get("text") or ""
+    if body:
+        return _strip_md(body)
+    # Hero layout: headline + subheadline + highlight bullets.
+    headline = data.get("headline") or data.get("title") or ""
+    sub = data.get("subheadline") or data.get("subtitle") or ""
+    highlights = data.get("highlights")
+    parts: list[str] = []
+    if headline:
+        parts.append(_strip_md(str(headline)))
+    if sub:
+        parts.append(_strip_md(str(sub)))
+    if isinstance(highlights, list) and highlights:
+        for h in highlights:
+            if h:
+                parts.append("- " + _strip_md(str(h)))
+    return "\n".join(parts)
 
 
 def _callout_text(data: dict[str, Any]) -> tuple[str, str]:
@@ -316,10 +332,15 @@ def build_html(content: dict[str, Any], org_name: str = "") -> bytes:
         if chart:
             b64 = base64.b64encode(chart).decode()
             parts.append(f'<img class="chart" src="data:image/png;base64,{b64}" alt="chart"/>')
-        if layout in ("narrative_paragraph", "narrative", "prose", "text"):
+        if layout in ("narrative_paragraph", "narrative", "prose", "text", "hero"):
             for para in _narrative_text(data).split("\n"):
-                if para.strip():
-                    parts.append(f"<p>{e(para)}</p>")
+                p = para.strip()
+                if not p:
+                    continue
+                if p.startswith("- "):
+                    parts.append(f"<p style='margin-left:14px'>&bull; {e(p[2:])}</p>")
+                else:
+                    parts.append(f"<p>{e(p)}</p>")
         elif layout in ("callout_quote", "quote", "callout", "note", "warning"):
             q, attr = _callout_text(data)
             parts.append(f'<blockquote><p>{e(q)}</p>{f"<cite>{e(attr)}</cite>" if attr else ""}</blockquote>')
