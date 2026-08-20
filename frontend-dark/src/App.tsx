@@ -81,9 +81,8 @@ function lazyPage(importer: () => Promise<{ default: React.ComponentType }>) {
 }
 
 const Landing           = lazyPage(() => import('./pages/Landing'))
+const Auth              = lazyPage(() => import('./pages/Auth'))
 const ArtifactView      = lazyPage(() => import('./pages/ArtifactView'))
-const Login             = lazyPage(() => import('./pages/Login'))
-const Signup            = lazyPage(() => import('./pages/Signup'))
 const Onboarding        = lazyPage(() => import('./pages/Onboarding'))
 const Dashboard         = lazyPage(() => import('./pages/Dashboard'))
 const Workspaces        = lazyPage(() => import('./pages/Workspaces'))
@@ -125,9 +124,13 @@ function AppRoutes() {
     <Suspense fallback={<SkeletonPage />}>
       <Routes>
         {/* Public */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        {/* "/" is the auth screen — the marketing landing page lives at /landing
+            and is being rebuilt as a separate site. */}
+        {/* Auth reads its initial tab from the pathname (/signup opens the signup card). */}
+        <Route path="/" element={<Auth />} />
+        <Route path="/login" element={<Auth />} />
+        <Route path="/signup" element={<Auth />} />
+        <Route path="/landing" element={<Landing />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         {/* Public shared advisory artifact (client #5) - no auth. */}
         <Route path="/a/:token" element={<ArtifactView />} />

@@ -3,7 +3,18 @@ __pycache__/
 *.pyc
 .env
 .env.prod
+.env.prod.*
+.env.staging
+.env.staging.*
 *.env
+*.bak
+*.bak-*
+
+# SSH / cloud private keys — never commit
+*.pem
+*.key
+*.ppk
+id_rsa*
 dist/
 build/
 .vite/
